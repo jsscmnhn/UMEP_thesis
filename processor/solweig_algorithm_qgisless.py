@@ -26,7 +26,8 @@ __date__ = '2020-04-02'
 __copyright__ = '(C) 2020 by Fredrik Lindberg'
 
 from logging import exception
-
+import cProfile
+import pstats
 import numpy as np
 from osgeo import gdal, osr
 # import rasterio
@@ -1085,4 +1086,13 @@ INPUT_MET = "D:/Geomatics/thesis/heattryout/preprocess/climatedata/UMEPclimate_o
 
 
 test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET, INPUT_LC=INPUT_LC)
-test.processAlgorithm()
+
+with cProfile.Profile() as profiler:
+    test.processAlgorithm()
+
+# Print profiling results
+stats = pstats.Stats(profiler)
+stats.sort_stats('cumulative')  # Sort by cumulative time
+stats.print_stats(20)  # Display the top 20 results
+
+stats.dump_stats("profile_results2.prof")

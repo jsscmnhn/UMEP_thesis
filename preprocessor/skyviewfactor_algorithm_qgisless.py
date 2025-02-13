@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # TO DO: CREATE DIR IF DOESNT EXIST YET
-
+import cProfile
+import pstats
 """
 /***************************************************************************
  ProcessingUMEP
@@ -257,5 +258,13 @@ INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
 OUTPUT_DIR = "D:/Geomatics/thesis/codetestsvf"
 OUTPUT_FILE = "skyview"
 
-testsvf = ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE)
-testsvf.processAlgorithm()
+
+with cProfile.Profile() as profiler:
+    ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE).processAlgorithm()
+
+# Print profiling results
+stats = pstats.Stats(profiler)
+stats.sort_stats('cumulative')  # Sort by cumulative time
+stats.print_stats(20)  # Display the top 20 results
+
+stats.dump_stats("profile2.prof")

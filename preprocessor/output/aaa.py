@@ -1,5 +1,5 @@
-import magic  # Install with `pip install python-magic`
+import xarray as xr
 
-file_path = "4.875N52.375E-200001-sfc.nc"
-file_type = magic.Magic(mime=True).from_file(file_path)
-print(f"File type: {file_type}")
+ds = xr.open_dataset("data_stream-oper_stepType-instant.nc", engine="netcdf4")
+
+print(list(ds.variables.keys()))
