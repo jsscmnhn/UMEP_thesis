@@ -5,7 +5,6 @@ import numpy as np
 # from numba import jit
 
 def shadowingfunctionglobalradiation(a, azimuth, altitude, scale, forsvf):
-
     #%This m.file calculates shadows on a DEM
     #% conversion
     degrees = np.pi/180.
