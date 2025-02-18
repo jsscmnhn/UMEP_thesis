@@ -361,20 +361,13 @@ def load_buildings(buildings_path, layer):
     - List of dictionaries: A list of dictionaries containing:
       - "geometry": building geometry in GeoJSON-like format.
       - "parcel_id": corresponding parcel ID.
-    """
-    buildings_gdf = gpd.read_file(buildings_path, layer=layer)
-
-    if 'identificatie' not in buildings_gdf.columns:
-        raise ValueError("Column 'identificatie' not found in the dataset")
-
-    return [{"geometry": mapping(geom), "parcel_id": identificatie} for geom, identificatie in zip(buildings_gdf.geometry, buildings_gdf["identificatie"])]
-
 class CHM:
     def __init__(self, bbox, dtm, output_folder, input_folder):
         self.bbox = bbox
         self.crs = (CRS.from_epsg(28992))
         self.dtm = dtm
-        self.chm = self.create_chm(bbox, output_folder=output_folder, input_folder=input_folder)
+        self.chm, self.polygons, self.transform = self.init_chm(bbox, output_folder=output_folder, input_folder=input_folder)
+        self.original_chm, self.og_polygons = self.chm, self.polygons
 
     @staticmethod
     def find_tiles(gdf, x_min, y_min, x_max, y_max):
@@ -710,9 +703,18 @@ class CHM:
         veg_raster, new_transform = self.chm_finish(veg_raster, self.dtm, transform)
 
         write_output(LasData, self.crs, veg_raster, new_transform, output_filename, True)
-        return veg_raster
 
-    def create_chm(self, bbox, output_folder="output", input_folder="temp",  merged_output="output/pointcloud.las",  smooth_chm=True, resolution=0.5, ndvi_threshold=0.05, filter_size=3):
+        # create the polygons
+        labeled_array, num_clusters = label(veg_raster > 0)
+        shapes_gen = shapes(labeled_array.astype(np.uint8), mask=(labeled_array > 0), transform=transform)
+        polygons = [shape(geom) for geom, value in shapes_gen]
+
+        gdf = gpd.GeoDataFrame(geometry=polygons, crs=crs)
+        gdf.to_file("output/tree_clusters.geojson", driver="GeoJSON")
+
+        return veg_raster, polygons, new_transform
+
+    def init_chm(self, bbox, output_folder="output", input_folder="temp",  merged_output="output/pointcloud.las",  smooth_chm=True, resolution=0.5, ndvi_threshold=0.05, filter_size=3):
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
@@ -736,9 +738,42 @@ class CHM:
         output_filename = os.path.join(output_folder, f"CHM.TIF")
 
         # Create the CHM and save it
-        print(resolution)
-        return self.chm_creation(las_data, vegetation_data, output_filename, resolution=resolution, smooth=smooth_chm, nodata_value=-9999,
+        chm, polygons, transform = self.chm_creation(las_data, vegetation_data, output_filename, resolution=resolution, smooth=smooth_chm, nodata_value=-9999,
                      filter_size=filter_size)
+
+        return chm, polygons, transform
+
+    def remove_trees(self):
+        tree_mask = geometry_mask(
+            geometries=self.polygons,
+            transform=self.transform,
+            invert=True,
+            out_shape=self.chm.shape
+        )
+
+        self.chm = np.where(tree_mask, self.chm, 0)
+        write_output(None, self.crs, chm, self.transform, "output/updated_chm.tif")
+
+
+def load_buildings(buildings_path, layer):
+    """
+    Load in the building shapes from a geopackage file.
+    ----
+    Input:
+    - buildings_path (string):   path to the geopackage file.
+    - layer (string):            (Tile) name of the layer of buildings to be used
+
+    Output:
+    - List of dictionaries: A list of dictionaries containing:
+      - "geometry": building geometry in GeoJSON-like format.
+      - "parcel_id": corresponding parcel ID.
+    """
+    buildings_gdf = gpd.read_file(buildings_path, layer=layer)
+
+    if 'identificatie' not in buildings_gdf.columns:
+        raise ValueError("Column 'identificatie' not found in the dataset")
+
+    return [{"geometry": mapping(geom), "parcel_id": identificatie} for geom, identificatie in zip(buildings_gdf.geometry, buildings_gdf["identificatie"])]
 
 
 if __name__ == "__main__":
@@ -768,9 +803,3 @@ if __name__ == "__main__":
         transform = src.transform
         crs = src.crs
 
-    labeled_array, num_clusters = label(tree_height > 0)
-    shapes_gen = shapes(labeled_array.astype(np.uint8), mask=(labeled_array > 0), transform=transform)
-    polygons = [shape(geom) for geom, value in shapes_gen]
-
-    gdf = gpd.GeoDataFrame(geometry=polygons, crs=crs)
-    gdf.to_file("output/tree_clusters.geojson", driver="GeoJSON")
