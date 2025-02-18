@@ -169,5 +169,5 @@ if __name__ == "__main__":
     bbox = "94500,469500,95000,470000"  # xmin, ymin, xmax, ymax
     crs = "http://www.opengis.net/def/crs/EPSG/0/28992"
 
-    landcover = LandCover(bbox, crs, "output/final_dsm.tif", "output/buildtest.gpkg", "test")
+    landcover = LandCover(bbox, crs, "archive/outputs/final_dsm.tif", "output/buildtest.gpkg", "test")
     raster = landcover.convert_to_raster()

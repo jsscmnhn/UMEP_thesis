@@ -1,5 +1,0 @@
-verhardingstype	landcover type		
-verhard	1		
-half verhard	0		
-onverhard	6		
-onbekend	1

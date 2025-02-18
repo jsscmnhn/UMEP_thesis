@@ -4,6 +4,135 @@ import numpy as np
 # import matplotlib.pylab as plt
 # from numba import jit
 
+# def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, bush, forsvf):
+#     amaxvalue = a.max()
+#     pibyfour = np.pi/4.
+#     threetimespibyfour = 3.*pibyfour
+#     fivetimespibyfour = 5.*pibyfour
+#     seventimespibyfour = 7.*pibyfour
+#     sinazimuth = np.sin(azimuth)
+#     cosazimuth = np.cos(azimuth)
+#     tanazimuth = np.tan(azimuth)
+#     signsinazimuth = np.sign(sinazimuth)
+#     signcosazimuth = np.sign(cosazimuth)
+#     dssin = np.abs((1./sinazimuth))
+#     dscos = np.abs((1./cosazimuth))
+#     tanaltitudebyscale = np.tan(altitude) / scale
+#
+#     # Simplified conversion and initializations
+#     degrees = np.pi / 180.
+#     azimuth = azimuth * degrees
+#     altitude = altitude * degrees
+#
+#     # Grid size
+#     sizex, sizey = a.shape
+#
+#     # Initialize shadow arrays
+#     sh = np.zeros((sizex, sizey))  # Shadows from buildings
+#     vegsh = np.zeros((sizex, sizey))  # Vegetation shadows
+#     vbshvegsh = np.zeros((sizex, sizey))  # Vegetation blocking building shadows
+#     f = a  # Starting with the DEM
+#
+#     # Precompute constants
+#     sinazimuth = np.sin(azimuth)
+#     cosazimuth = np.cos(azimuth)
+#     tanazimuth = np.tan(azimuth)
+#     tanaltitudebyscale = np.tan(altitude) / scale
+#     dssin = np.abs(1. / sinazimuth)
+#     dscos = np.abs(1. / cosazimuth)
+#
+#     # Loop over shadowcasting grid    # Initialize dx, dy, dz, and index
+#     dx = dy = dz = 0
+#     index = 0
+#
+#     # Main loop for shadowcasting
+#     while amaxvalue >= dz and np.abs(dx) < sizex and np.abs(dy) < sizey:
+#         # Main logic
+#         if forsvf == 0:
+#             print(f"Progress: {index}%")
+#
+#         # Calculate dx, dy, dz (shadow movement)
+#         if (pibyfour <= azimuth < threetimespibyfour or fivetimespibyfour <= azimuth < seventimespibyfour):
+#             dy = signsinazimuth * index
+#             dx = -1. * signcosazimuth * np.abs(np.round(index / tanazimuth))
+#             ds = dssin
+#         else:
+#             dy = signsinazimuth * np.abs(np.round(index * tanazimuth))
+#             dx = -1. * signcosazimuth * index
+#             ds = dscos
+#
+#         dz = (ds * index) * tanaltitudebyscale
+#
+#         # Create temporary arrays for vegetation and building shadows
+#         temp = np.zeros_like(a)  # Reuse temp array for shadows
+#
+#         # Calculate indices for array slicing
+#         absdx = np.abs(dx)
+#         absdy = np.abs(dy)
+#
+#         xc1 = int((dx + absdx) / 2. + 1)
+#         xc2 = int(sizex + (dx - absdx) / 2)
+#         yc1 = int((dy + absdy) / 2. + 1)
+#         yc2 = int(sizey + (dy - absdy) / 2)
+#
+#         xp1 = int(-((dx - absdx) / 2.) + 1)
+#         xp2 = int(sizex - (dx + absdx) / 2)
+#         yp1 = int(-((dy - absdy) / 2.) + 1)
+#         yp2 = int(sizey - (dy + absdy) / 2)
+#
+#         # Update shadow and vegetation arrays
+#         temp[xp1:xp2, yp1:yp2] = vegdem[xc1:xc2, yc1:yc2] - dz
+#         temp[xp1:xp2, yp1:yp2] = np.maximum(temp, vegdem2[xc1:xc2, yc1:yc2] - dz)
+#         temp[xp1:xp2, yp1:yp2] = np.maximum(temp, a[xc1:xc2, yc1:yc2] - dz)
+#
+#         # Apply maximum shadow to the f array
+#         f = np.fmax(f, temp)  # Move building shadow
+#
+#         # Update shadow results for buildings and vegetation
+#         sh[(f > a)] = 1
+#         sh[(f <= a)] = 0
+#
+#         # Vegetation above the DEM
+#         fabovea = tempvegdem > a
+#         gabovea = tempvegdem2 > a
+#
+#         # Additional conditions for vegetation (pergola case, etc.)
+#         templastfabovea[xp1:xp2, yp1:yp2] = vegdem[xc1:xc2, yc1:yc2] - dzprev
+#         templastgabovea[xp1:xp2, yp1:yp2] = vegdem2[xc1:xc2, yc1:yc2] - dzprev
+#
+#         # Check if vegetation is above the DEM
+#         lastfabovea = templastfabovea > a
+#         lastgabovea = templastgabovea > a
+#
+#         # Update dzprev for next iteration
+#         dzprev = dz
+#
+#         # Combine all vegetation layers
+#         vegsh2 = np.add(np.add(np.add(fabovea, gabovea, dtype=float), lastfabovea, dtype=float), lastgabovea, dtype=float)
+#         vegsh2[vegsh2 == 4] = 0.
+#         vegsh2[vegsh2 > 0] = 1
+#
+#         # Update vegetation shadow array
+#         vegsh = np.fmax(vegsh, vegsh2)
+#
+#         # Remove shadows behind buildings due to vegetation
+#         vegsh[(vegsh * sh > 0.)] = 0
+#         vbshvegsh = vegsh + vbshvegsh
+#
+#         # Increment index
+#         index += 1
+#
+#     # Finalize shadow results
+#     sh = 1. - sh
+#     vbshvegsh[(vbshvegsh > 0.)] = 1.
+#     vbshvegsh = vbshvegsh - vegsh
+#     vegsh = 1. - vegsh
+#     vbshvegsh = 1. - vbshvegsh
+#
+#     # Return results
+#     shadowresult = {'sh': sh, 'vegsh': vegsh, 'vbshvegsh': vbshvegsh}
+#     return shadowresult
+#
 def shadowingfunctionglobalradiation(a, azimuth, altitude, scale, forsvf):
     #%This m.file calculates shadows on a DEM
     #% conversion
@@ -79,7 +208,7 @@ def shadowingfunctionglobalradiation(a, azimuth, altitude, scale, forsvf):
 
     return sh
 
-# @jit(nopython=True)
+# # @jit(nopython=True)
 def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, bush, forsvf):
 
     # This function casts shadows on buildings and vegetation units.
@@ -89,11 +218,11 @@ def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue
     degrees = np.pi/180.
     azimuth = azimuth * degrees
     altitude = altitude * degrees
-    
+
     # measure the size of grid
     sizex = a.shape[0]
     sizey = a.shape[1]
-    
+
     # progressbar for svf plugin
     if forsvf == 0:
         barstep = np.max([sizex, sizey])
@@ -173,7 +302,7 @@ def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue
         sh[(f <= a)] = 0.
         fabovea = tempvegdem > a #vegdem above DEM
         gabovea = tempvegdem2 > a #vegdem2 above DEM
-        
+
         #new pergola condition
         templastfabovea[xp1:xp2, yp1:yp2] = vegdem[xc1:xc2, yc1:yc2]-dzprev
         templastgabovea[xp1:xp2, yp1:yp2] = vegdem2[xc1:xc2, yc1:yc2]-dzprev
