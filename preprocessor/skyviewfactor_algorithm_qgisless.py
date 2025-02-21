@@ -258,7 +258,7 @@ class ProcessingSkyViewFactorAlgorithm():
 INPUT_DSM = "D:/Geomatics/thesis/heattryout/preprocess/DSM_smaller.tif"
 INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
 OUTPUT_DIR = "D:/Geomatics/thesis/codetestsvf"
-OUTPUT_FILE = "profiling/skyviewcapoff2"
+OUTPUT_FILE = "profiling/skyviewmakenan"
 
 
 # with cProfile.Profile() as profiler:
@@ -278,4 +278,4 @@ stats3 = pstats.Stats(profiler2)
 stats3.sort_stats('cumulative')
 print("\nProfiling with veg cap CDSM:\n")
 stats3.print_stats(20)
-stats3.dump_stats("profiling/profile_capoff2.prof")
+stats3.dump_stats("profiling/profile_makenan.prof")

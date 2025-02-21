@@ -210,10 +210,12 @@ def shadowingfunctionglobalradiation(a, azimuth, altitude, scale, forsvf):
     return sh
 
 # # @jit(nopython=True)
-def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, trunkcheck, bush, forsvf):
+def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, aminvalue, trunkcheck, bush, forsvf):
 
     # This function casts shadows on buildings and vegetation units.
     # New capability to deal with pergolas 20210827
+    # stepChange = 1. if altitude <= 10. else 2.
+    stepChange = 1
 
     # conversion
     degrees = np.pi/180.
@@ -260,27 +262,29 @@ def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue
     tanaltitudebyscale = np.tan(altitude) / scale
     # index = 1 6
     index = 0
-
+    isVert = ((pibyfour <= azimuth) and (azimuth < threetimespibyfour) or (fivetimespibyfour <= azimuth) and (
+                azimuth < seventimespibyfour))
     # new case with pergola (thin vertical layer of vegetation), August 2021
     dzprev = 0
 
     # main loop
     while (amaxvalue >= dz) and (np.abs(dx) < sizex) and (np.abs(dy) < sizey):
         if forsvf == 0:
-            print(int(index * total)) #dlg.progressBar.setValue(index)
-        if ((pibyfour <= azimuth) and (azimuth < threetimespibyfour) or (fivetimespibyfour <= azimuth) and (azimuth < seventimespibyfour)):
-            dy = signsinazimuth * index
-            dx = -1. * signcosazimuth * np.abs(np.round(index / tanazimuth))
-            ds = dssin
+            print(int(index * total))  # dlg.progressBar.setValue(index)
+        if isVert:
+            dy = stepChange * signsinazimuth * index
+            dx = -stepChange * signcosazimuth * np.abs(np.round(index / tanazimuth))
+            ds = stepChange * dssin
         else:
-            dy = signsinazimuth * np.abs(np.round(index * tanazimuth))
-            dx = -1. * signcosazimuth * index
-            ds = dscos
+            dy = stepChange * signsinazimuth * np.abs(np.round(index * tanazimuth))
+            dx = -stepChange * signcosazimuth * index
+            ds = stepChange * dscos
         # note: dx and dy represent absolute values while ds is an incremental value
         dz = (ds * index) * tanaltitudebyscale
         tempvegdem[0:sizex, 0:sizey] = 0.
         tempvegdem2[0:sizex, 0:sizey] = 0.
         temp[0:sizex, 0:sizey] = 0.
+
         templastfabovea[0:sizex, 0:sizey] = 0.
         templastgabovea[0:sizex, 0:sizey] = 0.
         absdx = np.abs(dx)

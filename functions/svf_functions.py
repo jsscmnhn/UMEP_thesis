@@ -119,7 +119,7 @@ def svfForProcessing153(dsm, vegdem, vegdem2, scale, usevegdem):
                 # input_vegdem2 = ma.array(vegdem2, mask=veg_mask)
 
                 shadowresult = shadow.shadowingfunction_20(dsm, input_vegdem, input_vegdem2, azimuth, altitude,
-                                                           scale, amaxvalue, trunkcheck, bush,1)
+                                                           scale, amaxvalue, aminvalue, trunkcheck, bush, 1)
                 vegsh = shadowresult["vegsh"]
                 vbshvegsh = shadowresult["vbshvegsh"]
                 sh = shadowresult["sh"]
