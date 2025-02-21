@@ -67,7 +67,7 @@ class ProcessingSkyViewFactorAlgorithm():
         outputDir = self.OUTPUT_DIR
         outputFile = self.OUTPUT_FILE
         dsm_path = self.INPUT_DSM
-        # useVegdem = self.parameterAsBool(parameters, self.USE_VEG, context)
+        # usevegdem = self.USE_VEG
         transVeg = float(self.TRANS_VEG)
         vegdsm_path = self.INPUT_CDSM
         vegdsm2_path = self.INPUT_TDSM
@@ -137,7 +137,9 @@ class ProcessingSkyViewFactorAlgorithm():
 
         if aniso == 1:
             print('Calculating SVF using 153 iterations')
+            # ret = svf.svfForProcessing153(dsm, vegdsm, vegdsm2, scale, usevegdem)
             ret = svf.svfForProcessing153(dsm, vegdsm, vegdsm2, scale, usevegdem)
+
         else:
             print('Calculating SVF using 655 iterations')
             ret = svf.svfForProcessing655(dsm, vegdsm, vegdsm2, scale, usevegdem)
@@ -256,15 +258,24 @@ class ProcessingSkyViewFactorAlgorithm():
 INPUT_DSM = "D:/Geomatics/thesis/heattryout/preprocess/DSM_smaller.tif"
 INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
 OUTPUT_DIR = "D:/Geomatics/thesis/codetestsvf"
-OUTPUT_FILE = "skyview"
+OUTPUT_FILE = "profiling/skyviewcapoff2"
 
 
-with cProfile.Profile() as profiler:
+# with cProfile.Profile() as profiler:
+#     ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE).processAlgorithm()
+#
+# # Print profiling results
+# stats = pstats.Stats(profiler)
+# stats.sort_stats('cumulative')  # Sort by cumulative time
+# stats.print_stats(20)  # Display the top 20 results
+
+# stats.dump_stats("profilewithchm.prof")
+
+with cProfile.Profile() as profiler2:
     ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE).processAlgorithm()
 
-# Print profiling results
-stats = pstats.Stats(profiler)
-stats.sort_stats('cumulative')  # Sort by cumulative time
-stats.print_stats(20)  # Display the top 20 results
-
-stats.dump_stats("profile2.prof")
+stats3 = pstats.Stats(profiler2)
+stats3.sort_stats('cumulative')
+print("\nProfiling with veg cap CDSM:\n")
+stats3.print_stats(20)
+stats3.dump_stats("profiling/profile_capoff2.prof")

@@ -41,6 +41,7 @@ def write_output(dataset, crs, output, transform, name, change_nodata=False):
         nodata_value = -9999
     else:
         try:
+            # TO DO: CHANGE THIS TO JUST INPUTTING A NODATA VALUE, NO NEED FOR THE WHOLE DATASET IN THIS FUNCTION
             nodata_value = dataset.nodata
             if nodata_value is None:
                 raise AttributeError("No no data value found in dataset.")
@@ -348,19 +349,6 @@ class DEMS:
         return filled_dtm, final_dsm
 
 
-
-def load_buildings(buildings_path, layer):
-    """
-    Load in the building shapes from a geopackage file.
-    ----
-    Input:
-    - buildings_path (string):   path to the geopackage file.
-    - layer (string):            (Tile) name of the layer of buildings to be used
-
-    Output:
-    - List of dictionaries: A list of dictionaries containing:
-      - "geometry": building geometry in GeoJSON-like format.
-      - "parcel_id": corresponding parcel ID.
 class CHM:
     def __init__(self, bbox, dtm, output_folder, input_folder):
         self.bbox = bbox

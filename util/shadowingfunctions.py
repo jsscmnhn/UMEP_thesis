@@ -3,6 +3,7 @@
 import numpy as np
 # import matplotlib.pylab as plt
 # from numba import jit
+import numpy.ma as ma
 
 # def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, bush, forsvf):
 #     amaxvalue = a.max()
@@ -209,7 +210,7 @@ def shadowingfunctionglobalradiation(a, azimuth, altitude, scale, forsvf):
     return sh
 
 # # @jit(nopython=True)
-def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, bush, forsvf):
+def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, trunkcheck, bush, forsvf):
 
     # This function casts shadows on buildings and vegetation units.
     # New capability to deal with pergolas 20210827
@@ -257,7 +258,7 @@ def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue
     dssin = np.abs((1./sinazimuth))
     dscos = np.abs((1./cosazimuth))
     tanaltitudebyscale = np.tan(altitude) / scale
-    # index = 1
+    # index = 1 6
     index = 0
 
     # new case with pergola (thin vertical layer of vegetation), August 2021
@@ -292,7 +293,7 @@ def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue
         xp2 = int(sizex-(dx+absdx)/2.)
         yp1 = int(-((dy-absdy)/2.))
         yp2 = int(sizey-(dy+absdy)/2.)
-
+        isTrunk = trunkcheck >= dz
         tempvegdem[xp1:xp2, yp1:yp2] = vegdem[xc1:xc2, yc1:yc2] - dz
         tempvegdem2[xp1:xp2, yp1:yp2] = vegdem2[xc1:xc2, yc1:yc2] - dz
         temp[xp1:xp2, yp1:yp2] = a[xc1:xc2, yc1:yc2]-dz
@@ -301,23 +302,36 @@ def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue
         sh[(f > a)] = 1.
         sh[(f <= a)] = 0.
         fabovea = tempvegdem > a #vegdem above DEM
-        gabovea = tempvegdem2 > a #vegdem2 above DEM
 
-        #new pergola condition
-        templastfabovea[xp1:xp2, yp1:yp2] = vegdem[xc1:xc2, yc1:yc2]-dzprev
-        templastgabovea[xp1:xp2, yp1:yp2] = vegdem2[xc1:xc2, yc1:yc2]-dzprev
+        templastfabovea[xp1:xp2, yp1:yp2] = vegdem[xc1:xc2, yc1:yc2] - dzprev
         lastfabovea = templastfabovea > a
-        lastgabovea = templastgabovea > a
-        dzprev = dz
-        vegsh2 = np.add(np.add(np.add(fabovea, gabovea, dtype=float),lastfabovea, dtype=float),lastgabovea, dtype=float)
-        vegsh2[vegsh2 == 4] = 0.
-        # vegsh2[vegsh2 == 1] = 0. # This one is the ultimate question...
-        vegsh2[vegsh2 > 0] = 1.
 
+        if isTrunk:
+            gabovea = tempvegdem2 > a #vegdem2 above DEM
+
+            #new pergola condition
+            templastgabovea[xp1:xp2, yp1:yp2] = vegdem2[xc1:xc2, yc1:yc2]- dzprev
+            lastgabovea = templastgabovea > a
+
+            vegsh2 = np.add(np.add(np.add(fabovea, gabovea, dtype=float), lastfabovea, dtype=float), lastgabovea,
+                            dtype=float)
+
+            # Apply the zeroing condition
+            vegsh2[vegsh2 == 4] = 0.
+            vegsh2[vegsh2 > 0] = 1.
+        else:
+            vegsh2 = (fabovea | lastfabovea).astype(float)
         vegsh = np.fmax(vegsh, vegsh2)
+
+        # TO DO: THINK MORE ABOUT THIS LOGIC
+        # vegsh2 = np.zeros_like(vegdem, dtype=float)
+        # vegsh2[(fabovea) & (~gabovea)] = 1
+
+
         vegsh[(vegsh * sh > 0.)] = 0.
         vbshvegsh = vegsh + vbshvegsh # removing shadows 'behind' buildings
 
+        dzprev = dz
         index += 1.
 
     sh = 1.-sh
