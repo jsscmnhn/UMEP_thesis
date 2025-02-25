@@ -1075,13 +1075,13 @@ class SOLWEIGAlgorithm():
         return {self.OUTPUT_DIR: outputDir}
 
 INPUT_DSM = "D:/Geomatics/thesis/heattryout/preprocess/DSM_smaller.tif"
-INPUT_SVF = "D:/Geomatics/thesis/heattryout/preprocess/skyview/svfs.zip"
+INPUT_SVF = "D/Geomatics/thesis/codetestsvf/cupy/svfs.zip"
 INPUT_LC = "D:/Geomatics/thesis/heattryout/preprocess/landuse.tif"
 INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
 INPUT_HEIGHT = "D:/Geomatics/thesis/heattryout/preprocess/wallheight.tif"
 INPUT_ASPECT = "D:/Geomatics/thesis/heattryout/preprocess/wallaspect.tif"
 UTC = 1
-OUTPUT_DIR = "D:/Geomatics/thesis/codetest"
+OUTPUT_DIR = "D:/Geomatics/thesis/codetest2"
 INPUT_MET = "D:/Geomatics/thesis/heattryout/preprocess/climatedata/UMEPclimate_oneday.txt"
 
 

@@ -5,6 +5,7 @@ from osgeo import gdal, osr
 from osgeo.gdalconst import GDT_Float32
 
 
+
 # Slope and aspect used in SEBE and Wall aspect
 def get_ders(dsm, scale):
     # dem,_,_=read_dem_grid(dem_file)

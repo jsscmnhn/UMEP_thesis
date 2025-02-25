@@ -1,5 +1,7 @@
 __author__ = 'xlinfr'
 import numpy as np
+import sys
+import os
 
 
 def sun_distance(jday):

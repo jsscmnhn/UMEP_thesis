@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 # TO DO: CREATE DIR IF DOESNT EXIST YET
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import cProfile
 import pstats
 """
@@ -257,8 +260,8 @@ class ProcessingSkyViewFactorAlgorithm():
 
 INPUT_DSM = "D:/Geomatics/thesis/heattryout/preprocess/DSM_smaller.tif"
 INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
-OUTPUT_DIR = "D:/Geomatics/thesis/codetestsvf"
-OUTPUT_FILE = "profiling/skyviewmakenan"
+OUTPUT_DIR = "D:/Geomatics/thesis/codetestsvf/cupy/"
+OUTPUT_FILE = "profiling/skyviewdebug"
 
 
 # with cProfile.Profile() as profiler:
@@ -278,4 +281,4 @@ stats3 = pstats.Stats(profiler2)
 stats3.sort_stats('cumulative')
 print("\nProfiling with veg cap CDSM:\n")
 stats3.print_stats(20)
-stats3.dump_stats("profiling/profile_makenan.prof")
+stats3.dump_stats("profiling/profile_cupydebug.prof")

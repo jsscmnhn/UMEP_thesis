@@ -3,12 +3,50 @@
 import numpy as np
 # import matplotlib.pylab as plt
 # from numba import jit
-import numpy.ma as ma
+import cupy as cp
+import rasterio
+from rasterio import CRS
+from affine import Affine
+
+def write_output(output, name):
+    """
+    Write grid to .tiff file.
+    ----
+    Input:
+    - dataset: Can be either a rasterio dataset (for rasters) or laspy dataset (for point clouds)
+    - output (Array): the output grid, a numpy grid.
+    - name (String): the name of the output file.
+    - transform:
+      a user defined rasterio Affine object, used for the transforming the pixel coordinates
+      to spatial coordinates.
+    - change_nodata (Boolean): true: use a no data value of -9999, false: use the datasets no data value
+    """
+    output_file = name
+
+    output = np.squeeze(output)
+    # Set the nodata value: use -9999 if nodata_value is True or dataset does not have nodata.
+    crs = CRS.from_epsg(28992)
+    nodata_value = -9999
+    transform = Affine(0.50, 0.00, 119300.00,
+                       0.00, -0.50, 486500.00)
+
+    # output the dataset
+    with rasterio.open(output_file, 'w',
+                       driver='GTiff',
+                       height=output.shape[0],  # Assuming output is (rows, cols)
+                       width=output.shape[1],
+                       count=1,
+                       dtype=np.float32,
+                       crs=crs,
+                       nodata=nodata_value,
+                       transform=transform) as dst:
+        dst.write(output, 1)
+    print("File written to '%s'" % output_file)
 
 # def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, bush, forsvf):
 #     amaxvalue = a.max()
 #     pibyfour = np.pi/4.
-#     threetimespibyfour = 3.*pibyfour
+#     threetimespibyfour = 3.*pibyfourcd thesis
 #     fivetimespibyfour = 5.*pibyfour
 #     seventimespibyfour = 7.*pibyfour
 #     sinazimuth = np.sin(azimuth)
@@ -210,6 +248,7 @@ def shadowingfunctionglobalradiation(a, azimuth, altitude, scale, forsvf):
     return sh
 
 # # @jit(nopython=True)
+# # @profile
 def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, aminvalue, trunkcheck, bush, forsvf):
 
     # This function casts shadows on buildings and vegetation units.
@@ -264,7 +303,12 @@ def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue
     index = 0
     isVert = ((pibyfour <= azimuth) and (azimuth < threetimespibyfour) or (fivetimespibyfour <= azimuth) and (
                 azimuth < seventimespibyfour))
-    # new case with pergola (thin vertical layer of vegetation), August 2021
+    if isVert:
+        ds = dssin
+    else:
+        ds = dscos
+
+    # preva = a + ds
     dzprev = 0
 
     # main loop
@@ -272,13 +316,11 @@ def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue
         if forsvf == 0:
             print(int(index * total))  # dlg.progressBar.setValue(index)
         if isVert:
-            dy = stepChange * signsinazimuth * index
-            dx = -stepChange * signcosazimuth * np.abs(np.round(index / tanazimuth))
-            ds = stepChange * dssin
+            dy = signsinazimuth * index
+            dx = -1. * signcosazimuth * np.abs(np.round(index / tanazimuth))
         else:
-            dy = stepChange * signsinazimuth * np.abs(np.round(index * tanazimuth))
-            dx = -stepChange * signcosazimuth * index
-            ds = stepChange * dscos
+            dy = signsinazimuth * np.abs(np.round(index * tanazimuth))
+            dx = -1. * signcosazimuth * index
         # note: dx and dy represent absolute values while ds is an incremental value
         dz = (ds * index) * tanaltitudebyscale
         tempvegdem[0:sizex, 0:sizey] = 0.
@@ -287,33 +329,36 @@ def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue
 
         templastfabovea[0:sizex, 0:sizey] = 0.
         templastgabovea[0:sizex, 0:sizey] = 0.
+
         absdx = np.abs(dx)
         absdy = np.abs(dy)
-        xc1 = int((dx+absdx)/2.)
-        xc2 = int(sizex+(dx-absdx)/2.)
-        yc1 = int((dy+absdy)/2.)
-        yc2 = int(sizey+(dy-absdy)/2.)
-        xp1 = int(-((dx-absdx)/2.))
-        xp2 = int(sizex-(dx+absdx)/2.)
-        yp1 = int(-((dy-absdy)/2.))
-        yp2 = int(sizey-(dy+absdy)/2.)
+        xc1 = int((dx + absdx) / 2.)
+        xc2 = int(sizex + (dx - absdx) / 2.)
+        yc1 = int((dy + absdy) / 2.)
+        yc2 = int(sizey + (dy - absdy) / 2.)
+        xp1 = int(-((dx - absdx) / 2.))
+        xp2 = int(sizex - (dx + absdx) / 2.)
+        yp1 = int(-((dy - absdy) / 2.))
+        yp2 = int(sizey - (dy + absdy) / 2.)
         isTrunk = trunkcheck >= dz
+        # print(dy, dx, dz)
+        # print(f' xc1: {xc1}; xc2: {xc2}, yc1:  {yc1}, yc2: {yc2}, xp1: {xp1}, xp2: {xp2}, yp1: {yp1}, yp2: {yp2} ')
         tempvegdem[xp1:xp2, yp1:yp2] = vegdem[xc1:xc2, yc1:yc2] - dz
-        tempvegdem2[xp1:xp2, yp1:yp2] = vegdem2[xc1:xc2, yc1:yc2] - dz
-        temp[xp1:xp2, yp1:yp2] = a[xc1:xc2, yc1:yc2]-dz
+        temp[xp1:xp2, yp1:yp2] = a[xc1:xc2, yc1:yc2] - dz
 
-        f = np.fmax(f, temp) #Moving building shadow
+        f = np.fmax(f, temp)  # Moving building shadow
         sh[(f > a)] = 1.
         sh[(f <= a)] = 0.
-        fabovea = tempvegdem > a #vegdem above DEM
+        fabovea = tempvegdem > a  # vegdem above DEM
 
         templastfabovea[xp1:xp2, yp1:yp2] = vegdem[xc1:xc2, yc1:yc2] - dzprev
         lastfabovea = templastfabovea > a
 
         if isTrunk:
-            gabovea = tempvegdem2 > a #vegdem2 above DEM
+            tempvegdem2[xp1:xp2, yp1:yp2] = vegdem2[xc1:xc2, yc1:yc2] - dz
+            gabovea = tempvegdem2 > a  # vegdem2 above DEM
 
-            #new pergola condition
+            # new pergola condition
             templastgabovea[xp1:xp2, yp1:yp2] = vegdem2[xc1:xc2, yc1:yc2]- dzprev
             lastgabovea = templastgabovea > a
 
@@ -331,9 +376,8 @@ def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue
         # vegsh2 = np.zeros_like(vegdem, dtype=float)
         # vegsh2[(fabovea) & (~gabovea)] = 1
 
-
         vegsh[(vegsh * sh > 0.)] = 0.
-        vbshvegsh = vegsh + vbshvegsh # removing shadows 'behind' buildings
+        vbshvegsh = vegsh + vbshvegsh  # removing shadows 'behind' buildings
 
         dzprev = dz
         index += 1.
@@ -344,31 +388,148 @@ def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue
     vegsh = 1.-vegsh
     vbshvegsh = 1.-vbshvegsh
 
-    # plt.close()
-    # plt.ion()
-    # fig = plt.figure(figsize=(24, 7))
-    # plt.axis('image')
-    # ax1 = plt.subplot(1, 3, 1)
-    # im1 = ax1.imshow(vegsh)
-    # plt.colorbar(im1)
-
-    # ax2 = plt.subplot(1, 3, 2)
-    # im2 = ax2.imshow(vegdem2)
-    # plt.colorbar(im2)
-    # plt.title('TDSM')
-
-    # ax3 = plt.subplot(1, 3, 3)
-    # im3 = ax3.imshow(vegdem)
-    # plt.colorbar(im3)
-    # plt.tight_layout()
-    # plt.title('CDSM')
-    # plt.show()
-    # plt.pause(0.05)
-
     shadowresult = {'sh': sh, 'vegsh': vegsh, 'vbshvegsh': vbshvegsh}
+
+    # savepath = "D:/Geomatics/thesis/shadetest/cupyoutput/"
+    #
+    # name = savepath + "vgog_" + str(round(azimuth, 2) )+ " " + str(round(altitude, 2)) + ".tif"
+    # write_output(vegsh, name)
+    #
+    # name = savepath + "beog_" + str(round(azimuth, 2) )+ " " + str(round(altitude, 2)) + ".tif"
+    # write_output(sh, name)
 
     return shadowresult
 
+def shadowingfunction_20_cupy(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, aminvalue, trunkcheck, bush, forsvf):
+    # Conversion
+    degrees = cp.pi / 180.0
+    azimuth = azimuth * degrees
+    altitude = altitude * degrees
+
+    # Grid size
+    sizex, sizey = a.shape
+
+    # Initialize parameters
+    dx = dy = dz = 0.0
+    temp = cp.zeros((sizex, sizey), dtype=cp.float32)
+    tempvegdem = cp.zeros((sizex, sizey), dtype=cp.float32)
+    tempvegdem2 = cp.zeros((sizex, sizey), dtype=cp.float32)
+    templastfabovea = cp.zeros((sizex, sizey))
+    templastgabovea = cp.zeros((sizex, sizey))
+    bushplant = bush > 1.0
+    sh = cp.zeros((sizex, sizey), dtype=cp.float32)
+    vbshvegsh = cp.zeros((sizex, sizey), dtype=cp.float32)
+    vegsh = cp.array(bushplant, dtype=cp.float32)
+
+    f = cp.array(a, dtype=cp.float32)
+
+    # Precompute trigonometric values
+    pibyfour = cp.pi / 4.0
+    threetimespibyfour = 3.0 * pibyfour
+    fivetimespibyfour = 5.0 * pibyfour
+    seventimespibyfour = 7.0 * pibyfour
+    sinazimuth = cp.sin(azimuth)
+    cosazimuth = cp.cos(azimuth)
+    tanazimuth = cp.tan(azimuth)
+    signsinazimuth = cp.sign(sinazimuth)
+    signcosazimuth = cp.sign(cosazimuth)
+    dssin = cp.abs(1.0 / sinazimuth)
+    dscos = cp.abs(1.0 / cosazimuth)
+    tanaltitudebyscale = cp.tan(altitude) / scale
+
+    isVert = ((pibyfour <= azimuth) & (azimuth < threetimespibyfour)) | \
+             ((fivetimespibyfour <= azimuth) & (azimuth < seventimespibyfour))
+    if isVert:
+        ds = dssin
+    else:
+        ds = dscos
+
+    # preva = a + ds
+
+    index = 0
+    dzprev = 0
+
+    while (amaxvalue >= dz) and (cp.abs(dx) < sizex) and (cp.abs(dy) < sizey):
+        if isVert:
+            dy = signsinazimuth * index
+            dx = -signcosazimuth * cp.abs(cp.round(index / tanazimuth))
+        else:
+            dy = signsinazimuth * cp.abs(cp.round(index * tanazimuth))
+            dx = -signcosazimuth * index
+
+        dz = (ds * index) * tanaltitudebyscale
+
+        tempvegdem.fill(0)
+        tempvegdem2.fill(0)
+        temp.fill(0)
+
+        absdx = cp.abs(dx)
+        absdy = cp.abs(dy)
+        xc1 = int((dx + absdx) / 2.0)
+        xc2 = int(sizex + (dx - absdx) / 2.0)
+        yc1 = int((dy + absdy) / 2.0)
+        yc2 = int(sizey + (dy - absdy) / 2.0)
+        xp1 = int(-((dx - absdx) / 2.0))
+        xp2 = int(sizex - (dx + absdx) / 2.0)
+        yp1 = int(-((dy - absdy) / 2.0))
+        yp2 = int(sizey - (dy + absdy) / 2.0)
+
+        isTrunk = trunkcheck >= dz
+
+        tempvegdem[xp1:xp2, yp1:yp2] = vegdem[xc1:xc2, yc1:yc2] - dz
+        temp[xp1:xp2, yp1:yp2] = a[xc1:xc2, yc1:yc2] - dz
+
+        f = cp.fmax(f, temp)
+        sh = cp.where(f > a, 1.0, 0.0)
+
+        fabovea = tempvegdem > a
+
+        templastfabovea[xp1:xp2, yp1:yp2] = vegdem[xc1:xc2, yc1:yc2] - dzprev
+        lastfabovea = templastfabovea > a
+
+        if isTrunk:
+            tempvegdem2[xp1:xp2, yp1:yp2] = vegdem2[xc1:xc2, yc1:yc2] - dz
+            gabovea = tempvegdem2 > a
+
+            templastgabovea[xp1:xp2, yp1:yp2] = vegdem2[xc1:xc2, yc1:yc2]- dzprev
+            lastgabovea = templastgabovea > a
+
+            vegsh2 = cp.add(cp.add(cp.add(fabovea, gabovea, dtype=cp.float32), lastfabovea, dtype=cp.float32),
+                            lastgabovea, dtype=cp.float32)
+
+            vegsh2[vegsh2 == 4] = 0.0
+            vegsh2[vegsh2 > 0] = 1.0
+        else:
+            vegsh2 = (fabovea | lastfabovea).astype(cp.float32)
+
+        vegsh = cp.fmax(vegsh, vegsh2)
+        vegsh[vegsh * sh > 0.0] = 0.0
+        vbshvegsh += vegsh
+
+        dzprev = dz
+        index += 1.
+
+    sh = 1.0 - sh
+    vbshvegsh[vbshvegsh > 0.0] = 1.0
+    vbshvegsh -= vegsh
+    vegsh = 1.0 - vegsh
+    vbshvegsh = 1.0 - vbshvegsh
+
+    shadowresult = {
+        'sh': sh.get(),
+        'vegsh': vegsh.get(),
+        'vbshvegsh': vbshvegsh.get()
+    }
+
+    # savepath = "D:/Geomatics/thesis/shadetest/cupyoutput/"
+    #
+    # name = savepath + "vgne_" + str(round(azimuth, 2) )+ " " + str(round(altitude, 2)) + ".tif"
+    # write_output(vegsh.get(), name)
+    #
+    # name = savepath + "bene_" + str(round(azimuth, 2) )+ " " + str(round(altitude, 2)) + ".tif"
+    # write_output(sh.get(), name)
+
+    return shadowresult
 
 def shadowingfunction_20_old(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, bush, dlg, forsvf):
     #% This function casts shadows on buildings and vegetation units

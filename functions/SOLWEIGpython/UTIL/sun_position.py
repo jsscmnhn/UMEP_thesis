@@ -3,6 +3,8 @@ from __future__ import division
 from __future__ import print_function
 import datetime
 import numpy as np
+import sys
+import os
 
 
 def sun_position(time, location):

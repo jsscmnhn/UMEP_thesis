@@ -1,7 +1,11 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import numpy as np
 import numpy.ma as ma
 from util import shadowingfunctions as shadow
 from functions.SOLWEIGpython.UTIL.create_patches import create_patches
+import cupy as cp
 
 def annulus_weight(altitude, aziinterval):
     """Computes a weight for annuli at a given altitude, using sine functions based on azimuth intervals."""
@@ -104,6 +108,13 @@ def svfForProcessing153(dsm, vegdem, vegdem2, scale, usevegdem):
             index = index + 1
     aziintervalaniso = np.ceil(aziinterval / 2.0)
     index = int(0)
+
+    input_vegdem = np.where(vegdem <= 0, np.nan, vegdem)
+    input_vegdem2 = np.where(vegdem2 <= 0, np.nan, vegdem2)
+    dsminput = cp.asarray(dsm, dtype=cp.float32)
+    vegdeminput = cp.asarray(input_vegdem, dtype=cp.float32)
+    vegdem2input = cp.asarray(input_vegdem2, dtype=cp.float32)
+    bushinput = cp.asarray(bush, dtype=cp.float32)
     for i in range(0, skyvaultaltint.shape[0]):
         for j in np.arange(0, (aziinterval[int(i)])):
             altitude = skyvaultaltint[int(i)]
@@ -113,13 +124,15 @@ def svfForProcessing153(dsm, vegdem, vegdem2, scale, usevegdem):
             if usevegdem == 1:
 
                 # ADDED: INSERT A MASKED ARRAY
-                input_vegdem = np.where(vegdem <= 0, np.nan, vegdem)
-                input_vegdem2 = np.where(vegdem2 <= 0, np.nan, vegdem2)
                 # input_vegdem = ma.array(vegdem, mask=veg_mask)
                 # input_vegdem2 = ma.array(vegdem2, mask=veg_mask)
 
-                shadowresult = shadow.shadowingfunction_20(dsm, input_vegdem, input_vegdem2, azimuth, altitude,
-                                                           scale, amaxvalue, aminvalue, trunkcheck, bush, 1)
+                # shadowresult = shadow.shadowingfunction_20(dsm, input_vegdem, input_vegdem2, azimuth, altitude,
+                #                                            scale, amaxvalue, aminvalue, trunkcheck, bush, 1)
+
+
+                shadowresult = shadow.shadowingfunction_20_cupy(dsminput, vegdeminput, vegdem2input, azimuth, altitude,
+                                                           scale, amaxvalue, aminvalue, trunkcheck, bushinput, 1)
                 vegsh = shadowresult["vegsh"]
                 vbshvegsh = shadowresult["vbshvegsh"]
                 sh = shadowresult["sh"]
