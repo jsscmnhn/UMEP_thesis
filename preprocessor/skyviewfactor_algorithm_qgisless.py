@@ -5,6 +5,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import cProfile
 import pstats
+import cupy as cp
 """
 /***************************************************************************
  ProcessingUMEP
@@ -156,11 +157,11 @@ class ProcessingSkyViewFactorAlgorithm():
                 os.makedirs(outputDir)
 
         if ret is not None:
-            svfbu = ret["svf"]
-            svfbuE = ret["svfE"]
-            svfbuS = ret["svfS"]
-            svfbuW = ret["svfW"]
-            svfbuN = ret["svfN"]
+            svfbu = ret["svf"].get()
+            svfbuE = ret["svfE"].get()
+            svfbuS = ret["svfS"].get()
+            svfbuW = ret["svfW"].get()
+            svfbuN = ret["svfN"].get()
             
             misc.saveraster(gdal_dsm, outputDir + '/' + 'svf.tif', svfbu)
             misc.saveraster(gdal_dsm, outputDir + '/' + 'svfE.tif', svfbuE)
@@ -189,16 +190,16 @@ class ProcessingSkyViewFactorAlgorithm():
                 svftotal = svfbu
             else:
                 # report the result
-                svfveg = ret["svfveg"]
-                svfEveg = ret["svfEveg"]
-                svfSveg = ret["svfSveg"]
-                svfWveg = ret["svfWveg"]
-                svfNveg = ret["svfNveg"]
-                svfaveg = ret["svfaveg"]
-                svfEaveg = ret["svfEaveg"]
-                svfSaveg = ret["svfSaveg"]
-                svfWaveg = ret["svfWaveg"]
-                svfNaveg = ret["svfNaveg"]
+                svfveg = ret["svfveg"].get()
+                svfEveg = ret["svfEveg"].get()
+                svfSveg = ret["svfSveg"].get()
+                svfWveg = ret["svfWveg"].get()
+                svfNveg = ret["svfNveg"].get()
+                svfaveg = ret["svfaveg"].get()
+                svfEaveg = ret["svfEaveg"].get()
+                svfSaveg = ret["svfSaveg"].get()
+                svfWaveg = ret["svfWaveg"].get()
+                svfNaveg = ret["svfNaveg"].get()
 
                 misc.saveraster(gdal_dsm, outputDir + '/' + 'svfveg.tif', svfveg)
                 misc.saveraster(gdal_dsm, outputDir + '/' + 'svfEveg.tif', svfEveg)
@@ -242,9 +243,9 @@ class ProcessingSkyViewFactorAlgorithm():
 
             # Save shadow images for SOLWEIG 2019a
             if aniso == 1:
-                shmat = ret["shmat"]
-                vegshmat = ret["vegshmat"]
-                vbshvegshmat = ret["vbshvegshmat"]
+                shmat = ret["shmat"].get()
+                vegshmat = ret["vegshmat"].get()
+                vbshvegshmat = ret["vbshvegshmat"].get()
                 # wallshmat = ret["wallshmat"]
                 # wallsunmat = ret["wallsunmat"]
                 # wallshvemat = ret["wallshvemat"]

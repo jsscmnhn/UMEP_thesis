@@ -429,7 +429,7 @@ def shadowingfunction_20_cupy(a, vegdem, vegdem2, azimuth, altitude, scale, amax
     f = cp.array(a, dtype=cp.float32)
 
     # Precompute trigonometric values
-    pibyfour = cp.float32(cp.pi / 4.0)
+    pibyfour = np.pi / 4.0
     threetimespibyfour = 3.0 * pibyfour
     fivetimespibyfour = 5.0 * pibyfour
     seventimespibyfour = 7.0 * pibyfour
@@ -457,9 +457,9 @@ def shadowingfunction_20_cupy(a, vegdem, vegdem2, azimuth, altitude, scale, amax
     while (amaxvalue >= dz) and (np.abs(dx) < sizex) and (np.abs(dy) < sizey):
         if isVert:
             dy = signsinazimuth * index
-            dx = -signcosazimuth * cp.abs(cp.round(index / tanazimuth))
+            dx = -signcosazimuth * np.abs(np.round(index / tanazimuth))
         else:
-            dy = signsinazimuth * cp.abs(cp.round(index * tanazimuth))
+            dy = signsinazimuth * np.abs(np.round(index * tanazimuth))
             dx = -signcosazimuth * index
 
         dz = (ds * index) * tanaltitudebyscale
@@ -468,17 +468,8 @@ def shadowingfunction_20_cupy(a, vegdem, vegdem2, azimuth, altitude, scale, amax
         tempvegdem2.fill(zero)
         temp.fill(zero)
 
-        absdx = cp.abs(dx)
-        absdy = cp.abs(dy)
-
-        # xc1 = cp.floor((dx + absdx) / factor).astype(cp.int32)
-        # xc2 = cp.floor(sizex + (dx - absdx) / factor).astype(cp.int32)
-        # yc1 = cp.floor((dy + absdy) / factor).astype(cp.int32)
-        # yc2 = cp.floor(sizey + (dy - absdy) / factor).astype(cp.int32)
-        # xp1 = cp.floor(-((dx - absdx) / factor)).astype(cp.int32)
-        # xp2 = cp.floor(sizex - (dx + absdx) / factor).astype(cp.int32)
-        # yp1 = cp.floor(-((dy - absdy) / factor)).astype(cp.int32)
-        # yp2 = cp.floor(sizey - (dy + absdy) / factor).astype(cp.int32)
+        absdx = np.abs(dx)
+        absdy = np.abs(dy)
 
         xc1 = int((dx + absdx) / 2.)
         xc2 = int(sizex + (dx - absdx) / 2.)
@@ -492,40 +483,40 @@ def shadowingfunction_20_cupy(a, vegdem, vegdem2, azimuth, altitude, scale, amax
 
         f = cp.fmax(f, temp)
         sh = cp.where(f > a, 1.0, 0.0)
-
-
-        tempvegdem[xp1:xp2, yp1:yp2] = vegdem[xc1:xc2, yc1:yc2] - dz
+        vegdem_slice = vegdem[xc1:xc2, yc1:yc2]
+        vegdem2_slice = vegdem2[xc1:xc2, yc1:yc2]
+        tempvegdem[xp1:xp2, yp1:yp2] = vegdem_slice - dz
         fabovea = tempvegdem > a
-        templastfabovea[xp1:xp2, yp1:yp2] = vegdem[xc1:xc2, yc1:yc2] - dzprev
+        templastfabovea[xp1:xp2, yp1:yp2] = vegdem_slice - dzprev
         lastfabovea = templastfabovea > a
 
         # if isTrunk:
-        tempvegdem2[xp1:xp2, yp1:yp2] = vegdem2[xc1:xc2, yc1:yc2] - dz
+        tempvegdem2[xp1:xp2, yp1:yp2] = vegdem2_slice - dz
         gabovea = tempvegdem2 > a
 
-        templastgabovea[xp1:xp2, yp1:yp2] = vegdem2[xc1:xc2, yc1:yc2]- dzprev
+        templastgabovea[xp1:xp2, yp1:yp2] = vegdem2_slice - dzprev
         lastgabovea = templastgabovea > a
 
         vegsh2 = cp.add(cp.add(cp.add(fabovea, gabovea, dtype=cp.float32), lastfabovea, dtype=cp.float32),
                         lastgabovea, dtype=cp.float32)
 
-        vegsh2 = cp.where(vegsh2 == cp.float32(4.0), cp.float32(0.0), vegsh2)
-        vegsh2 = cp.where(vegsh2 > cp.float32(0.0), cp.float32(1.0), vegsh2)
+        vegsh2 = cp.where(vegsh2 == 4.0, 0.0, cp.where(vegsh2 > 0.0, 1.0, vegsh2))
+
         # else:
         #     vegsh2 = (fabovea | lastfabovea).astype(cp.float32)
 
         vegsh = cp.fmax(vegsh, vegsh2)
-        vegsh = cp.where(vegsh * sh > cp.float32(0.0), cp.float32(0.0), vegsh)
-        vbshvegsh += vegsh
+        vegsh = cp.where(vegsh * sh > 0.0, 0.0, vegsh)
+        cp.add(vbshvegsh, vegsh, out=vbshvegsh)
 
         dzprev = dz
         index += 1.0
 
-    sh = cp.float32(1.0) - sh
+    sh = 1.0 - sh
     vbshvegsh[vbshvegsh > 0.0] = 1.0
     vbshvegsh -= vegsh
-    vegsh = cp.float32(1.0) - vegsh
-    vbshvegsh = cp.float32(1.0) - vbshvegsh
+    vegsh = 1.0 - vegsh
+    vbshvegsh = 1.0 - vbshvegsh
 
     shadowresult = {
         'sh': sh.get(),
