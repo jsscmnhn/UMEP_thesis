@@ -77,10 +77,8 @@ class TreeRemovalApp(QWidget):
         for _, row in gdf.iterrows():
             geom = shape(row['geometry'])  # Convert to Shapely geometry
             coords = list(geom.exterior.coords)  # Get polygon coordinates
-            print(self.transform)
             # Transform coordinates from geo-coordinates to pixel coordinates
             pixel_coords = [inverse_transform * (x, y) for x, y in coords]
-            print(pixel_coords)
             # Create the polygon in pixel space
             polygon = QPolygonF([QPointF(px, py) for px, py in pixel_coords])
 
@@ -129,8 +127,8 @@ class TreeRemovalApp(QWidget):
         self.start_pos = None
 
 if __name__ == "__main__":
-    raster_file = "output/CHM.TIF"   # Replace with actual raster file
-    geojson_file = "output/tree_clusters.geojson"  # Replace with actual GeoJSON file
+    raster_file = "output/CHM.TIF"
+    geojson_file = "output/tree_clusters.geojson"
 
     app = QApplication(sys.argv)
     window = TreeRemovalApp(raster_file, geojson_file)
