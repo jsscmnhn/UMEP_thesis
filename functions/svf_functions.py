@@ -50,23 +50,27 @@ def svf_angles_100121():
 
 def svfForProcessing153(dsm, vegdem, vegdem2, scale, usevegdem):
     """main processing function calculating SVF using 153 patch divisions."""
+    dsm = cp.array(dsm, dtype=cp.float32)
+    vegdem = cp.array(vegdem, dtype=cp.float32)
+    vegdem2 = cp.array(vegdem2, dtype=cp.float32)
+
     rows = dsm.shape[0]
     cols = dsm.shape[1]
-    svf = np.zeros([rows, cols])
-    svfE = np.zeros([rows, cols])
-    svfS = np.zeros([rows, cols])
-    svfW = np.zeros([rows, cols])
-    svfN = np.zeros([rows, cols])
-    svfveg = np.zeros((rows, cols))
-    svfEveg = np.zeros((rows, cols))
-    svfSveg = np.zeros((rows, cols))
-    svfWveg = np.zeros((rows, cols))
-    svfNveg = np.zeros((rows, cols))
-    svfaveg = np.zeros((rows, cols))
-    svfEaveg = np.zeros((rows, cols))
-    svfSaveg = np.zeros((rows, cols))
-    svfWaveg = np.zeros((rows, cols))
-    svfNaveg = np.zeros((rows, cols))
+    svf = cp.zeros([rows, cols])
+    svfE = cp.zeros([rows, cols])
+    svfS = cp.zeros([rows, cols])
+    svfW = cp.zeros([rows, cols])
+    svfN = cp.zeros([rows, cols])
+    svfveg = cp.zeros((rows, cols))
+    svfEveg = cp.zeros((rows, cols))
+    svfSveg = cp.zeros((rows, cols))
+    svfWveg = cp.zeros((rows, cols))
+    svfNveg = cp.zeros((rows, cols))
+    svfaveg = cp.zeros((rows, cols))
+    svfEaveg = cp.zeros((rows, cols))
+    svfSaveg = cp.zeros((rows, cols))
+    svfWaveg = cp.zeros((rows, cols))
+    svfNaveg = cp.zeros((rows, cols))
 
     # % amaxvalue
     vegmax = vegdem.max()
@@ -80,7 +84,7 @@ def svfForProcessing153(dsm, vegdem, vegdem2, scale, usevegdem):
     vegdem2 = vegdem2 + dsm
     vegdem2[vegdem2 == dsm] = 0
     # % Bush separation
-    bush = np.logical_not((vegdem2 * vegdem)) * vegdem
+    bush = cp.logical_not((vegdem2 * vegdem)) * vegdem
     maxtrunk = vegdem2.max()
     trunkcheck = maxtrunk - aminvalue
     index = int(0)
@@ -96,9 +100,9 @@ def svfForProcessing153(dsm, vegdem, vegdem2, scale, usevegdem):
     skyvaultaziint = np.array([360/patches for patches in aziinterval])
     iazimuth = np.hstack(np.zeros((1, np.sum(aziinterval)))) # Nils
 
-    shmat = np.zeros((rows, cols, np.sum(aziinterval)))
-    vegshmat = np.zeros((rows, cols, np.sum(aziinterval)))
-    vbshvegshmat = np.zeros((rows, cols, np.sum(aziinterval)))
+    shmat = cp.zeros((rows, cols, np.sum(aziinterval)))
+    vegshmat = cp.zeros((rows, cols, np.sum(aziinterval)))
+    vbshvegshmat = cp.zeros((rows, cols, np.sum(aziinterval)))
 
     for j in range(0, skyvaultaltint.shape[0]):
         for k in range(0, int(360 / skyvaultaziint[j])):
@@ -109,17 +113,13 @@ def svfForProcessing153(dsm, vegdem, vegdem2, scale, usevegdem):
     aziintervalaniso = np.ceil(aziinterval / 2.0)
     index = int(0)
 
-    input_vegdem = np.where(vegdem <= 0, np.nan, vegdem)
-    input_vegdem2 = np.where(vegdem2 <= 0, np.nan, vegdem2)
-    dsminput = cp.asarray(dsm, dtype=cp.float32)
-    vegdeminput = cp.asarray(input_vegdem, dtype=cp.float32)
-    vegdem2input = cp.asarray(input_vegdem2, dtype=cp.float32)
-    bushinput = cp.asarray(bush, dtype=cp.float32)
+    input_vegdem = cp.where(vegdem <= 0, np.nan, vegdem)
+    input_vegdem2 = cp.where(vegdem2 <= 0, np.nan, vegdem2)
+
     for i in range(0, skyvaultaltint.shape[0]):
         for j in np.arange(0, (aziinterval[int(i)])):
             altitude = skyvaultaltint[int(i)]
             azimuth = iazimuth[int(index)]
-
             # Casting shadow
             if usevegdem == 1:
 
@@ -131,15 +131,15 @@ def svfForProcessing153(dsm, vegdem, vegdem2, scale, usevegdem):
                 #                                            scale, amaxvalue, aminvalue, trunkcheck, bush, 1)
 
 
-                shadowresult = shadow.shadowingfunction_20_cupy(dsminput, vegdeminput, vegdem2input, azimuth, altitude,
-                                                           scale, amaxvalue, aminvalue, trunkcheck, bushinput, 1)
+                shadowresult = shadow.shadowingfunction_20_cupy(dsm, input_vegdem, input_vegdem2, azimuth, altitude,
+                                                           scale, amaxvalue, aminvalue, trunkcheck, bush, 1)
                 vegsh = shadowresult["vegsh"]
                 vbshvegsh = shadowresult["vbshvegsh"]
                 sh = shadowresult["sh"]
                 vegshmat[:, :, index] = vegsh
                 vbshvegshmat[:, :, index] = vbshvegsh
             else:
-                sh = shadow.shadowingfunctionglobalradiation(dsm, azimuth, altitude, scale,1)
+                sh = shadow.shadowingfunctionglobalradiation(dsm, amaxvalue, azimuth, altitude, scale,1)
 
             shmat[:, :, index] = sh
 
@@ -191,7 +191,7 @@ def svfForProcessing153(dsm, vegdem, vegdem2, scale, usevegdem):
     svfN[(svfN > 1.)] = 1.
 
     if usevegdem == 1:
-        last = np.zeros((rows, cols))
+        last = cp.zeros((rows, cols))
         last[(vegdem2 == 0.)] = 3.0459e-004
         svfSveg = svfSveg + last
         svfWveg = svfWveg + last
@@ -217,134 +217,6 @@ def svfForProcessing153(dsm, vegdem, vegdem2, scale, usevegdem):
                     # 'vbshvegshmat': vbshvegshmat, 'wallshmat': wallshmat, 'wallsunmat': wallsunmat,
                     # 'wallshvemat': wallshvemat, 'facesunmat': facesunmat}
     return svfresult
-
-
-# def svfForProcessing153_arraytest(dsm, vegdem, vegdem2, scale, usevegdem):
-#     """main processing function calculating SVF using 153 patch divisions."""
-#
-#     rows, cols = dsm.shape
-#     svf = np.zeros([rows, cols])
-#     svfE = np.zeros([rows, cols])
-#     svfS = np.zeros([rows, cols])
-#     svfW = np.zeros([rows, cols])
-#     svfN = np.zeros([rows, cols])
-#     svfveg = np.zeros((rows, cols))
-#     svfEveg = np.zeros((rows, cols))
-#     svfSveg = np.zeros((rows, cols))
-#     svfWveg = np.zeros((rows, cols))
-#     svfNveg = np.zeros((rows, cols))
-#     svfaveg = np.zeros((rows, cols))
-#     svfEaveg = np.zeros((rows, cols))
-#     svfSaveg = np.zeros((rows, cols))
-#     svfWaveg = np.zeros((rows, cols))
-#     svfNaveg = np.zeros((rows, cols))
-#
-#     # Calculate max values
-#     vegmax = vegdem.max()
-#     amaxvalue = np.maximum(dsm.max(), vegmax)
-#
-#     # Elevation adjustments
-#     vegdem = vegdem + dsm
-#     vegdem[vegdem == dsm] = 0
-#     vegdem2 = vegdem2 + dsm
-#     vegdem2[vegdem2 == dsm] = 0
-#
-#     # Bush separation
-#     bush = np.logical_not((vegdem2 * vegdem)) * vegdem
-#
-#     # Patch divisions and sky vault calculations
-#     patch_option = 2  # 153 patches
-#     skyvaultalt, skyvaultazi, annulino, skyvaultaltint, aziinterval, skyvaultaziint, azistart = create_patches(
-#         patch_option)
-#
-#     skyvaultaziint = np.array([360 / patches for patches in aziinterval])
-#     iazimuth = np.hstack(np.zeros((1, np.sum(aziinterval))))  # Nils
-#
-#     shmat = np.zeros((rows, cols, np.sum(aziinterval)))
-#     vegshmat = np.zeros((rows, cols, np.sum(aziinterval)))
-#     vbshvegshmat = np.zeros((rows, cols, np.sum(aziinterval)))
-#
-#     # Prepare azimuths in bulk
-#     index = 0
-#     for j in range(skyvaultaltint.shape[0]):
-#         for k in range(int(360 / skyvaultaziint[j])):
-#             iazimuth[index] = k * skyvaultaziint[j] + azistart[j]
-#             if iazimuth[index] > 360.:
-#                 iazimuth[index] -= 360.
-#             index += 1
-#
-#     aziintervalaniso = np.ceil(aziinterval / 2.0)
-#
-#     # Vectorized shadow and SVF calculations
-#     for i in range(skyvaultaltint.shape[0]):
-#         # Get altitude and azimuths for all patches in this altitude range
-#         altitude = skyvaultaltint[i]
-#         azimuths = iazimuth[np.sum(aziinterval[:i]):np.sum(aziinterval[:i + 1])]
-#
-#         # Create meshgrid for azimuths and altitudes
-#         azimuth_grid, altitude_grid = np.meshgrid(azimuths, altitude)
-#
-#         # Shadowing calculations for all azimuths and altitudes at once
-#         if usevegdem == 1:
-#             shadowresult = shadow.shadowingfunction_20(dsm, vegdem, vegdem2, azimuth_grid, altitude_grid, scale,
-#                                                        amaxvalue, bush, 1)
-#             vegsh = shadowresult["vegsh"]
-#             vbshvegsh = shadowresult["vbshvegsh"]
-#             sh = shadowresult["sh"]
-#
-#             # Store results for all patches
-#             vegshmat[:, :, np.sum(aziinterval[:i]):np.sum(aziinterval[:i + 1])] = vegsh
-#             vbshvegshmat[:, :, np.sum(aziinterval[:i]):np.sum(aziinterval[:i + 1])] = vbshvegsh
-#         else:
-#             sh = shadow.shadowingfunctionglobalradiation_array(dsm, azimuth_grid, altitude_grid, scale, 1)
-#
-#         # Update shadow matrix
-#         shmat[:, :, np.sum(aziinterval[:i]):np.sum(aziinterval[:i + 1])] = sh
-#
-#         # Calculate SVF for all azimuths at once
-#         for k in np.arange(annulino[int(i)] + 1, annulino[int(i + 1.)] + 1):
-#             weight = annulus_weight(k, aziinterval[i]) * sh
-#             svf += weight
-#
-#             # Calculate weighted SVFs for the directions
-#             weight_aniso = annulus_weight(k, aziintervalaniso[i]) * sh
-#             svfE += np.where((azimuth_grid >= 0) & (azimuth_grid < 180), weight_aniso, 0)
-#             svfS += np.where((azimuth_grid >= 90) & (azimuth_grid < 270), weight_aniso, 0)
-#             svfW += np.where((azimuth_grid >= 180) & (azimuth_grid < 360), weight_aniso, 0)
-#             svfN += np.where((azimuth_grid >= 270) | (azimuth_grid < 90), weight_aniso, 0)
-#
-#         if usevegdem == 1:
-#             for k in np.arange(annulino[int(i)] + 1, annulino[int(i + 1.)] + 1):
-#                 weight = annulus_weight(k, aziinterval[i])
-#                 svfveg += weight * vegsh
-#                 svfaveg += weight * vbshvegsh
-#
-#                 # Weighted vegetation SVFs
-#                 weight_aniso = annulus_weight(k, aziintervalaniso[i])
-#                 svfEveg += np.where((azimuth_grid >= 0) & (azimuth_grid < 180), weight_aniso * vegsh, 0)
-#                 svfEaveg += np.where((azimuth_grid >= 0) & (azimuth_grid < 180), weight_aniso * vbshvegsh, 0)
-#
-#                 svfSveg += np.where((azimuth_grid >= 90) & (azimuth_grid < 270), weight_aniso * vegsh, 0)
-#                 svfSaveg += np.where((azimuth_grid >= 90) & (azimuth_grid < 270), weight_aniso * vbshvegsh, 0)
-#
-#                 svfWveg += np.where((azimuth_grid >= 180) & (azimuth_grid < 360), weight_aniso * vegsh, 0)
-#                 svfWaveg += np.where((azimuth_grid >= 180) & (azimuth_grid < 360), weight_aniso * vbshvegsh, 0)
-#
-#                 svfNveg += np.where((azimuth_grid >= 270) | (azimuth_grid < 90), weight_aniso * vegsh, 0)
-#                 svfNaveg += np.where((azimuth_grid >= 270) | (azimuth_grid < 90), weight_aniso * vbshvegsh, 0)
-#
-#     # Apply fixes and constraints
-#     svfS += 3.0459e-004
-#     svfW += 3.0459e-004
-#
-#     # Ensure SVF values are between 0 and 1
-#     svf = np.clip(svf, 0., 1.)
-#     svfE = np.clip(svfE, 0., 1.)
-#     svfS = np.clip(svfS, 0., 1.)
-#     svfW = np.clip(svfW, 0., 1.)
-#     svfN = np.clip(svfN, 0., 1.)
-#
-#     return svf, svfE, svfS, svfW, svfN
 
 def svfForProcessing655(dsm, vegdem, vegdem2, scale, usevegdem):
     """main processing function calculatting SVF using 655 patch divisions."""

@@ -260,9 +260,10 @@ class ProcessingSkyViewFactorAlgorithm():
         return {self.OUTPUT_DIR: outputDir, self.OUTPUT_FILE: outputFile}
 
 INPUT_DSM = "D:/Geomatics/thesis/heattryout/preprocess/DSM_smaller.tif"
-INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
+# INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
+INPUT_CDSM = None
 OUTPUT_DIR = "D:/Geomatics/thesis/codetestsvf/cupy/"
-OUTPUT_FILE = "profiling/skyviewdebug"
+OUTPUT_FILE = "profiling/skyviewvector"
 
 
 # with cProfile.Profile() as profiler:
@@ -282,4 +283,4 @@ stats3 = pstats.Stats(profiler2)
 stats3.sort_stats('cumulative')
 print("\nProfiling with veg cap CDSM:\n")
 stats3.print_stats(20)
-stats3.dump_stats("profiling/profile_cupydebug.prof")
+stats3.dump_stats("profiling/profile_cupyvector.prof")

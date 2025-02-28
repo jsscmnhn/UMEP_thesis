@@ -4,45 +4,105 @@ __author__ = 'xlinfr'
 
 import math
 import numpy as np
+from cupyx.scipy.ndimage import rotate
 # import scipy.misc as sc
 import scipy.ndimage.interpolation as sc
+from cupyx.scipy.ndimage import maximum_filter, rotate
+import cupyx.scipy.ndimage as cnd
 
 
-def findwalls(a, walllimit, feedback, total):
-    # This function identifies walls based on a DSM and a wall-height limit
-    # Walls are represented by outer pixels within building footprints
-    #
-    # Fredrik Lindberg, Goteborg Urban Climate Group
-    # fredrikl@gvc.gu.se
-    # 20150625
+import cupy as cp
 
-    col = a.shape[0]
-    row = a.shape[1]
-    walls = np.zeros((col, row))
-    domain = np.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]])
-    index = 0
-    for i in np.arange(1, row-1):
-        if feedback.isCanceled():
-            feedback.setProgressText("Calculation cancelled")
-            break
-        for j in np.arange(1, col-1):
-            dom = a[j-1:j+2, i-1:i+2]
-            walls[j, i] = np.max(dom[np.where(domain == 1)])  # new 20171006
-            index = index + 1
-            feedback.setProgress(int(index * total))
+def findwalls(a, walllimit):
+    # Create the domain mask
+    domain = cp.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]])
 
-    walls = np.copy(walls - a)  # new 20171006
-    walls[(walls < walllimit)] = 0
+    # Apply a maximum filter to get the max neighbor values (cross-shaped filter)
+    walls = maximum_filter(a, footprint=domain)
 
-    walls[0:walls .shape[0], 0] = 0
-    walls[0:walls .shape[0], walls .shape[1] - 1] = 0
-    walls[0, 0:walls .shape[0]] = 0
-    walls[walls .shape[0] - 1, 0:walls .shape[1]] = 0
+    # Subtract original values
+    walls = walls - a
+
+    # Apply wall height limit
+    walls[walls < walllimit] = 0
+
+    # Zero out edges
+    walls[:, 0] = 0
+    walls[:, -1] = 0
+    walls[0, :] = 0
+    walls[-1, :] = 0
 
     return walls
 
+# # original
+# def findwalls(a, walllimit):
+#     # This function identifies walls based on a DSM and a wall-height limit
+#     # Walls are represented by outer pixels within building footprints
+#     #
+#     # Fredrik Lindberg, Goteborg Urban Climate Group
+#     # fredrikl@gvc.gu.se
+#     # 20150625
+#
+#     col = a.shape[0]
+#     row = a.shape[1]
+#     walls = np.zeros((col, row))
+#     domain = np.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]])
+#     index = 0
+#     for i in np.arange(1, row-1):
+#         for j in np.arange(1, col-1):
+#             dom = a[j-1:j+2, i-1:i+2]
+#             walls[j, i] = np.max(dom[np.where(domain == 1)])  # new 20171006
+#             index = index + 1
+#
+#     walls = np.copy(walls - a)  # new 20171006
+#     walls[(walls < walllimit)] = 0
+#
+#     walls[0:walls .shape[0], 0] = 0
+#     walls[0:walls .shape[0], walls .shape[1] - 1] = 0
+#     walls[0, 0:walls .shape[0]] = 0
+#     walls[walls .shape[0] - 1, 0:walls .shape[1]] = 0
+#     return walls
 
-def filter1Goodwin_as_aspect_v3(walls, scale, a, feedback, total):
+def filter_aspect_sobel(walls, a, sigma=0):
+    """
+    Compute wall aspect using a Sobel filter in a fully vectorized manner.
+    This function computes the gradient of the DSM 'a' using Sobel,
+    derives the orientation (aspect) at each pixel, and then assigns that
+    orientation only to pixels where 'walls'==1.
+
+    :param walls: 2D CuPy array (binary mask of wall pixels; nonzero==wall)
+    :param scale: scale factor (not used directly here but kept for compatibility)
+    :param a:     2D CuPy array (DSM or image where gradients are computed)
+    :param sigma: Optional smoothing sigma; if > 0, applies a Gaussian filter to 'a'
+    :return:      2D CuPy array of the same shape as 'a', with aspect (orientation) in degrees.
+    """
+    # Ensure walls are binary
+    walls = cp.where(walls > 0, 1, 0)
+
+    # Optional smoothing if your DSM is noisy (for thin binary lines, you might skip this)
+    if sigma > 0:
+        a = cnd.gaussian_filter(a, sigma=sigma)
+
+    # Compute the Sobel gradients in the y and x directions (for the whole image)
+    grad_y = cnd.sobel(a, axis=0)
+    grad_x = cnd.sobel(a, axis=1)
+
+    # Compute the orientation at each pixel: arctan2 returns radians in [-π, π]
+    orientation_rad = cp.arctan2(grad_y, grad_x)
+
+    # Convert the orientation to degrees
+    orientation_deg = cp.degrees(orientation_rad)
+
+    # Adjust angles to be in the range [0, 360)
+    orientation_deg = cp.where(orientation_deg < 0, orientation_deg + 360, orientation_deg)
+    orientation_deg = (orientation_deg + 270) % 360
+
+    # Create output: assign orientation only for wall pixels; background remains 0.
+    dirwalls = cp.where(walls == 1, orientation_deg, 0)
+
+    return dirwalls
+
+def filter1Goodwin_as_aspect_v3(walls, scale, a):
     """
     tThis function applies the filter processing presented in Goodwin et al (2010) but instead for removing
     linear fetures it calculates wall aspect based on a wall pixels grid, a dsm (a) and a scale factor
@@ -86,10 +146,7 @@ def filter1Goodwin_as_aspect_v3(walls, scale, a, feedback, total):
     walls[walls > 0] = 1
 
     for h in range(0, 180):  # =0:1:180 #%increased resolution to 1 deg 20140911
-        feedback.setProgress(int(h * total))
-        if feedback.isCanceled():
-            feedback.setProgressText("Calculation cancelled")
-            break
+        print(h)
         filtmatrix1temp = sc.rotate(filtmatrix, h, order=1, reshape=False, mode='nearest')  # bilinear
         filtmatrix1 = np.round(filtmatrix1temp)
         # filtmatrix1temp = sc.imrotate(filtmatrix, h, 'bilinear')
@@ -145,7 +202,6 @@ def cart2pol(x, y, units='deg'):
     if units in ['deg', 'degs']:
         theta = theta * 180 / np.pi
     return theta, radius
-
 
 def get_ders(dsm, scale):
     # dem,_,_=read_dem_grid(dem_file)
