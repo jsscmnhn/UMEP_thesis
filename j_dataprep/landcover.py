@@ -20,6 +20,7 @@ class LandCover:
         self.layer = layer
         self.landcover_path = landcover_path
         self.landcover_mapping = self.load_landcover_mapping()
+        self.array = self.convert_to_raster()
 
     def load_landcover_mapping(self):
         """Load land cover mappings from a JSON file with explicit UTF-8 encoding."""
@@ -165,9 +166,47 @@ class LandCover:
         self.visualize_raster(array)
         return array
 
+    def save_raster(self, name, change_nodata):
+        with rasterio.open(self.dtm_dataset) as dst:
+            transform = dst.transform
+            crs = dst.crs
+            nodata = dst.nodata
+
+        output_file = name
+        output = self.array
+        output = np.squeeze(output)
+        # Set the nodata value: use -9999 if nodata_value is True or dataset does not have nodata.
+        if change_nodata:
+            nodata_value = -9999
+        else:
+            try:
+                # TO DO: CHANGE THIS TO JUST INPUTTING A NODATA VALUE, NO NEED FOR THE WHOLE DATASET IN THIS FUNCTION
+                nodata_value = nodata
+                if nodata_value is None:
+                    raise AttributeError("No no data value found in dataset.")
+            except AttributeError as e:
+                print(f"Warning: {e}. Defaulting to -9999.")
+                nodata_value = -9999
+
+        # output the dataset
+        with rasterio.open(output_file, 'w',
+                           driver='GTiff',
+                           height=output.shape[0],  # Assuming output is (rows, cols)
+                           width=output.shape[1],
+                           count=1,
+                           dtype=np.float32,
+                           crs=crs,
+                           nodata=nodata_value,
+                           transform=transform) as dst:
+            dst.write(output, 1)
+        print("File written to '%s'" % output_file)
+
+
+
 if __name__ == "__main__":
     bbox = "94500,469500,95000,470000"  # xmin, ymin, xmax, ymax
     crs = "http://www.opengis.net/def/crs/EPSG/0/28992"
+    new_bbox =  "121540,487210,122340,487910"
 
-    landcover = LandCover(bbox, crs, "archive/outputs/final_dsm.tif", "output/buildtest.gpkg", "test")
-    raster = landcover.convert_to_raster()
+    landcover = LandCover(new_bbox, crs, "output/final_dsm_test.tif", "temp/buildings_test.gpkg", "buildings")
+    landcover.save_raster("output/landcover_test.tif", 0)

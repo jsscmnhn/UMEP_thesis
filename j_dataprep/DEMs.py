@@ -64,7 +64,7 @@ def write_output(dataset, crs, output, transform, name, change_nodata=False):
 
 
 class Buildings:
-    def __init__(self, bbox, wfs_url="https://data.3dbag.nl/api/BAG3D/wfs", layer_name="BAG3D:lod13", gpkg_name="buildings.gpkg", output_folder = "temp", output_layer_name="buildings"):
+    def __init__(self, bbox, wfs_url="https://data.3dbag.nl/api/BAG3D/wfs", layer_name="BAG3D:lod13", gpkg_name="buildings_test", output_folder = "temp", output_layer_name="buildings"):
         self.bbox = bbox
         self.wfs_url = wfs_url
         self.layer_name = layer_name
@@ -112,6 +112,7 @@ class Buildings:
             os.makedirs(output_folder, exist_ok=True)
             output_gpkg = os.path.join(output_folder, f"{gpkg_name}.gpkg")
             full_gdf.to_file(output_gpkg, layer=layer_name, driver="GPKG")
+            print("loaded")
             return full_gdf
         else:
             print("No features were downloaded.")
@@ -343,8 +344,8 @@ class DEMS:
         filled_dsm, _ = self.fill_raster(dsm_array, dsm_dst.nodata, transform)
         final_dsm = self.replace_buildings(filled_dtm, filled_dsm, self.building_data, new_transform)
 
-        write_output(dtm_dst, self.crs, filled_dtm, new_transform, "output/filled_final_dtm.tif")
-        write_output(dsm_dst, self.crs, final_dsm, new_transform, "output/final_dsm.tif")
+        write_output(dtm_dst, self.crs, filled_dtm, new_transform, "output/final_dtm_test.tif")
+        write_output(dsm_dst, self.crs, final_dsm, new_transform, "output/final_dsm_test.tif")
 
         return filled_dtm, final_dsm
 
@@ -723,7 +724,7 @@ class CHM:
         veg_points = self.extract_vegetation_points(las_data, ndvi_threshold=ndvi_threshold, pre_filter=False)
 
         vegetation_data = self.interpolation_vegetation(las_data, veg_points, 0.5)
-        output_filename = os.path.join(output_folder, f"CHM.TIF")
+        output_filename = os.path.join(output_folder, f"CHM_test.TIF")
 
         # Create the CHM and save it
         chm, polygons, transform = self.chm_creation(las_data, vegetation_data, output_filename, resolution=resolution, smooth=smooth_chm, nodata_value=-9999,
@@ -765,8 +766,11 @@ def load_buildings(buildings_path, layer):
 
 
 if __name__ == "__main__":
-    buildings_data = load_buildings("output/buildtest.gpkg", "test")
-    bbox = (94500, 469500, 95000, 470000)
+    # bbox = (94500, 469500, 95000, 470000)
+    bbox = (121540, 487210, 122340, 487910)
+    buildings = Buildings(bbox).data
+    buildings_data = load_buildings("temp/buildings_test.gpkg", "buildings")
+
     DEMS = DEMS(bbox, buildings_data)
     dtm = DEMS.dtm
     dsm = DEMS.dsm
@@ -782,11 +786,11 @@ if __name__ == "__main__":
             plt.title(title)
             plt.show()
 
-    plot_raster("output/filled_final_dtm.tif", "Final Filled DTM")
-    plot_raster("output/final_dsm.tif", "Final filled DSM")
-    plot_raster("output/CHM.tif", "Final CHM")
+    plot_raster("output/final_dtm_test.tif", "Final Filled DTM")
+    plot_raster("output/final_dsm_test.tif", "Final filled DSM")
+    plot_raster("output/CHM_test.tif", "Final CHM")
 
-    with rasterio.open("output/CHM.tif") as src:
+    with rasterio.open("output/CHM_test.tif") as src:
         tree_height = src.read(1)
         transform = src.transform
         crs = src.crs

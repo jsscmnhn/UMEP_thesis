@@ -6,6 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import cProfile
 import pstats
 import cupy as cp
+from rasterio import Affine
 """
 /***************************************************************************
  ProcessingUMEP
@@ -52,7 +53,7 @@ class ProcessingSkyViewFactorAlgorithm():
     """
     This algorithm is a processing version of SkyViewFactor
     """
-    def __init__(self, INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_TDSM=None, USE_VEG=True, TRANS_VEG=3,
+    def __init__(self, INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, dsm2=None, dsm3=None, INPUT_TDSM=None, USE_VEG=True, TRANS_VEG=3,
                  TSDM_EXIST=False, INPUT_THEIGHT=25.0, ANISO=True,
                  ):
         self.INPUT_DSM = INPUT_DSM
@@ -65,6 +66,8 @@ class ProcessingSkyViewFactorAlgorithm():
         self.ANISO = ANISO
         self.OUTPUT_DIR = OUTPUT_DIR
         self.OUTPUT_FILE = OUTPUT_FILE
+        self.DSM2 = dsm2
+        self.DSM3 = dsm3
 
     def processAlgorithm(self):
         # InputParameters
@@ -259,28 +262,296 @@ class ProcessingSkyViewFactorAlgorithm():
 
         return {self.OUTPUT_DIR: outputDir, self.OUTPUT_FILE: outputFile}
 
-INPUT_DSM = "D:/Geomatics/thesis/heattryout/preprocess/DSM_smaller.tif"
+    def processAlgorithm_3d(self):
+        # InputParameters
+        outputDir = self.OUTPUT_DIR
+        outputFile = self.OUTPUT_FILE
+        dsm_path = self.INPUT_DSM
+        dsm2_path = self.DSM2
+        dsm3_path = self.DSM3
+
+        # multiple layers run 1
+        # dsm4_path = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_2gap_3.tif"
+        # dsm5_path = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_2gap_4.tif"
+        # dsm6_path = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_2gap_5.tif"
+        # dsm7_path = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_2gap_6.tif"
+        # dsm8_path = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_2gap_7.tif"
+        # dsm9_path = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_1gap_2.tif"
+
+
+        # multiple layers run 2
+        dsm4_path = "D:/Geomatics/thesis/gaptesting_database/case2/case2_2gap_3.tif"
+        dsm5_path = "D:/Geomatics/thesis/gaptesting_database/case2/case2_2gap_4.tif"
+
+
+        # usevegdem = self.USE_VEG
+        transVeg = float(self.TRANS_VEG)
+        vegdsm_path = self.INPUT_CDSM
+        vegdsm2_path = self.INPUT_TDSM
+        # tdsmExists = self.parameterAsBool(parameters, self.TSDM_EXIST, context)
+        trunkr = float(self.INPUT_THEIGHT)
+        aniso = bool(self.ANISO)
+
+        print('Initiating algorithm')
+
+        gdal_dsm = gdal.Open(dsm_path)
+        gdal_dsm2 = gdal.Open(dsm2_path)
+        gdal_dsm3 = gdal.Open(dsm3_path)
+        gdal_dsm4 = gdal.Open(dsm4_path)
+        gdal_dsm5 = gdal.Open(dsm5_path)
+        # gdal_dsm6 = gdal.Open(dsm6_path)
+        # gdal_dsm7 = gdal.Open(dsm7_path)
+        # gdal_dsm8 = gdal.Open(dsm8_path)
+        # gdal_dsm9 = gdal.Open(dsm9_path)
+
+        dsm = gdal_dsm.ReadAsArray().astype(float)
+        dsm2 = gdal_dsm2.ReadAsArray().astype(float)
+        dsm3 = gdal_dsm3.ReadAsArray().astype(float)
+        dsm4 = gdal_dsm4.ReadAsArray().astype(float)
+        dsm5 = gdal_dsm5.ReadAsArray().astype(float)
+        # dsm6 = gdal_dsm6.ReadAsArray().astype(float)
+        # dsm7 = gdal_dsm7.ReadAsArray().astype(float)
+        # dsm8 = gdal_dsm8.ReadAsArray().astype(float)
+        # dsm9 = gdal_dsm9.ReadAsArray().astype(float)
+
+        # response to issue #85
+        nd = gdal_dsm.GetRasterBand(1).GetNoDataValue()
+        dsm[dsm == nd] = 0.
+        if dsm.min() < 0:
+            dsm += np.abs(dsm.min())
+            dsm2 += np.abs(dsm.min())
+            dsm3 += np.abs(dsm.min())
+            dsm4 += np.abs(dsm.min())
+            dsm5 += np.abs(dsm.min())
+            # dsm6 += np.abs(dsm.min())
+            # dsm7 += np.abs(dsm.min())
+            # dsm8 += np.abs(dsm.min())
+            # dsm9 += np.abs(dsm.min())
+
+        sizex = dsm.shape[0]
+        sizey = dsm.shape[1]
+
+        geotransform = gdal_dsm.GetGeoTransform()
+        print(geotransform)
+        scale = 1 / geotransform[1]
+
+        trans = transVeg / 100.0
+
+        if vegdsm_path:
+            usevegdem = 1
+            print('Vegetation scheme activated')
+            # vegdsm = self.parameterAsRasterLayer(parameters, self.INPUT_CDSM, context)
+            # if vegdsm is None:
+            # raise QgsProcessingException("Error: No valid vegetation DSM selected")
+
+            # load raster
+            gdal_vegdsm = gdal.Open(vegdsm_path)
+            vegdsm = gdal_vegdsm.ReadAsArray().astype(float)
+
+            vegsizex = vegdsm.shape[0]
+            vegsizey = vegdsm.shape[1]
+
+            if not (vegsizex == sizex) & (vegsizey == sizey):
+                raise Exception("Error in Vegetation Canopy DSM: All rasters must be of same extent and resolution")
+
+            if vegdsm2_path:
+                # vegdsm2 = self.parameterAsRasterLayer(parameters, self.INPUT_TDSM, context)
+                # if vegdsm2 is None:
+                # raise QgsProcessingException("Error: No valid Trunk zone DSM selected")
+
+                # load raster
+                gdal_vegdsm2 = gdal.Open(vegdsm2_path)
+                vegdsm2 = gdal_vegdsm2.ReadAsArray().astype(float)
+            else:
+                trunkratio = trunkr / 100.0
+                vegdsm2 = vegdsm * trunkratio
+
+            vegsizex = vegdsm2.shape[0]
+            vegsizey = vegdsm2.shape[1]
+
+            if not (vegsizex == sizex) & (vegsizey == sizey):
+                raise Exception("Error in Trunk Zone DSM: All rasters must be of same extent and resolution")
+        else:
+            rows = dsm.shape[0]
+            cols = dsm.shape[1]
+            vegdsm = np.zeros([rows, cols])
+            vegdsm2 = 0.
+            usevegdem = 0
+
+        if aniso == 1:
+            print('Calculating SVF using 153 iterations')
+            # ret = svf.svfForProcessing153(dsm, vegdsm, vegdsm2, scale, usevegdem)
+            # dsms = np.stack((dsm, dsm2, dsm3, dsm4, dsm5, dsm6, dsm7, dsm8, dsm9), axis=0)
+            # dsms = np.stack((dsm, dsm2, dsm3), axis=0)
+            dsms = np.stack((dsm, dsm2, dsm3, dsm4, dsm5), axis=0)
+            # ret = svf.svfForProcessing153_3d(dsms, vegdsm, vegdsm2, scale, usevegdem)
+            ret = svf.svfForProcessing153_3d_mult(dsms, vegdsm, vegdsm2, scale, usevegdem)
+
+        else:
+            print('Calculating SVF using 655 iterations')
+            ret = svf.svfForProcessing655(dsm, vegdsm, vegdsm2, scale, usevegdem)
+
+        filename = outputFile
+
+        # temporary fix for mac, ISSUE #15
+        pf = sys.platform
+        if pf == 'darwin' or pf == 'linux2' or pf == 'linux':
+            if not os.path.exists(outputDir):
+                os.makedirs(outputDir)
+
+        if ret is not None:
+            svfbu = ret["svf"].get()
+            svfbuE = ret["svfE"].get()
+            svfbuS = ret["svfS"].get()
+            svfbuW = ret["svfW"].get()
+            svfbuN = ret["svfN"].get()
+
+            misc.saveraster(gdal_dsm, outputDir + '/' + 'svf.tif', svfbu)
+            misc.saveraster(gdal_dsm, outputDir + '/' + 'svfE.tif', svfbuE)
+            misc.saveraster(gdal_dsm, outputDir + '/' + 'svfS.tif', svfbuS)
+            misc.saveraster(gdal_dsm, outputDir + '/' + 'svfW.tif', svfbuW)
+            misc.saveraster(gdal_dsm, outputDir + '/' + 'svfN.tif', svfbuN)
+
+            if os.path.isfile(outputDir + '/' + 'svfs.zip'):
+                os.remove(outputDir + '/' + 'svfs.zip')
+
+            zippo = zipfile.ZipFile(outputDir + '/' + 'svfs.zip', 'a')
+            zippo.write(outputDir + '/' + 'svf.tif', 'svf.tif')
+            zippo.write(outputDir + '/' + 'svfE.tif', 'svfE.tif')
+            zippo.write(outputDir + '/' + 'svfS.tif', 'svfS.tif')
+            zippo.write(outputDir + '/' + 'svfW.tif', 'svfW.tif')
+            zippo.write(outputDir + '/' + 'svfN.tif', 'svfN.tif')
+            zippo.close()
+
+            os.remove(outputDir + '/' + 'svf.tif')
+            os.remove(outputDir + '/' + 'svfE.tif')
+            os.remove(outputDir + '/' + 'svfS.tif')
+            os.remove(outputDir + '/' + 'svfW.tif')
+            os.remove(outputDir + '/' + 'svfN.tif')
+
+            if usevegdem == 0:
+                svftotal = svfbu
+            else:
+                # report the result
+                svfveg = ret["svfveg"].get()
+                svfEveg = ret["svfEveg"].get()
+                svfSveg = ret["svfSveg"].get()
+                svfWveg = ret["svfWveg"].get()
+                svfNveg = ret["svfNveg"].get()
+                svfaveg = ret["svfaveg"].get()
+                svfEaveg = ret["svfEaveg"].get()
+                svfSaveg = ret["svfSaveg"].get()
+                svfWaveg = ret["svfWaveg"].get()
+                svfNaveg = ret["svfNaveg"].get()
+
+                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfveg.tif', svfveg)
+                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfEveg.tif', svfEveg)
+                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfSveg.tif', svfSveg)
+                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfWveg.tif', svfWveg)
+                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfNveg.tif', svfNveg)
+                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfaveg.tif', svfaveg)
+                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfEaveg.tif', svfEaveg)
+                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfSaveg.tif', svfSaveg)
+                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfWaveg.tif', svfWaveg)
+                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfNaveg.tif', svfNaveg)
+
+                zippo = zipfile.ZipFile(outputDir + '/' + 'svfs.zip', 'a')
+                zippo.write(outputDir + '/' + 'svfveg.tif', 'svfveg.tif')
+                zippo.write(outputDir + '/' + 'svfEveg.tif', 'svfEveg.tif')
+                zippo.write(outputDir + '/' + 'svfSveg.tif', 'svfSveg.tif')
+                zippo.write(outputDir + '/' + 'svfWveg.tif', 'svfWveg.tif')
+                zippo.write(outputDir + '/' + 'svfNveg.tif', 'svfNveg.tif')
+                zippo.write(outputDir + '/' + 'svfaveg.tif', 'svfaveg.tif')
+                zippo.write(outputDir + '/' + 'svfEaveg.tif', 'svfEaveg.tif')
+                zippo.write(outputDir + '/' + 'svfSaveg.tif', 'svfSaveg.tif')
+                zippo.write(outputDir + '/' + 'svfWaveg.tif', 'svfWaveg.tif')
+                zippo.write(outputDir + '/' + 'svfNaveg.tif', 'svfNaveg.tif')
+                zippo.close()
+
+                os.remove(outputDir + '/' + 'svfveg.tif')
+                os.remove(outputDir + '/' + 'svfEveg.tif')
+                os.remove(outputDir + '/' + 'svfSveg.tif')
+                os.remove(outputDir + '/' + 'svfWveg.tif')
+                os.remove(outputDir + '/' + 'svfNveg.tif')
+                os.remove(outputDir + '/' + 'svfaveg.tif')
+                os.remove(outputDir + '/' + 'svfEaveg.tif')
+                os.remove(outputDir + '/' + 'svfSaveg.tif')
+                os.remove(outputDir + '/' + 'svfWaveg.tif')
+                os.remove(outputDir + '/' + 'svfNaveg.tif')
+
+                trans = transVeg / 100.0
+                svftotal = (svfbu - (1 - svfveg) * (1 - trans))
+
+            misc.saveraster(gdal_dsm, filename, svftotal)
+
+            # Save shadow images for SOLWEIG 2019a
+            if aniso == 1:
+                shmat = ret["shmat"].get()
+                vegshmat = ret["vegshmat"].get()
+                vbshvegshmat = ret["vbshvegshmat"].get()
+                # wallshmat = ret["wallshmat"]
+                # wallsunmat = ret["wallsunmat"]
+                # wallshvemat = ret["wallshvemat"]
+                # facesunmat = ret["facesunmat"]
+
+                np.savez_compressed(outputDir + '/' + "shadowmats.npz", shadowmat=shmat, vegshadowmat=vegshmat,
+                                    vbshmat=vbshvegshmat)  # ,
+                # vbshvegshmat=vbshvegshmat, wallshmat=wallshmat, wallsunmat=wallsunmat,
+                # facesunmat=facesunmat, wallshvemat=wallshvemat)
+
+        print("Sky View Factor: SVF grid(s) successfully generated")
+
+        return {self.OUTPUT_DIR: outputDir, self.OUTPUT_FILE: outputFile}
+
+# ===================== normal test case ==============================
+# INPUT_DSM = "D:/Geomatics/thesis/heattryout/preprocess/DSM_smaller.tif"
 # INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
-INPUT_CDSM = None
-OUTPUT_DIR = "D:/Geomatics/thesis/codetestsvf/cupy/"
-OUTPUT_FILE = "profiling/skyviewvector"
+# INPUT_CDSM = None
+# OUTPUT_DIR = "D:/Geomatics/thesis/codetestsvf/cupy/"
+# OUTPUT_FILE = "profiling/skyviewvector3d"
 
 
-# with cProfile.Profile() as profiler:
-#     ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE).processAlgorithm()
+# ===================== RUN TEST CASE 1  ==============================
+INPUT_DSM = "D:/Geomatics/thesis/gaptesting_database/case1_0.tif"
+INPUT_CDSM = "D:/Geomatics/thesis/gaptesting_database/case1_veg.tif"
+
+# ===================== RUN TEST CASE 1 1 gap ==============================
+# DSM2= "D:/Geomatics/thesis/gaptesting_database/smaller/case1_1gap_1.tif"
+# DSM3= "D:/Geomatics/thesis/gaptesting_database/smaller/case1_1gap_2.tif"
+#           4 gap
+# DSM2= "D:/Geomatics/thesis/gaptesting_database/smaller/case1_1gap_1.tif"
+# DSM3= "D:/Geomatics/thesis/gaptesting_database/smaller/case1_2gap_2.tif"
+
+# ===================== RUN TEST CASE 2  ==============================
+# INPUT_DSM = "D:/Geomatics/thesis/gaptesting_database/case2/case2_0.tif"
+# INPUT_CDSM = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_veg.tif"
 #
-# # Print profiling results
-# stats = pstats.Stats(profiler)
-# stats.sort_stats('cumulative')  # Sort by cumulative time
-# stats.print_stats(20)  # Display the top 20 results
+OUTPUT_DIR = "D:/Geomatics/thesis/codetestsvf/testrunwcs"
+OUTPUT_FILE = "profiling/skyview_vector"
+
+#                                   1 gap
+# DSM2= "D:/Geomatics/thesis/gaptesting_database/case2/case2_1gap_1.tif"
+# DSM3= "D:/Geomatics/thesis/gaptesting_database/case2/case2_1gap_2.tif"
+
+#                                   2 gap
+# DSM2= "D:/Geomatics/thesis/gaptesting_database/case2/case2_1gap_1.tif"
+# DSM3= "D:/Geomatics/thesis/gaptesting_database/case2/case2_2gap_2.tif"
+
+# ==============
+# INPUT_DSM="../j_dataprep/output/final_dsm_test.tif"
+# INPUT_CDSM=None
+
 
 # stats.dump_stats("profilewithchm.prof")
 
 with cProfile.Profile() as profiler2:
     ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE).processAlgorithm()
+    # ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, dsm2=DSM2, dsm3=DSM3).processAlgorithm_3d()
+
+    # ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, dsm2=DSM2, dsm3=DSM3).processAlgorithm()
 
 stats3 = pstats.Stats(profiler2)
 stats3.sort_stats('cumulative')
 print("\nProfiling with veg cap CDSM:\n")
 stats3.print_stats(20)
-stats3.dump_stats("profiling/profile_cupyvector.prof")
+stats3.dump_stats("profiling/profile_cupy_vector.prof")
