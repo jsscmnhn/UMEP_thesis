@@ -323,7 +323,7 @@ def shadowingfunction_20_cupy(a, vegdem, vegdem2, azimuth, altitude, scale, amax
     ds = dssin * tanaltitudebyscale if isVert else dscos * tanaltitudebyscale
 
     preva = a - ds
-    i = 1.0
+    i = 0.0
     # max_steps = int(np.floor(np.min(np.array([amaxvalue / ds, min(sizex, sizey)]))))
 
     while (amaxvalue >= dz) and (np.abs(dx)) <sizex and (np.abs(dy) < sizey):
@@ -381,7 +381,7 @@ def shadowingfunction_20_cupy(a, vegdem, vegdem2, azimuth, altitude, scale, amax
         i += 1.0
 
     sh = 1.0 - sh
-    vbshvegsh[vbshvegsh > 0.0] = 1.0
+    vbshvegsh = cp.where((vbshvegsh > 0.0), 1.0, 0.0)
     vbshvegsh -= vegsh
     vegsh = 1.0 - vegsh
     vbshvegsh = 1.0 - vbshvegsh
@@ -526,7 +526,7 @@ def shadowingfunction_20_cupy_forloop(a, vegdem, vegdem2, azimuth, altitude, sca
     }
     return shadowresult
 
-# @profile
+@profile
 def shadowingfunction_20_cupy_vector(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, aminvalue, trunkcheck, bush, forsvf):
     # Conversion
     degrees = np.pi / 180.0
@@ -590,23 +590,23 @@ def shadowingfunction_20_cupy_vector(a, vegdem, vegdem2, azimuth, altitude, scal
 
     yp1 = (-(dy - absdy) / 2.0).astype(cp.int32)
     yp2 = (sizey - (dy + absdy) / 2.0).astype(cp.int32)
+    input_points = cp.stack([xc1, xc2, yc1, yc2, xp1, xp2, yp1, yp2, dz], axis=1)
 
 
-    for i in range(max_steps):
+    for points in input_points:
         tempvegdem.fill(np.nan)
         tempvegdem2.fill(np.nan)
         temp.fill(0.0)
 
-        temp[xp1[i]:xp2[i], yp1[i]:yp2[i]] = a[xc1[i]:xc2[i], yc1[i]:yc2[i]] - dz[i]
-
+        temp[points[0]:points[1], points[2]:points[3]] = a[points[4]:points[5], points[6]:points[7]] - points[8]
         f = cp.fmax(f, temp)
         sh = cp.where(f > a, 1.0, 0.0)
 
-        tempvegdem[xp1[i]:xp2[i], yp1[i]:yp2[i]] = vegdem[xc1[i]:xc2[i], yc1[i]:yc2[i]] - dz[i]
+        tempvegdem[points[0]:points[1], points[2]:points[3]] = vegdem[points[4]:points[5], points[6]:points[7]] - points[8]
         fabovea = tempvegdem > a
         lastfabovea = tempvegdem > preva
 
-        tempvegdem2[xp1[i]:xp2[i], yp1[i]:yp2[i]] = vegdem2[xc1[i]:xc2[i], yc1[i]:yc2[i]] - dz[i]
+        tempvegdem2[points[0]:points[1], points[2]:points[3]] = vegdem2[points[4]:points[5], points[6]:points[7]] - points[8]
         gabovea = tempvegdem2 > a
         lastgabovea = tempvegdem2 > preva
 

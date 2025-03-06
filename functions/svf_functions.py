@@ -75,8 +75,9 @@ def svfForProcessing153(dsm, vegdem, vegdem2, scale, usevegdem):
     # % amaxvalue
     vegmax = vegdem.max()
     amaxvalue = dsm.max()
-    amaxvalue = np.maximum(amaxvalue, vegmax)
-    aminvalue = dsm.min().get()
+    amaxvalue = cp.maximum(amaxvalue, vegmax)
+    amaxvalueinput = amaxvalue.get()
+    aminvalue = dsm.min()
 
     # % Elevation vegdems if buildingDSM inclused ground heights
     vegdem = vegdem + dsm
@@ -85,7 +86,6 @@ def svfForProcessing153(dsm, vegdem, vegdem2, scale, usevegdem):
     vegdem2[vegdem2 == dsm] = 0
     # % Bush separation
     bush = cp.logical_not((vegdem2 * vegdem)) * vegdem
-    maxtrunk = vegdem2.max()
     trunkcheck = 0
     index = int(0)
 
@@ -115,71 +115,71 @@ def svfForProcessing153(dsm, vegdem, vegdem2, scale, usevegdem):
 
     input_vegdem = cp.where(vegdem <= 0, np.nan, vegdem)
     input_vegdem2 = cp.where(vegdem2 <= 0, np.nan, vegdem2)
-    amaxvalue = amaxvalue.get()
 
-    for i in range(0, skyvaultaltint.shape[0]):
-        for j in np.arange(0, (aziinterval[int(i)])):
-            altitude = skyvaultaltint[int(i)]
-            azimuth = iazimuth[int(index)]
-            # Casting shadow
-            if usevegdem == 1:
+    i = 1
+    # for i in range(2):  #range(0, skyvaultaltint.shape[0]):
+    #     for j in np.arange(0, (aziinterval[int(i)])):
+    altitude = skyvaultaltint[int(i)]
+    azimuth = iazimuth[int(index)]
+    # Casting shadow
+    if usevegdem == 1:
 
-                # ADDED: INSERT A MASKED ARRAY
-                # input_vegdem = ma.array(vegdem, mask=veg_mask)
-                # input_vegdem2 = ma.array(vegdem2, mask=veg_mask)
+        # ADDED: INSERT A MASKED ARRAY
+        # input_vegdem = ma.array(vegdem, mask=veg_mask)
+        # input_vegdem2 = ma.array(vegdem2, mask=veg_mask)
 
-                # shadowresult = shadow.shadowingfunction_20(dsm, input_vegdem, input_vegdem2, azimuth, altitude,
-                #                                            scale, amaxvalue, aminvalue, trunkcheck, bush, 1)
+        # shadowresult = shadow.shadowingfunction_20(dsm, input_vegdem, input_vegdem2, azimuth, altitude,
+        #                                            scale, amaxvalue, aminvalue, trunkcheck, bush, 1)
 
 
-                shadowresult = shadow.shadowingfunction_20_cupy(dsm, input_vegdem, input_vegdem2, azimuth, altitude,
-                                                           scale, amaxvalue, aminvalue, trunkcheck, bush, 1)
-                vegsh = shadowresult["vegsh"]
-                vbshvegsh = shadowresult["vbshvegsh"]
-                sh = shadowresult["sh"]
-                vegshmat[:, :, index] = vegsh
-                vbshvegshmat[:, :, index] = vbshvegsh
-            else:
-                sh = shadow.shadowingfunctionglobalradiation(dsm, amaxvalue, azimuth, altitude, scale,1)
+        shadowresult = shadow.shadowingfunction_20_cupy_vector(dsm, input_vegdem, input_vegdem2, azimuth, altitude,
+                                                   scale, amaxvalueinput, aminvalue, trunkcheck, bush, 1)
+        vegsh = shadowresult["vegsh"]
+        vbshvegsh = shadowresult["vbshvegsh"]
+        sh = shadowresult["sh"]
+        vegshmat[:, :, index] = vegsh
+        vbshvegshmat[:, :, index] = vbshvegsh
+    else:
+        sh = shadow.shadowingfunctionglobalradiation(dsm, amaxvalue, azimuth, altitude, scale,1)
 
-            shmat[:, :, index] = sh
+    shmat[:, :, index] = sh
 
-            # Calculate svfs
-            for k in np.arange(annulino[int(i)]+1, (annulino[int(i+1.)])+1):
-                weight = annulus_weight(k, aziinterval[i])*sh
-                svf = svf + weight
-                weight = annulus_weight(k, aziintervalaniso[i]) * sh
-                if (azimuth >= 0) and (azimuth < 180):
-                    svfE = svfE + weight
-                if (azimuth >= 90) and (azimuth < 270):
-                    svfS = svfS + weight
-                if (azimuth >= 180) and (azimuth < 360):
-                    svfW = svfW + weight
-                if (azimuth >= 270) or (azimuth < 90):
-                    svfN = svfN + weight
+    # Calculate svfs
+    for k in np.arange(annulino[int(i)]+1, (annulino[int(i+1.)])+1):
+        weight = annulus_weight(k, aziinterval[i])*sh
+        svf = svf + weight
+        weight = annulus_weight(k, aziintervalaniso[i]) * sh
+        if (azimuth >= 0) and (azimuth < 180):
+            svfE = svfE + weight
+        if (azimuth >= 90) and (azimuth < 270):
+            svfS = svfS + weight
+        if (azimuth >= 180) and (azimuth < 360):
+            svfW = svfW + weight
+        if (azimuth >= 270) or (azimuth < 90):
+            svfN = svfN + weight
 
-            if usevegdem == 1:
-                for k in np.arange(annulino[int(i)] + 1, (annulino[int(i + 1.)]) + 1):
-                    # % changed to include 90
-                    weight = annulus_weight(k, aziinterval[i])
-                    svfveg = svfveg + weight * vegsh
-                    svfaveg = svfaveg + weight * vbshvegsh
-                    weight = annulus_weight(k, aziintervalaniso[i])
-                    if (azimuth >= 0) and (azimuth < 180):
-                        svfEveg = svfEveg + weight * vegsh
-                        svfEaveg = svfEaveg + weight * vbshvegsh
-                    if (azimuth >= 90) and (azimuth < 270):
-                        svfSveg = svfSveg + weight * vegsh
-                        svfSaveg = svfSaveg + weight * vbshvegsh
-                    if (azimuth >= 180) and (azimuth < 360):
-                        svfWveg = svfWveg + weight * vegsh
-                        svfWaveg = svfWaveg + weight * vbshvegsh
-                    if (azimuth >= 270) or (azimuth < 90):
-                        svfNveg = svfNveg + weight * vegsh
-                        svfNaveg = svfNaveg + weight * vbshvegsh
+    if usevegdem == 1:
+        for k in np.arange(annulino[int(i)] + 1, (annulino[int(i + 1.)]) + 1):
+            # % changed to include 90
+            weight = annulus_weight(k, aziinterval[i])
+            svfveg = svfveg + weight * vegsh
+            svfaveg = svfaveg + weight * vbshvegsh
+            weight = annulus_weight(k, aziintervalaniso[i])
+            if (azimuth >= 0) and (azimuth < 180):
+                svfEveg = svfEveg + weight * vegsh
+                svfEaveg = svfEaveg + weight * vbshvegsh
+            if (azimuth >= 90) and (azimuth < 270):
+                svfSveg = svfSveg + weight * vegsh
+                svfSaveg = svfSaveg + weight * vbshvegsh
+            if (azimuth >= 180) and (azimuth < 360):
+                svfWveg = svfWveg + weight * vegsh
+                svfWaveg = svfWaveg + weight * vbshvegsh
+            if (azimuth >= 270) or (azimuth < 90):
+                svfNveg = svfNveg + weight * vegsh
+                svfNaveg = svfNaveg + weight * vbshvegsh
 
-            index += 1
-            print(int(index * (100. / np.sum(aziinterval))))
+    index += 1
+    print(int(index * (100. / np.sum(aziinterval))))
 
     svfS = svfS + 3.0459e-004
     svfW = svfW + 3.0459e-004

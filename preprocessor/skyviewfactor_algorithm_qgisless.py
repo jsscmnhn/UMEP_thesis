@@ -254,7 +254,7 @@ class ProcessingSkyViewFactorAlgorithm():
                 # wallshvemat = ret["wallshvemat"]
                 # facesunmat = ret["facesunmat"]
 
-                np.savez_compressed(outputDir + '/' + "shadowmats.npz", shadowmat=shmat, vegshadowmat=vegshmat, vbshmat=vbshvegshmat) #,
+                # np.savez_compressed(outputDir + '/' + "shadowmats.npz", shadowmat=shmat, vegshadowmat=vegshmat, vbshmat=vbshvegshmat) #,
                                     # vbshvegshmat=vbshvegshmat, wallshmat=wallshmat, wallsunmat=wallsunmat,
                                     # facesunmat=facesunmat, wallshvemat=wallshvemat)
 
@@ -507,8 +507,8 @@ class ProcessingSkyViewFactorAlgorithm():
 # INPUT_DSM = "D:/Geomatics/thesis/heattryout/preprocess/DSM_smaller.tif"
 # INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
 # INPUT_CDSM = None
-# OUTPUT_DIR = "D:/Geomatics/thesis/codetestsvf/cupy/"
-# OUTPUT_FILE = "profiling/skyviewvector3d"
+OUTPUT_DIR = "D:/Geomatics/thesis/codetestsvf/cupy/"
+OUTPUT_FILE = "profiling/skyviewvector3d"
 
 
 # ===================== RUN TEST CASE 1  ==============================
@@ -526,8 +526,8 @@ INPUT_CDSM = "D:/Geomatics/thesis/gaptesting_database/case1_veg.tif"
 # INPUT_DSM = "D:/Geomatics/thesis/gaptesting_database/case2/case2_0.tif"
 # INPUT_CDSM = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_veg.tif"
 #
-OUTPUT_DIR = "D:/Geomatics/thesis/codetestsvf/testrunwcs"
-OUTPUT_FILE = "profiling/skyview_vector"
+# OUTPUT_DIR = "D:/Geomatics/thesis/codetestsvf/testrunwcs"
+# OUTPUT_FILE = "profiling/skyview_vector"
 
 #                                   1 gap
 # DSM2= "D:/Geomatics/thesis/gaptesting_database/case2/case2_1gap_1.tif"
