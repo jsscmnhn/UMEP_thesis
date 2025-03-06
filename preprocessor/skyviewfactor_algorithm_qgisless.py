@@ -260,8 +260,8 @@ class ProcessingSkyViewFactorAlgorithm():
         return {self.OUTPUT_DIR: outputDir, self.OUTPUT_FILE: outputFile}
 
 INPUT_DSM = "D:/Geomatics/thesis/heattryout/preprocess/DSM_smaller.tif"
-# INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
-INPUT_CDSM = None
+INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
+# INPUT_CDSM = None
 OUTPUT_DIR = "D:/Geomatics/thesis/codetestsvf/cupy/"
 OUTPUT_FILE = "profiling/skyviewvector"
 

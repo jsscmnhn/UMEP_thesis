@@ -136,3 +136,7 @@ dmypy.json
 
 
 *.las
+j_dataprep/temp2/25EZ1_22.LAZ
+j_dataprep/temp2/25EZ1_23.LAZ
+j_dataprep/temp2/25GN1_02.LAZ
+j_dataprep/temp2/25GN1_03.LAZ

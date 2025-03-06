@@ -43,7 +43,7 @@ def write_output(output, name):
         dst.write(output, 1)
     print("File written to '%s'" % output_file)
 
-@profile
+# @profile
 def shadowingfunctionglobalradiation(a, amaxvalue, azimuth, altitude, scale, forsvf):
     #%This m.file calculates shadows on a DEM
     #% conversion
@@ -274,7 +274,121 @@ def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue
     # write_output(sh, name)
 
     return shadowresult
+#
+# @profile
+# def shadowingfunction_20_cupy(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, aminvalue, trunkcheck, bush, forsvf):
+#     # Conversion
+#     degrees = np.pi / 180.0
+#     azimuth *= degrees
+#     altitude *= degrees
+#
+#     dx=dy=dz=0.0
+#
+#     # Grid size
+#     sizex, sizey = a.shape[0], a.shape[1]
+#     temp = cp.zeros((sizex, sizey), dtype=cp.float32)
+#     tempvegdem = cp.full((sizex, sizey), np.nan, dtype=cp.float32)
+#     tempvegdem2 = tempvegdem.copy()
+#     bushplant = bush > 1.0
+#     sh = cp.zeros((sizex, sizey), dtype=cp.float32)
+#     vbshvegsh = cp.zeros((sizex, sizey), dtype=cp.float32)
+#     vegsh = cp.array(bushplant, dtype=cp.float32)
+#
+#     f = cp.array(a, dtype=cp.float32)
+#
+#     # Precompute trigonometric values
+#     pibyfour = np.pi / 4.0
+#     threetimespibyfour = 3.0 * pibyfour
+#     fivetimespibyfour = 5.0 * pibyfour
+#     seventimespibyfour = 7.0 * pibyfour
+#     sinazimuth = np.sin(azimuth)
+#     cosazimuth = np.cos(azimuth)
+#     tanazimuth = np.tan(azimuth)
+#     signsinazimuth = np.sign(sinazimuth)
+#     signcosazimuth = np.sign(cosazimuth)
+#     dssin = np.abs(1.0 / sinazimuth)
+#     dscos = np.abs(1.0 / cosazimuth)
+#     tanaltitudebyscale = np.tan(altitude) /scale
+#
+#     isVert = ((pibyfour <= azimuth < threetimespibyfour) or
+#               (fivetimespibyfour <= azimuth < seventimespibyfour))
+#
+#     # Choose ds as scalar
+#     ds = dssin * tanaltitudebyscale if isVert else dscos * tanaltitudebyscale
+#
+#     preva = a - ds
+#     i = 1.0
+#     # max_steps = int(np.floor(np.min(np.array([amaxvalue / ds, min(sizex, sizey)]))))
+#
+#     while (amaxvalue >= dz) and (np.abs(dx)) <sizex and (np.abs(dy) < sizey):
+#         # if np.abs(dx) >= sizex:
+#         #     break
+#         # if np.abs(dy) >= sizey:
+#         #     break
+#         if isVert:
+#             dy = signsinazimuth * i
+#             dx = -signcosazimuth * np.abs(np.round(i / tanazimuth))
+#         else:
+#             dy = signsinazimuth * np.abs(np.round(i * tanazimuth))
+#             dx = -signcosazimuth * i
+#
+#         dz = ds * i
+#
+#         tempvegdem.fill(np.nan)
+#         tempvegdem2.fill(np.nan)
+#         temp.fill(0.0)
+#         absdx = np.abs(dx)
+#         absdy = np.abs(dy)
+#
+#         xc1 = int((dx + absdx) / 2.)
+#         xc2 = int(sizex + (dx - absdx) / 2.)
+#         yc1 = int((dy + absdy) / 2.)
+#         yc2 = int(sizey + (dy - absdy) / 2.)
+#         xp1 = int(-((dx - absdx) / 2.))
+#         xp2 = int(sizex - (dx + absdx) / 2.)
+#         yp1 = int(-((dy - absdy) / 2.))
+#         yp2 = int(sizey - (dy + absdy) / 2.)
+#
+#         temp[xp1:xp2, yp1:yp2] = a[xc1:xc2, yc1:yc2] - dz
+#
+#         f = cp.fmax(f, temp)
+#         sh = cp.where(f > a, 1.0, 0.0)
+#
+#         tempvegdem[xp1:xp2, yp1:yp2] = vegdem[xc1:xc2, yc1:yc2]- dz
+#         fabovea = tempvegdem > a
+#         lastfabovea = tempvegdem > preva
+#
+#         tempvegdem2[xp1:xp2, yp1:yp2] = vegdem2[xc1:xc2, yc1:yc2] - dz
+#         gabovea = tempvegdem2 > a
+#         lastgabovea = tempvegdem2 > preva
+#
+#         vegsh2 = cp.add(cp.add(cp.add(fabovea, gabovea, dtype=cp.float32), lastfabovea, dtype=cp.float32),
+#                         lastgabovea, dtype=cp.float32)
+#
+#         vegsh2 = cp.where(vegsh2 == 4.0, 0.0, vegsh2)
+#         vegsh2 = cp.where(vegsh2 > 0.0, 1.0, vegsh2)
+#
+#         vegsh = cp.fmax(vegsh, vegsh2)
+#         vegsh = cp.where(vegsh * sh > 0.0, 0.0, vegsh)
+#         cp.add(vbshvegsh, vegsh, out=vbshvegsh)
+#
+#         i += 1.0
+#
+#     sh = 1.0 - sh
+#     vbshvegsh[vbshvegsh > 0.0] = 1.0
+#     vbshvegsh -= vegsh
+#     vegsh = 1.0 - vegsh
+#     vbshvegsh = 1.0 - vbshvegsh
+#
+#     shadowresult = {
+#         'sh': sh,
+#         'vegsh': vegsh,
+#         'vbshvegsh': vbshvegsh
+#     }
+#     return shadowresult
 
+
+@profile
 def shadowingfunction_20_cupy(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, aminvalue, trunkcheck, bush, forsvf):
     # Conversion
     degrees = np.pi / 180.0
@@ -378,7 +492,7 @@ def shadowingfunction_20_cupy(a, vegdem, vegdem2, azimuth, altitude, scale, amax
         index += 1.0
 
     sh = 1.0 - sh
-    vbshvegsh[vbshvegsh > 0.0] = 1.0
+    vbshvegsh = cp.where(vbshvegsh > 0.0,  1.0, 0.0)
     vbshvegsh -= vegsh
     vegsh = 1.0 - vegsh
     vbshvegsh = 1.0 - vbshvegsh
