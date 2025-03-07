@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-
+import matplotlib.pyplot as plt
 import numpy as np
 from .daylen import daylen
 from functions.SOLWEIGpython.UTIL.clearnessindex_2013b import clearnessindex_2013b
@@ -18,6 +18,16 @@ from functions.SOLWEIGpython.UTIL.create_patches import create_patches
 from .Lcyl_v2022a import Lcyl_v2022a
 from .Lside_veg_v2022a import Lside_veg_v2022a
 from copy import deepcopy
+
+
+def plot_array(array, title):
+    plt.figure(figsize=(10, 8))
+    plt.imshow(array, cmap='gray')
+    plt.colorbar()
+    plt.title(title)
+    plt.axis('off')
+    plt.show()
+
 
 def Solweig_2022a_calc(i, dsm, scale, rows, cols, svf, svfN, svfW, svfE, svfS, svfveg, svfNveg, svfEveg, svfSveg,
                        svfWveg, svfaveg, svfEaveg, svfSaveg, svfWaveg, svfNaveg, vegdem, vegdem2, albedo_b, absK, absL,
@@ -102,6 +112,8 @@ def Solweig_2022a_calc(i, dsm, scale, rows, cols, svf, svfN, svfW, svfE, svfS, s
     # Determination of clear - sky emissivity from Prata (1996)
     msteg = 46.5 * (ea / (Ta + 273.15))
     esky = (1 - (1 + msteg) * np.exp(-((1.2 + 3.0 * msteg) ** 0.5))) + elvis  # -0.04 old error from Jonsson et al.2006
+
+    plot_array(dirwalls, "walls before algo")
 
     if altitude > 0: # # # # # # DAYTIME # # # # # #
         # Clearness Index on Earth's surface after Crawford and Dunchon (1999) with a correction

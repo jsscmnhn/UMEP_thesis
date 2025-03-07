@@ -275,7 +275,7 @@ def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue
 
     return shadowresult
 
-@profile
+# @profile
 def shadowingfunction_20_cupy(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, aminvalue, trunkcheck, bush, forsvf):
     # Conversion
     degrees = np.pi / 180.0
@@ -526,7 +526,7 @@ def shadowingfunction_20_cupy_forloop(a, vegdem, vegdem2, azimuth, altitude, sca
     }
     return shadowresult
 
-@profile
+# @profile
 def shadowingfunction_20_cupy_vector(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, aminvalue, trunkcheck, bush, forsvf):
     # Conversion
     degrees = np.pi / 180.0

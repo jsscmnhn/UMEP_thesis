@@ -1,6 +1,15 @@
 from __future__ import division
 import numpy as np
-# import matplotlib.pylab as plt
+import matplotlib.pyplot as plt
+
+def plot_array(array, title):
+    plt.figure(figsize=(10, 8))
+    plt.imshow(array, cmap='gray')
+    plt.colorbar()
+    plt.title(title)
+    plt.axis('off')
+    plt.show()
+
 def shadowingfunction_wallheight_23(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, bush, walls, aspect):
     """
     This function calculates shadows on a DSM and shadow height on building
@@ -205,5 +214,14 @@ def shadowingfunction_wallheight_23(a, vegdem, vegdem2, azimuth, altitude, scale
     id = np.where(wallsun < 0)
     wallshve[id] = 0
     wallsun[id] = 0
+
+    # plot_array(vegsh, "Vegetation Shadow")
+    # plot_array(sh, "Ground and Roof Shadow")
+    # plot_array(vbshvegsh, "Vegetation Blocking Shadows")
+    # plot_array(wallsh, "Wall Shadows")
+    # plot_array(wallsun, "Wall Sunlit Areas")
+    # plot_array(wallshve, "Wall Shadows from Vegetation")
+    # plot_array(facesh, "Wall Faces in Shadow")
+    # plot_array(facesun, "Wall Faces in Sun")
     
     return vegsh, sh, vbshvegsh, wallsh, wallsun, wallshve, facesh, facesun

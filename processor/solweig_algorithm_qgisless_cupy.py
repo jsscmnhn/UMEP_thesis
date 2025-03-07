@@ -50,14 +50,9 @@ from shutil import rmtree
 import string
 import random
 from shutil import copyfile
+import cupy as cp
 
-def plot_array(array, title):
-    plt.figure(figsize=(10, 8))
-    plt.imshow(array, cmap='gray')
-    plt.colorbar()
-    plt.title(title)
-    plt.axis('off')
-    plt.show()
+
 
 
 class SOLWEIGAlgorithm():
@@ -136,95 +131,6 @@ class SOLWEIGAlgorithm():
         self.OUTPUT_TREEPLANTER = OUTPUT_TREEPLANTER
 
         self.CYL = CYL
-
-    #PET parameters
-    # AGE = 'AGE'
-    # ACTIVITY = 'ACTIVITY'
-    # CLO = 'CLO'
-    # WEIGHT = 'WEIGHT'
-    # HEIGHT = 'HEIGHT'
-    # SEX = 'SEX'
-    # SENSOR_HEIGHT = 'SENSOR_HEIGHT'
-    #
-    # #Optional settings
-    # # POI = 'POI'
-    # POI_FILE = 'POI_FILE'
-    # POI_FIELD = 'POI_FIELD'
-    # CYL = 'CYL'
-
-
-
-   # def initAlgorithm(self, config):
-        #ADVANCED PARAMETERS
-        #POIs for thermal comfort estimations
-        # poi = QgsProcessingParameterBoolean(self.POI,
-        #     self.tr("Include Point of Interest(s) for thermal comfort calculations (PET and UTCI)"), defaultValue=False)
-        # poi.setFlags(poi.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        # self.addParameter(poi)
-        # poifile = QgsProcessingParameterFeatureSource(self.POI_FILE,
-        #     self.tr('Vector point file including Point of Interest(s) for thermal comfort calculations (PET and UTCI)'), [QgsProcessing.TypeVectorPoint], optional=True)
-        # poifile.setFlags(poifile.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        # self.addParameter(poifile)
-        # poi_field = QgsProcessingParameterField(self.POI_FIELD,
-        #     self.tr('ID field'),'', self.POI_FILE, QgsProcessingParameterField.Numeric, optional=True)
-        # poi_field.setFlags(poi_field.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        # self.addParameter(poi_field)
-        #
-        # #PET parameters
-        # age = QgsProcessingParameterNumber(self.AGE, self.tr('Age (yy)'),
-        #         QgsProcessingParameterNumber.Integer,
-        #         QVariant(35), optional=True, minValue=0, maxValue=120)
-        # age.setFlags(age.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        # self.addParameter(age)
-        # act = QgsProcessingParameterNumber(self.ACTIVITY, self.tr('Activity (W)'),
-        #         QgsProcessingParameterNumber.Double,
-        #         QVariant(80), optional=True, minValue=0, maxValue=1000)
-        # act.setFlags(act.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        # self.addParameter(act)
-        # clo = QgsProcessingParameterNumber(self.CLO, self.tr('Clothing (clo)'),
-        #         QgsProcessingParameterNumber.Double,
-        #         QVariant(0.9), optional=True, minValue=0, maxValue=10)
-        # clo.setFlags(clo.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        # self.addParameter(clo)
-        # wei = QgsProcessingParameterNumber(self.WEIGHT, self.tr('Weight (kg)'),
-        #         QgsProcessingParameterNumber.Integer,
-        #         QVariant(75), optional=True, minValue=0, maxValue=500)
-        # wei.setFlags(wei.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        # self.addParameter(wei)
-        # hei = QgsProcessingParameterNumber(self.HEIGHT, self.tr('Height (cm)'),
-        #         QgsProcessingParameterNumber.Integer,
-        #         QVariant(180), optional=True, minValue=0, maxValue=250)
-        # hei.setFlags(hei.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        # self.addParameter(hei)
-        # sex = QgsProcessingParameterEnum(
-        #     self.SEX, self.tr('Sex'), ['Male', 'Female'], optional=True, defaultValue=0)
-        # sex.setFlags(sex.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        # self.addParameter(sex)
-        # shei = QgsProcessingParameterNumber(self.SENSOR_HEIGHT, self.tr('Height of wind sensor (m agl)'),
-        #         QgsProcessingParameterNumber.Double,
-        #         QVariant(10), optional=True, minValue=0, maxValue=250)
-        # shei.setFlags(shei.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        # self.addParameter(shei)
-        #
-        # #OUTPUT
-        # self.addParameter(QgsProcessingParameterBoolean(self.OUTPUT_TMRT,
-        #     self.tr("Save Mean Radiant Temperature raster(s)"), defaultValue=True))
-        # self.addParameter(QgsProcessingParameterBoolean(self.OUTPUT_KDOWN,
-        #     self.tr("Save Incoming shortwave radiation raster(s)"), defaultValue=False))
-        # self.addParameter(QgsProcessingParameterBoolean(self.OUTPUT_KUP,
-        #     self.tr("Save Outgoing shortwave radiation raster(s)"), defaultValue=False))
-        # self.addParameter(QgsProcessingParameterBoolean(self.OUTPUT_LDOWN,
-        #     self.tr("Save Incoming longwave radiation raster(s)"), defaultValue=False))
-        # self.addParameter(QgsProcessingParameterBoolean(self.OUTPUT_LUP,
-        #     self.tr("Save Outgoing longwave radiation raster(s)"), defaultValue=False))
-        # self.addParameter(QgsProcessingParameterBoolean(self.OUTPUT_SH,
-        #     self.tr("Save shadow raster(s)"), defaultValue=False))
-        # self.addParameter(QgsProcessingParameterBoolean(self.OUTPUT_TREEPLANTER,
-        #     self.tr("Save necessary raster(s) for the TreePlanter and Spatial TC tools"), defaultValue=False))
-        # self.addParameter(QgsProcessingParameterFolderDestination(self.OUTPUT_DIR,
-        #                                              'Output folder'))
-        #
-        # self.plugin_dir = os.path.dirname(__file__)
 
         # TO DO: THIS IS NOW AN ABSOLUTE PATH
         temp_dir_name = 'temp-' + ''.join(random.choice(string.ascii_uppercase) for _ in range(8))
@@ -309,18 +215,18 @@ class SOLWEIGAlgorithm():
             os.mkdir(outputDir)
 
         gdal_dsm = gdal.Open(filepath_dsm)
-        dsm = gdal_dsm.ReadAsArray().astype(float)
+        dsm =  cp.array(gdal_dsm.ReadAsArray().astype(float), dtype=cp.float32)
         sizex = dsm.shape[0]
         sizey = dsm.shape[1]
         rows = dsm.shape[0]
         cols = dsm.shape[1]
 
         # response to issue #85
-        nd = gdal_dsm.GetRasterBand(1).GetNoDataValue()
-        dsm[dsm == nd] = 0.
+        # nd = gdal_dsm.GetRasterBand(1).GetNoDataValue()
+        # dsm[dsm == nd] = 0.
         # dsmcopy = np.copy(dsm)
         if dsm.min() < 0:
-            dsmraise = np.abs(dsm.min())
+            dsmraise = cp.abs(dsm.min())
             dsm = dsm + dsmraise
             print('Digital Surface Model (DSM) included negative values. DSM raised with ' + str(dsmraise) + 'm.')
         else:
@@ -331,9 +237,6 @@ class SOLWEIGAlgorithm():
         dsm_ref = gdal_dsm.GetProjection()
         old_cs.ImportFromWkt(dsm_ref)
 
-        # TO DO: IF CODE WORKS, CHANGE TO
-        # new_cs = osr.SpatialReference()
-        # new_cs.ImportFromEPSG(4326)
         wgs84_wkt = """
         GEOGCS["WGS 84",
             DATUM["WGS_1984",
@@ -365,7 +268,7 @@ class SOLWEIGAlgorithm():
             lat = lonlat[1] #changed to gdal 2
         scale = 1 / geotransform[1]
 
-        alt = np.median(dsm)
+        alt = cp.median(dsm)
         if alt < 0:
             alt = 3
         print('Longitude derived from DSM: ' + str(lon))
@@ -381,7 +284,7 @@ class SOLWEIGAlgorithm():
             print('Vegetation scheme activated')
 
             gdal_vegdsm = gdal.Open(vegdsm_path)
-            vegdsm = gdal_vegdsm.ReadAsArray().astype(float)
+            vegdsm = cp.array(gdal_vegdsm.ReadAsArray().astype(float), dtype=cp.float32)
 
             vegsizex = vegdsm.shape[0]
             vegsizey = vegdsm.shape[1]
@@ -391,7 +294,7 @@ class SOLWEIGAlgorithm():
 
             if vegdsm2_path is not None:
                 gdal_vegdsm2 = gdal.Open(vegdsm2_path)
-                vegdsm = gdal_vegdsm.ReadAsArray().astype(float)
+                vegdsm2 = gdal_vegdsm2.ReadAsArray().astype(float)
             else:
                 trunkratio = trunkr / 100.0
                 vegdsm2 = vegdsm * trunkratio
@@ -475,52 +378,50 @@ class SOLWEIGAlgorithm():
                 print('WARNiNG! DEM and DSM was raised unequally (difference > 0.5 m). Check your input data!')
 
         #SVFs
-        zip = zipfile.ZipFile(inputSVF, 'r')
-        zip.extractall(self.temp_dir)
-        zip.close()
+        print(inputSVF + "/svfveg.tif")
 
         try:
-            dataSet = gdal.Open(self.temp_dir + "/svf.tif")
+            dataSet = gdal.Open(inputSVF + "/svf.tif")
             svf = dataSet.ReadAsArray().astype(float)
-            dataSet = gdal.Open(self.temp_dir + "/svfN.tif")
+            dataSet = gdal.Open(inputSVF + "/svfN.tif")
             svfN = dataSet.ReadAsArray().astype(float)
-            dataSet = gdal.Open(self.temp_dir + "/svfS.tif")
+            dataSet = gdal.Open(inputSVF + "/svfS.tif")
             svfS = dataSet.ReadAsArray().astype(float)
-            dataSet = gdal.Open(self.temp_dir + "/svfE.tif")
+            dataSet = gdal.Open(inputSVF + "/svfE.tif")
             svfE = dataSet.ReadAsArray().astype(float)
-            dataSet = gdal.Open(self.temp_dir + "/svfW.tif")
+            dataSet = gdal.Open(inputSVF + "/svfW.tif")
             svfW = dataSet.ReadAsArray().astype(float)
 
             if usevegdem == 1:
-                dataSet = gdal.Open(self.temp_dir + "/svfveg.tif")
+                dataSet = gdal.Open(inputSVF + "/svfveg.tif")
                 svfveg = dataSet.ReadAsArray().astype(float)
-                dataSet = gdal.Open(self.temp_dir + "/svfNveg.tif")
+                dataSet = gdal.Open(inputSVF + "/svfNveg.tif")
                 svfNveg = dataSet.ReadAsArray().astype(float)
-                dataSet = gdal.Open(self.temp_dir + "/svfSveg.tif")
+                dataSet = gdal.Open(inputSVF + "/svfSveg.tif")
                 svfSveg = dataSet.ReadAsArray().astype(float)
-                dataSet = gdal.Open(self.temp_dir + "/svfEveg.tif")
+                dataSet = gdal.Open(inputSVF + "/svfEveg.tif")
                 svfEveg = dataSet.ReadAsArray().astype(float)
-                dataSet = gdal.Open(self.temp_dir + "/svfWveg.tif")
+                dataSet = gdal.Open(inputSVF + "/svfWveg.tif")
                 svfWveg = dataSet.ReadAsArray().astype(float)
 
-                dataSet = gdal.Open(self.temp_dir + "/svfaveg.tif")
+                dataSet = gdal.Open(inputSVF + "/svfaveg.tif")
                 svfaveg = dataSet.ReadAsArray().astype(float)
-                dataSet = gdal.Open(self.temp_dir + "/svfNaveg.tif")
+                dataSet = gdal.Open(inputSVF + "/svfNaveg.tif")
                 svfNaveg = dataSet.ReadAsArray().astype(float)
-                dataSet = gdal.Open(self.temp_dir + "/svfSaveg.tif")
+                dataSet = gdal.Open(inputSVF + "/svfSaveg.tif")
                 svfSaveg = dataSet.ReadAsArray().astype(float)
-                dataSet = gdal.Open(self.temp_dir + "/svfEaveg.tif")
+                dataSet = gdal.Open(inputSVF + "/svfEaveg.tif")
                 svfEaveg = dataSet.ReadAsArray().astype(float)
-                dataSet = gdal.Open(self.temp_dir + "/svfWaveg.tif")
+                dataSet = gdal.Open(inputSVF + "/svfWaveg.tif")
                 svfWaveg = dataSet.ReadAsArray().astype(float)
             else:
-                svfveg = np.ones((rows, cols))
-                svfNveg = np.ones((rows, cols))
-                svfSveg = np.ones((rows, cols))
-                svfEveg = np.ones((rows, cols))
-                svfWveg = np.ones((rows, cols))
-                svfaveg = np.ones((rows, cols))
-                svfNaveg = np.ones((rows, cols))
+                svfveg = cp.ones((rows, cols))
+                svfNveg = cp.ones((rows, cols))
+                svfSveg = cp.ones((rows, cols))
+                svfEveg = cp.ones((rows, cols))
+                svfWveg = cp.ones((rows, cols))
+                svfaveg = cp.ones((rows, cols))
+                svfNaveg = cp.ones((rows, cols))
                 svfSaveg = np.ones((rows, cols))
                 svfEaveg = np.ones((rows, cols))
                 svfWaveg = np.ones((rows, cols))
@@ -556,8 +457,6 @@ class SOLWEIGAlgorithm():
             raise Exception("Error: No valid wall aspect raster layer is selected")
         gdal_wallaspect = gdal.Open(walayer_path)
         wallaspect = gdal_wallaspect.ReadAsArray().astype(float)
-
-        plot_array(wallaspect, "walls aster loading")
 
         vasizex = wallaspect.shape[0]
         vasizey = wallaspect.shape[1]
@@ -779,28 +678,7 @@ class SOLWEIGAlgorithm():
 
         print("Writing settings for this model run to specified output folder (Filename: RunInfoSOLWEIG_YYYY_DOY_HHMM.txt)")
 
-        # Save svf
-        # if anisotropic_sky:
-        #     if not poisxy is None:
-        #             patch_characteristics = np.zeros((shmat.shape[2], poisxy.shape[0]))
-        #             for idx in range(poisxy.shape[0]):
-        #                 for idy in range(shmat.shape[2]):
-        #                     # Calculations for patches on sky, shmat = 1 = sky is visible
-        #                     temp_sky = ((shmat[:,:,idy] == 1) & (vegshmat[:,:,idy] == 1))
-        #                     # Calculations for patches that are vegetation, vegshmat = 0 = shade from vegetation
-        #                     temp_vegsh = ((vegshmat[:,:,idy] == 0) | (vbshvegshmat[:,:,idy] == 0))
-        #                     # Calculations for patches that are buildings, shmat = 0 = shade from buildings
-        #                     temp_vbsh = (1 - shmat[:,:,idy]) * vbshvegshmat[:,:,idy]
-        #                     temp_sh = (temp_vbsh == 1)
-        #                     # Sky patch
-        #                     if temp_sky[int(poisxy[idx, 2]), int(poisxy[idx, 1])]:
-        #                         patch_characteristics[idy,idx] = 1.8
-        #                     # Vegetation patch
-        #                     elif (temp_vegsh[int(poisxy[idx, 2]), int(poisxy[idx, 1])]):
-        #                         patch_characteristics[idy,idx] = 2.5
-        #                     # Building patch
-        #                     elif (temp_sh[int(poisxy[idx, 2]), int(poisxy[idx, 1])]):
-        #                         patch_characteristics[idy,idx] = 4.5
+
 
         #  If metfile starts at night
         CI = 1.
@@ -877,64 +755,6 @@ class SOLWEIGAlgorithm():
                 w = 'D'
             else:
                 w = 'N'
-
-            # Write to POIs
-            # if not poisxy is None:
-            #     for k in range(0, poisxy.shape[0]):
-            #         poi_save = np.zeros((1, 41))
-            #         poi_save[0, 0] = YYYY[0][i]
-            #         poi_save[0, 1] = jday[0][i]
-            #         poi_save[0, 2] = hours[i]
-            #         poi_save[0, 3] = minu[i]
-            #         poi_save[0, 4] = dectime[i]
-            #         poi_save[0, 5] = altitude[0][i]
-            #         poi_save[0, 6] = azimuth[0][i]
-            #         poi_save[0, 7] = radIout
-            #         poi_save[0, 8] = radDout
-            #         poi_save[0, 9] = radG[i]
-            #         poi_save[0, 10] = Kdown[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 11] = Kup[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 12] = Keast[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 13] = Ksouth[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 14] = Kwest[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 15] = Knorth[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 16] = Ldown[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 17] = Lup[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 18] = Least[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 19] = Lsouth[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 20] = Lwest[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 21] = Lnorth[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 22] = Ta[i]
-            #         poi_save[0, 23] = TgOut[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 24] = RH[i]
-            #         poi_save[0, 25] = esky
-            #         poi_save[0, 26] = Tmrt[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 27] = I0
-            #         poi_save[0, 28] = CI
-            #         poi_save[0, 29] = shadow[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 30] = svf[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 31] = svfbuveg[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 32] = KsideI[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         # Recalculating wind speed based on powerlaw
-            #         WsPET = (1.1 / sensorheight) ** 0.2 * Ws[i]
-            #         WsUTCI = (10. / sensorheight) ** 0.2 * Ws[i]
-            #         resultPET = p._PET(Ta[i], RH[i], Tmrt[int(poisxy[k, 2]), int(poisxy[k, 1])], WsPET,
-            #                             mbody, age, ht, activity, clo, sex)
-            #         poi_save[0, 33] = resultPET
-            #         resultUTCI = utci.utci_calculator(Ta[i], RH[i], Tmrt[int(poisxy[k, 2]), int(poisxy[k, 1])],
-            #                                             WsUTCI)
-            #         poi_save[0, 34] = resultUTCI
-            #         poi_save[0, 35] = CI_Tg
-            #         poi_save[0, 36] = CI_TgG
-            #         poi_save[0, 37] = KsideD[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 38] = Lside[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 39] = dRad[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 40] = Kside[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         data_out = outputDir + '/POI_' + str(poiname[k]) + '.txt'
-            #         # f_handle = file(data_out, 'a')
-            #         f_handle = open(data_out, 'ab')
-            #         np.savetxt(f_handle, poi_save, fmt=numformat)
-            #         f_handle.close()
 
             if hours[i] < 10:
                 XH = '0'
@@ -1022,7 +842,8 @@ class SOLWEIGAlgorithm():
         return {self.OUTPUT_DIR: outputDir}
 
 INPUT_DSM = "D:/Geomatics/thesis/heattryout/preprocess/DSM_smaller.tif"
-INPUT_SVF = "D:/Geomatics/thesis/codetestsvf/svfs.zip"
+INPUT_SVF = "D:/Geomatics/thesis/codetestsvf/svfs_debug"
+INPUT_ANISO = "D:/Geomatics/thesis/codetestsvf/shadowmats.npz"
 INPUT_LC = "D:/Geomatics/thesis/heattryout/preprocess/landuse.tif"
 INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
 INPUT_HEIGHT = "D:/Geomatics/thesis/heattryout/preprocess/wallheight.tif"

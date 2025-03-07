@@ -153,7 +153,6 @@ class ProcessingSkyViewFactorAlgorithm():
 
         filename = outputFile
 
-        # temporary fix for mac, ISSUE #15
         pf = sys.platform
         if pf == 'darwin' or pf == 'linux2' or pf == 'linux':
             if not os.path.exists(outputDir):
@@ -166,28 +165,11 @@ class ProcessingSkyViewFactorAlgorithm():
             svfbuW = ret["svfW"].get()
             svfbuN = ret["svfN"].get()
             
-            misc.saveraster(gdal_dsm, outputDir + '/' + 'svf.tif', svfbu)
-            misc.saveraster(gdal_dsm, outputDir + '/' + 'svfE.tif', svfbuE)
-            misc.saveraster(gdal_dsm, outputDir + '/' + 'svfS.tif', svfbuS)
-            misc.saveraster(gdal_dsm, outputDir + '/' + 'svfW.tif', svfbuW)
-            misc.saveraster(gdal_dsm, outputDir + '/' + 'svfN.tif', svfbuN)
-
-            if os.path.isfile(outputDir + '/' + 'svfs.zip'):
-                os.remove(outputDir + '/' + 'svfs.zip')
-
-            zippo = zipfile.ZipFile(outputDir + '/' + 'svfs.zip', 'a')
-            zippo.write(outputDir + '/' + 'svf.tif', 'svf.tif')
-            zippo.write(outputDir + '/' + 'svfE.tif', 'svfE.tif')
-            zippo.write(outputDir + '/' + 'svfS.tif', 'svfS.tif')
-            zippo.write(outputDir + '/' + 'svfW.tif', 'svfW.tif')
-            zippo.write(outputDir + '/' + 'svfN.tif', 'svfN.tif')
-            zippo.close()
-
-            os.remove(outputDir + '/' + 'svf.tif')
-            os.remove(outputDir + '/' + 'svfE.tif')
-            os.remove(outputDir + '/' + 'svfS.tif')
-            os.remove(outputDir + '/' + 'svfW.tif')
-            os.remove(outputDir + '/' + 'svfN.tif')
+            misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svf.tif', svfbu)
+            misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfE.tif', svfbuE)
+            misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfS.tif', svfbuS)
+            misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfW.tif', svfbuW)
+            misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfN.tif', svfbuN)
 
             if usevegdem == 0:
                 svftotal = svfbu
@@ -204,40 +186,16 @@ class ProcessingSkyViewFactorAlgorithm():
                 svfWaveg = ret["svfWaveg"].get()
                 svfNaveg = ret["svfNaveg"].get()
 
-                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfveg.tif', svfveg)
-                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfEveg.tif', svfEveg)
-                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfSveg.tif', svfSveg)
-                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfWveg.tif', svfWveg)
-                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfNveg.tif', svfNveg)
-                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfaveg.tif', svfaveg)
-                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfEaveg.tif', svfEaveg)
-                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfSaveg.tif', svfSaveg)
-                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfWaveg.tif', svfWaveg)
-                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfNaveg.tif', svfNaveg)
-
-                zippo = zipfile.ZipFile(outputDir + '/' + 'svfs.zip', 'a')
-                zippo.write(outputDir + '/' + 'svfveg.tif', 'svfveg.tif')
-                zippo.write(outputDir + '/' + 'svfEveg.tif', 'svfEveg.tif')
-                zippo.write(outputDir + '/' + 'svfSveg.tif', 'svfSveg.tif')
-                zippo.write(outputDir + '/' + 'svfWveg.tif', 'svfWveg.tif')
-                zippo.write(outputDir + '/' + 'svfNveg.tif', 'svfNveg.tif')
-                zippo.write(outputDir + '/' + 'svfaveg.tif', 'svfaveg.tif')
-                zippo.write(outputDir + '/' + 'svfEaveg.tif', 'svfEaveg.tif')
-                zippo.write(outputDir + '/' + 'svfSaveg.tif', 'svfSaveg.tif')
-                zippo.write(outputDir + '/' + 'svfWaveg.tif', 'svfWaveg.tif')
-                zippo.write(outputDir + '/' + 'svfNaveg.tif', 'svfNaveg.tif')
-                zippo.close()
-
-                os.remove(outputDir + '/' + 'svfveg.tif')
-                os.remove(outputDir + '/' + 'svfEveg.tif')
-                os.remove(outputDir + '/' + 'svfSveg.tif')
-                os.remove(outputDir + '/' + 'svfWveg.tif')
-                os.remove(outputDir + '/' + 'svfNveg.tif')
-                os.remove(outputDir + '/' + 'svfaveg.tif')
-                os.remove(outputDir + '/' + 'svfEaveg.tif')
-                os.remove(outputDir + '/' + 'svfSaveg.tif')
-                os.remove(outputDir + '/' + 'svfWaveg.tif')
-                os.remove(outputDir + '/' + 'svfNaveg.tif')
+                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfveg.tif', svfveg)
+                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfEveg.tif', svfEveg)
+                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfSveg.tif', svfSveg)
+                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfWveg.tif', svfWveg)
+                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfNveg.tif', svfNveg)
+                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfaveg.tif', svfaveg)
+                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfEaveg.tif', svfEaveg)
+                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfSaveg.tif', svfSaveg)
+                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfWaveg.tif', svfWaveg)
+                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfNaveg.tif', svfNaveg)
 
                 trans = transVeg / 100.0
                 svftotal = (svfbu - (1 - svfveg) * (1 - trans))
@@ -254,7 +212,7 @@ class ProcessingSkyViewFactorAlgorithm():
                 # wallshvemat = ret["wallshvemat"]
                 # facesunmat = ret["facesunmat"]
 
-                # np.savez_compressed(outputDir + '/' + "shadowmats.npz", shadowmat=shmat, vegshadowmat=vegshmat, vbshmat=vbshvegshmat) #,
+                np.savez_compressed(outputDir + '/' + "shadowmats.npz", shadowmat=shmat, vegshadowmat=vegshmat, vbshmat=vbshvegshmat)
                                     # vbshvegshmat=vbshvegshmat, wallshmat=wallshmat, wallsunmat=wallsunmat,
                                     # facesunmat=facesunmat, wallshvemat=wallshvemat)
 
@@ -406,28 +364,14 @@ class ProcessingSkyViewFactorAlgorithm():
             svfbuW = ret["svfW"].get()
             svfbuN = ret["svfN"].get()
 
-            misc.saveraster(gdal_dsm, outputDir + '/' + 'svf.tif', svfbu)
-            misc.saveraster(gdal_dsm, outputDir + '/' + 'svfE.tif', svfbuE)
-            misc.saveraster(gdal_dsm, outputDir + '/' + 'svfS.tif', svfbuS)
-            misc.saveraster(gdal_dsm, outputDir + '/' + 'svfW.tif', svfbuW)
-            misc.saveraster(gdal_dsm, outputDir + '/' + 'svfN.tif', svfbuN)
+            misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svf.tif', svfbu)
+            misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfE.tif', svfbuE)
+            misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfS.tif', svfbuS)
+            misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfW.tif', svfbuW)
+            misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfN.tif', svfbuN)
 
             if os.path.isfile(outputDir + '/' + 'svfs.zip'):
                 os.remove(outputDir + '/' + 'svfs.zip')
-
-            zippo = zipfile.ZipFile(outputDir + '/' + 'svfs.zip', 'a')
-            zippo.write(outputDir + '/' + 'svf.tif', 'svf.tif')
-            zippo.write(outputDir + '/' + 'svfE.tif', 'svfE.tif')
-            zippo.write(outputDir + '/' + 'svfS.tif', 'svfS.tif')
-            zippo.write(outputDir + '/' + 'svfW.tif', 'svfW.tif')
-            zippo.write(outputDir + '/' + 'svfN.tif', 'svfN.tif')
-            zippo.close()
-
-            os.remove(outputDir + '/' + 'svf.tif')
-            os.remove(outputDir + '/' + 'svfE.tif')
-            os.remove(outputDir + '/' + 'svfS.tif')
-            os.remove(outputDir + '/' + 'svfW.tif')
-            os.remove(outputDir + '/' + 'svfN.tif')
 
             if usevegdem == 0:
                 svftotal = svfbu
@@ -444,40 +388,16 @@ class ProcessingSkyViewFactorAlgorithm():
                 svfWaveg = ret["svfWaveg"].get()
                 svfNaveg = ret["svfNaveg"].get()
 
-                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfveg.tif', svfveg)
-                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfEveg.tif', svfEveg)
-                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfSveg.tif', svfSveg)
-                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfWveg.tif', svfWveg)
-                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfNveg.tif', svfNveg)
-                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfaveg.tif', svfaveg)
-                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfEaveg.tif', svfEaveg)
-                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfSaveg.tif', svfSaveg)
-                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfWaveg.tif', svfWaveg)
-                misc.saveraster(gdal_dsm, outputDir + '/' + 'svfNaveg.tif', svfNaveg)
-
-                zippo = zipfile.ZipFile(outputDir + '/' + 'svfs.zip', 'a')
-                zippo.write(outputDir + '/' + 'svfveg.tif', 'svfveg.tif')
-                zippo.write(outputDir + '/' + 'svfEveg.tif', 'svfEveg.tif')
-                zippo.write(outputDir + '/' + 'svfSveg.tif', 'svfSveg.tif')
-                zippo.write(outputDir + '/' + 'svfWveg.tif', 'svfWveg.tif')
-                zippo.write(outputDir + '/' + 'svfNveg.tif', 'svfNveg.tif')
-                zippo.write(outputDir + '/' + 'svfaveg.tif', 'svfaveg.tif')
-                zippo.write(outputDir + '/' + 'svfEaveg.tif', 'svfEaveg.tif')
-                zippo.write(outputDir + '/' + 'svfSaveg.tif', 'svfSaveg.tif')
-                zippo.write(outputDir + '/' + 'svfWaveg.tif', 'svfWaveg.tif')
-                zippo.write(outputDir + '/' + 'svfNaveg.tif', 'svfNaveg.tif')
-                zippo.close()
-
-                os.remove(outputDir + '/' + 'svfveg.tif')
-                os.remove(outputDir + '/' + 'svfEveg.tif')
-                os.remove(outputDir + '/' + 'svfSveg.tif')
-                os.remove(outputDir + '/' + 'svfWveg.tif')
-                os.remove(outputDir + '/' + 'svfNveg.tif')
-                os.remove(outputDir + '/' + 'svfaveg.tif')
-                os.remove(outputDir + '/' + 'svfEaveg.tif')
-                os.remove(outputDir + '/' + 'svfSaveg.tif')
-                os.remove(outputDir + '/' + 'svfWaveg.tif')
-                os.remove(outputDir + '/' + 'svfNaveg.tif')
+                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfveg.tif', svfveg)
+                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfEveg.tif', svfEveg)
+                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfSveg.tif', svfSveg)
+                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfWveg.tif', svfWveg)
+                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfNveg.tif', svfNveg)
+                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfaveg.tif', svfaveg)
+                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfEaveg.tif', svfEaveg)
+                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfSaveg.tif', svfSaveg)
+                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfWaveg.tif', svfWaveg)
+                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfNaveg.tif', svfNaveg)
 
                 trans = transVeg / 100.0
                 svftotal = (svfbu - (1 - svfveg) * (1 - trans))
