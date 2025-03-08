@@ -39,8 +39,8 @@ from util.misc import saveraster
 import zipfile
 from functions.SOLWEIGpython.UTIL.Solweig_v2015_metdata_noload import Solweig_2015a_metdata_noload
 from functions.SOLWEIGpython.UTIL.clearnessindex_2013b import clearnessindex_2013b
-from functions.SOLWEIGpython.Tgmaps_v1 import Tgmaps_v1
-from functions.SOLWEIGpython import Solweig_2022a_calc_forprocessing as so
+from functions.SOLWEIGpython.Tgmaps_v1_cupy import Tgmaps_v1
+from functions.SOLWEIGpython import Solweig_2022a_calc_forprocessing_jess as so
 from functions.SOLWEIGpython import WriteMetadataSOLWEIG
 from functions.SOLWEIGpython import PET_calculations as p
 from functions.SOLWEIGpython import UTCI_calculations as utci
@@ -294,7 +294,7 @@ class SOLWEIGAlgorithm():
 
             if vegdsm2_path is not None:
                 gdal_vegdsm2 = gdal.Open(vegdsm2_path)
-                vegdsm2 = gdal_vegdsm2.ReadAsArray().astype(float)
+                vegdsm2 = cp.array(gdal_vegdsm2.ReadAsArray().astype(float), dtype=cp.float32)
             else:
                 trunkratio = trunkr / 100.0
                 vegdsm2 = vegdsm * trunkratio
@@ -306,8 +306,8 @@ class SOLWEIGAlgorithm():
             if not (vegsizex == sizex) & (vegsizey == sizey):  # &
                 raise Exception("Error in Trunk Zone DSM: All rasters must be of same extent and resolution")
         else:
-            vegdsm = np.zeros([rows, cols])
-            vegdsm2 = np.zeros([rows, cols])
+            vegdsm = cp.zeros([rows, cols])
+            vegdsm2 = cp.zeros([rows, cols])
             usevegdem = 0
             vegdsm_path = None
             vegdsm2_path = None
@@ -319,7 +319,7 @@ class SOLWEIGAlgorithm():
 
             # load raster
             gdal_lcgrid = gdal.Open(lcgrid_path)
-            lcgrid = gdal_lcgrid.ReadAsArray().astype(float)
+            lcgrid = cp.array(gdal_lcgrid.ReadAsArray().astype(float), dtype=cp.float32)
 
             lcsizex = lcgrid.shape[0]
             lcsizey = lcgrid.shape[1]
@@ -333,7 +333,7 @@ class SOLWEIGAlgorithm():
                 raise Exception("Error in land cover grid: Land cover grid includes Confier land cover class. Ground cover information (underneath canopy) is required.")
             if baddataDecid.any():
                 raise Exception("Error in land cover grid: Land cover grid includes Decidiuous land cover class. Ground cover information (underneath canopy) is required.")
-            if np.isnan(lcgrid).any():
+            if cp.isnan(lcgrid).any():
                 raise Exception("Error in land cover grid: Land cover grid includes NaN values. Use the QGIS Fill NoData cells tool to remove NaN values.")
         else:
             lcgrid_path = None
@@ -352,7 +352,7 @@ class SOLWEIGAlgorithm():
             provider = dem.dataProvider()
             filePathOld = str(provider.dataSourceUri())
             dataSet = gdal.Open(filePathOld)
-            dem = dataSet.ReadAsArray().astype(float)
+            dem = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
 
             demsizex = dem.shape[0]
             demsizey = dem.shape[1]
@@ -361,8 +361,8 @@ class SOLWEIGAlgorithm():
                 raise Exception( "Error in DEM: All grids must be of same extent and resolution")
 
             # response to issue and #230
-            nd = dataSet.GetRasterBand(1).GetNoDataValue()
-            dem[dem == nd] = 0.
+            # nd = dataSet.GetRasterBand(1).GetNoDataValue()
+            # dem[dem == nd] = 0.
             if dem.min() < 0:
                 demraise = np.abs(dem.min())
                 dem = dem + demraise
@@ -382,38 +382,38 @@ class SOLWEIGAlgorithm():
 
         try:
             dataSet = gdal.Open(inputSVF + "/svf.tif")
-            svf = dataSet.ReadAsArray().astype(float)
+            svf = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
             dataSet = gdal.Open(inputSVF + "/svfN.tif")
-            svfN = dataSet.ReadAsArray().astype(float)
+            svfN = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
             dataSet = gdal.Open(inputSVF + "/svfS.tif")
-            svfS = dataSet.ReadAsArray().astype(float)
+            svfS = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
             dataSet = gdal.Open(inputSVF + "/svfE.tif")
-            svfE = dataSet.ReadAsArray().astype(float)
+            svfE = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
             dataSet = gdal.Open(inputSVF + "/svfW.tif")
-            svfW = dataSet.ReadAsArray().astype(float)
+            svfW = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
 
             if usevegdem == 1:
                 dataSet = gdal.Open(inputSVF + "/svfveg.tif")
-                svfveg = dataSet.ReadAsArray().astype(float)
+                svfveg = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
                 dataSet = gdal.Open(inputSVF + "/svfNveg.tif")
-                svfNveg = dataSet.ReadAsArray().astype(float)
+                svfNveg = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
                 dataSet = gdal.Open(inputSVF + "/svfSveg.tif")
-                svfSveg = dataSet.ReadAsArray().astype(float)
+                svfSveg = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
                 dataSet = gdal.Open(inputSVF + "/svfEveg.tif")
-                svfEveg = dataSet.ReadAsArray().astype(float)
+                svfEveg = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
                 dataSet = gdal.Open(inputSVF + "/svfWveg.tif")
-                svfWveg = dataSet.ReadAsArray().astype(float)
+                svfWveg = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
 
                 dataSet = gdal.Open(inputSVF + "/svfaveg.tif")
-                svfaveg = dataSet.ReadAsArray().astype(float)
+                svfaveg = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
                 dataSet = gdal.Open(inputSVF + "/svfNaveg.tif")
-                svfNaveg = dataSet.ReadAsArray().astype(float)
+                svfNaveg = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
                 dataSet = gdal.Open(inputSVF + "/svfSaveg.tif")
-                svfSaveg = dataSet.ReadAsArray().astype(float)
+                svfSaveg = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
                 dataSet = gdal.Open(inputSVF + "/svfEaveg.tif")
-                svfEaveg = dataSet.ReadAsArray().astype(float)
+                svfEaveg = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
                 dataSet = gdal.Open(inputSVF + "/svfWaveg.tif")
-                svfWaveg = dataSet.ReadAsArray().astype(float)
+                svfWaveg = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
             else:
                 svfveg = cp.ones((rows, cols))
                 svfNveg = cp.ones((rows, cols))
@@ -422,9 +422,9 @@ class SOLWEIGAlgorithm():
                 svfWveg = cp.ones((rows, cols))
                 svfaveg = cp.ones((rows, cols))
                 svfNaveg = cp.ones((rows, cols))
-                svfSaveg = np.ones((rows, cols))
-                svfEaveg = np.ones((rows, cols))
-                svfWaveg = np.ones((rows, cols))
+                svfSaveg = cp.ones((rows, cols))
+                svfEaveg = cp.ones((rows, cols))
+                svfWaveg = cp.ones((rows, cols))
         except:
             raise Exception("SVF import error: The zipfile including the SVFs seems corrupt. Retry calcualting the SVFs in the Pre-processor or choose another file.")
 
@@ -445,7 +445,7 @@ class SOLWEIGAlgorithm():
         if whlayer_path is None:
             raise Exception("Error: No valid wall height raster layer is selected")
         gdal_wallheight = gdal.Open(whlayer_path)
-        wallheight = gdal_wallheight.ReadAsArray().astype(float)
+        wallheight = cp.array(gdal_wallheight.ReadAsArray().astype(float), dtype=cp.float32)
 
         vhsizex = wallheight.shape[0]
         vhsizey = wallheight.shape[1]
@@ -456,7 +456,7 @@ class SOLWEIGAlgorithm():
         if walayer_path is None:
             raise Exception("Error: No valid wall aspect raster layer is selected")
         gdal_wallaspect = gdal.Open(walayer_path)
-        wallaspect = gdal_wallaspect.ReadAsArray().astype(float)
+        wallaspect = cp.array(gdal_wallaspect.ReadAsArray().astype(float), dtype=cp.float32)
 
         vasizex = wallaspect.shape[0]
         vasizey = wallaspect.shape[1]
@@ -542,32 +542,33 @@ class SOLWEIGAlgorithm():
             psi[leafon == 0] = 0.5
             # amaxvalue
             vegmax = vegdsm.max()
-            amaxvalue = dsm.max() - dsm.min()
-            amaxvalue = np.maximum(amaxvalue, vegmax)
+            amaxvalue_dsm = dsm.max() - dsm.min()
+            amaxvalue = np.maximum(amaxvalue_dsm, vegmax)
 
             # Elevation vegdsms if buildingDEM includes ground heights
+            # TO DO: CHANGE THIS TO DTM!!!
             vegdsm = vegdsm + dsm
             vegdsm[vegdsm == dsm] = 0
             vegdsm2 = vegdsm2 + dsm
             vegdsm2[vegdsm2 == dsm] = 0
 
             # % Bush separation
-            bush = np.logical_not((vegdsm2 * vegdsm)) * vegdsm
+            bush = cp.logical_not((vegdsm2 * vegdsm)) * vegdsm
 
             svfbuveg = (svf - (1. - svfveg) * (1. - transVeg))  # % major bug fixed 20141203
         else:
             psi = leafon * 0. + 1.
             svfbuveg = svf
-            bush = np.zeros([rows, cols])
+            bush = cp.zeros([rows, cols])
             amaxvalue = 0
 
         # %Initialization of maps
-        Knight = np.zeros((rows, cols))
-        Tgmap1 = np.zeros((rows, cols))
-        Tgmap1E = np.zeros((rows, cols))
-        Tgmap1S = np.zeros((rows, cols))
-        Tgmap1W = np.zeros((rows, cols))
-        Tgmap1N = np.zeros((rows, cols))
+        Knight = cp.zeros((rows, cols))
+        Tgmap1 = cp.zeros((rows, cols))
+        Tgmap1E = cp.zeros((rows, cols))
+        Tgmap1S = cp.zeros((rows, cols))
+        Tgmap1W = cp.zeros((rows, cols))
+        Tgmap1N = cp.zeros((rows, cols))
         
         # building grid and land cover preparation
         # TO DO: MAYBE NOT HAVE HARD CODED?
@@ -582,7 +583,7 @@ class SOLWEIGAlgorithm():
         f.close()
         
         if demforbuild == 0:
-            buildings = np.copy(lcgrid)
+            buildings = cp.copy(lcgrid)
             buildings[buildings == 7] = 1
             buildings[buildings == 6] = 1
             buildings[buildings == 5] = 1
@@ -600,12 +601,12 @@ class SOLWEIGAlgorithm():
         # Import shadow matrices (Anisotropic sky)
         if folderPathPerez:  #UseAniso
             anisotropic_sky = 1
-            data = np.load(folderPathPerez)
+            data = cp.load(folderPathPerez)
             shmat = data['shadowmat']
             vegshmat = data['vegshadowmat']
             vbshvegshmat = data['vbshmat']
             if usevegdem == 1:
-                diffsh = np.zeros((rows, cols, shmat.shape[2]))
+                diffsh = cp.zeros((rows, cols, shmat.shape[2]))
                 for i in range(0, shmat.shape[2]):
                     diffsh[:, :, i] = shmat[:, :, i] - (1 - vegshmat[:, :, i]) * (1 - transVeg) # changes in psi not implemented yet
             else:
@@ -624,7 +625,7 @@ class SOLWEIGAlgorithm():
                 patch_option = 4 # patch_option = 4 # 612 patches
 
             # asvf to calculate sunlit and shaded patches
-            asvf = np.arccos(np.sqrt(svf))
+            asvf = cp.arccos(cp.sqrt(svf))
 
             anisotropic_feedback = "Sky divided into " + str(int(shmat.shape[2])) + " patches\n \
                                     Anisotropic sky for diffuse shortwave radiation (Perez et al., 1993) and longwave radiation (Martin & Berdahl, 1984)"
@@ -641,10 +642,10 @@ class SOLWEIGAlgorithm():
 
         # % Ts parameterisation maps
         if landcover == 1.:
-            if np.max(lcgrid) > 21 or np.min(lcgrid) < 1:
+            if cp.max(lcgrid) > 21 or cp.min(lcgrid) < 1:
                 raise Exception("The land cover grid includes integer values higher (or lower) than UMEP-formatted" 
                     "land cover grid (should be integer between 1 and 7). If other LC-classes should be included they also need to be included in landcoverclasses_2016a.txt")
-            if np.where(lcgrid) == 3 or np.where(lcgrid) == 4:
+            if cp.where(lcgrid) == 3 or cp.where(lcgrid) == 4:
                 raise Exception("The land cover grid includes values (decidouos and/or conifer) not appropriate for SOLWEIG-formatted land cover grid (should not include 3 or 4).")
 
             [TgK, Tstart, alb_grid, emis_grid, TgK_wall, Tstart_wall, TmaxLST, TmaxLST_wall] = Tgmaps_v1(lcgrid, lc_class)
@@ -739,7 +740,7 @@ class SOLWEIGAlgorithm():
                         vegdsm, vegdsm2, albedo_b, absK, absL, ewall, Fside, Fup, Fcyl, altitude[0][i],
                         azimuth[0][i], zen[0][i], jday[0][i], usevegdem, onlyglobal, buildings, location,
                         psi[0][i], landcover, lcgrid, dectime[i], altmax[0][i], wallaspect,
-                        wallheight, cyl, elvis, Ta[i], RH[i], radG[i], radD[i], radI[i], P[i], amaxvalue,
+                        wallheight, cyl, elvis, Ta[i], RH[i], radG[i], radD[i], radI[i], P[i], amaxvalue, amaxvalue_dsm,
                         bush, Twater, TgK, Tstart, alb_grid, emis_grid, TgK_wall, Tstart_wall, TmaxLST,
                         TmaxLST_wall, first, second, svfalfa, svfbuveg, firstdaytime, timeadd, timestepdec, 
                         Tgmap1, Tgmap1E, Tgmap1S, Tgmap1W, Tgmap1N, CI, TgOut1, diffsh, shmat, vegshmat, vbshvegshmat, 
@@ -788,16 +789,6 @@ class SOLWEIGAlgorithm():
                 saveraster(gdal_dsm, outputDir + '/Kdiff_' + str(int(YYYY[0, i])) + '_' + str(int(DOY[i]))
                                 + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', dRad)
 
-            # if outputSstr:
-            #     saveraster(gdal_dsm, outputDir + '/Sstr_' + str(int(YYYY[0, i])) + '_' + str(int(DOY[i]))
-            #                     + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', Sstr)
-
-            # Sky view image of patches
-            # if ((anisotropic_sky == 1) & (i == 0) & (not poisxy is None)):
-            #         for k in range(poisxy.shape[0]):
-            #             Lsky_patch_characteristics[:,2] = patch_characteristics[:,k]
-            #             skyviewimage_out = outputDir + '/POI_' + str(poiname[k]) + '.png'
-            #             PolarBarPlot(Lsky_patch_characteristics, altitude[0][i], azimuth[0][i], 'Hemisphere partitioning', skyviewimage_out, 0, 5, 0)
 
         # Save files for Tree Planter
         if outputTreeplanter:

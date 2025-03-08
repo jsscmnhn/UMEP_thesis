@@ -51,15 +51,6 @@ import string
 import random
 from shutil import copyfile
 
-def plot_array(array, title):
-    plt.figure(figsize=(10, 8))
-    plt.imshow(array, cmap='gray')
-    plt.colorbar()
-    plt.title(title)
-    plt.axis('off')
-    plt.show()
-
-
 class SOLWEIGAlgorithm():
     """
     A class to process the SOLWEIG algorithm inputs.

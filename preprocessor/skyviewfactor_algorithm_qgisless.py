@@ -409,11 +409,8 @@ class ProcessingSkyViewFactorAlgorithm():
                 shmat = ret["shmat"].get()
                 vegshmat = ret["vegshmat"].get()
                 vbshvegshmat = ret["vbshvegshmat"].get()
-                # wallshmat = ret["wallshmat"]
-                # wallsunmat = ret["wallsunmat"]
-                # wallshvemat = ret["wallshvemat"]
-                # facesunmat = ret["facesunmat"]
 
+                # TO DO: SOMETHING WITH THIS
                 np.savez_compressed(outputDir + '/' + "shadowmats.npz", shadowmat=shmat, vegshadowmat=vegshmat,
                                     vbshmat=vbshvegshmat)  # ,
                 # vbshvegshmat=vbshvegshmat, wallshmat=wallshmat, wallsunmat=wallsunmat,

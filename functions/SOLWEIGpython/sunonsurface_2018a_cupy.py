@@ -1,4 +1,5 @@
 import numpy as np
+import cupy as cp
 
 def sunonsurface_2018a(azimuthA, scale, buildings, shadow, sunwall, first, second, aspect, walls, Tg, Tgwall, Ta,
                        emis_grid, ewall, alb_grid, SBC, albedo_b, Twater, lc_grid, landcover):
@@ -6,15 +7,15 @@ def sunonsurface_2018a(azimuthA, scale, buildings, shadow, sunwall, first, secon
     # Lup and albedo based on landcover information and shadow patterns.
     # Fredrik Lindberg, fredrikl@gvc.gu.se
 
-    sizex = np.shape(walls)[0]
-    sizey = np.shape(walls)[1]
+    sizex = walls.shape[0]
+    sizey = walls.shape[1]
 
     # sizex=size(buildings,1);sizey=size(buildings,2);
     wallbol = (walls > 0) * 1
     sunwall[sunwall > 0] = 1  # test 20160910
 
     # conversion into radians
-    azimuth = azimuthA * (np.pi / 180)
+    azimuthA *= (np.pi / 180)
 
     # loop parameters
     index = 0
@@ -33,50 +34,51 @@ def sunonsurface_2018a(azimuthA, scale, buildings, shadow, sunwall, first, secon
     # dy=0;
     # ds=0; ##ok<NASGU>
 
-    tempsh = np.zeros((sizex, sizey))
-    tempbu = np.zeros((sizex, sizey))
-    tempbub = np.zeros((sizex, sizey))
-    tempbubwall = np.zeros((sizex, sizey))
-    tempwallsun = np.zeros((sizex, sizey))
-    weightsumsh = np.zeros((sizex, sizey))
+    tempsh = cp.zeros((sizex, sizey))
+    tempbu = cp.zeros((sizex, sizey))
+    tempbub = cp.zeros((sizex, sizey))
+    tempbubwall = cp.zeros((sizex, sizey))
+    tempwallsun = cp.zeros((sizex, sizey))
+    weightsumsh = cp.zeros((sizex, sizey))
     weightsumwall = np.zeros((sizex, sizey))
     first = np.round(first * scale)
     if first < 1:
         first = 1
     second = np.round(second * scale)
     # tempTgsh=tempsh;
-    weightsumLupsh = np.zeros((sizex, sizey))
-    weightsumLwall = np.zeros((sizex, sizey))
-    weightsumalbsh = np.zeros((sizex, sizey))
-    weightsumalbwall = np.zeros((sizex, sizey))
-    weightsumalbnosh = np.zeros((sizex, sizey))
-    weightsumalbwallnosh = np.zeros((sizex, sizey))
-    tempLupsh = np.zeros((sizex, sizey))
-    tempalbsh = np.zeros((sizex, sizey))
-    tempalbnosh = np.zeros((sizex, sizey))
+    weightsumLupsh = cp.zeros((sizex, sizey))
+    weightsumLwall = cp.zeros((sizex, sizey))
+    weightsumalbsh = cp.zeros((sizex, sizey))
+    weightsumalbwall = cp.zeros((sizex, sizey))
+    weightsumalbnosh = cp.zeros((sizex, sizey))
+    weightsumalbwallnosh = cp.zeros((sizex, sizey))
+    tempLupsh = cp.zeros((sizex, sizey))
+    tempalbsh = cp.zeros((sizex, sizey))
+    tempalbnosh = cp.zeros((sizex, sizey))
 
     # other loop parameters
     pibyfour = np.pi / 4
     threetimespibyfour = 3 * pibyfour
     fivetimespibyfour = 5 * pibyfour
     seventimespibyfour = 7 * pibyfour
-    sinazimuth = np.sin(azimuth)
-    cosazimuth = np.cos(azimuth)
-    tanazimuth = np.tan(azimuth)
+    sinazimuth = np.sin(azimuthA)
+    cosazimuth = np.cos(azimuthA)
+    tanazimuth = np.tan(azimuthA)
     signsinazimuth = np.sign(sinazimuth)
     signcosazimuth = np.sign(cosazimuth)
 
+    isVert = ((pibyfour <= azimuthA) & (azimuthA < threetimespibyfour)) | \
+             ((fivetimespibyfour <= azimuthA) & (azimuthA < seventimespibyfour))
+
+
     ## The Shadow casting algoritm
     for n in np.arange(0, second):
-        if (pibyfour <= azimuth and azimuth < threetimespibyfour) or (
-                fivetimespibyfour <= azimuth and azimuth < seventimespibyfour):
+        if isVert:
             dy = signsinazimuth * index
             dx = -1 * signcosazimuth * np.abs(np.round(index / tanazimuth))
-            # ds = dssin
         else:
             dy = signsinazimuth * abs(round(index * tanazimuth))
             dx = -1 * signcosazimuth * index
-            # ds = dscos
 
         absdx = np.abs(dx)
         absdy = np.abs(dy)
@@ -98,7 +100,7 @@ def sunonsurface_2018a(azimuthA, scale, buildings, shadow, sunwall, first, secon
         tempalbsh[int(xp1):int(xp2), int(yp1):int(yp2)] = albshadow[int(xc1):int(xc2),
                                                           int(yc1):int(yc2)]  # moving Albedo/shadow
         tempalbnosh[int(xp1):int(xp2), int(yp1):int(yp2)] = alb[int(xc1):int(xc2), int(yc1):int(yc2)]  # moving Albedo
-        f = np.min([f, tempbu], axis=0)  # utsmetning av buildings
+        f = cp.min([f, tempbu], axis=0)  # utsmetning av buildings
 
         shadow2 = tempsh * f
         weightsumsh = weightsumsh + shadow2
@@ -146,18 +148,18 @@ def sunonsurface_2018a(azimuthA, scale, buildings, shadow, sunwall, first, secon
     # gvf2(gvf2>1)=1;
 
     # Removing walls in shadow due to selfshadowing
-    azilow = azimuth - np.pi / 2
-    azihigh = azimuth + np.pi / 2
+    azilow = azimuthA - np.pi / 2
+    azihigh = azimuthA + np.pi / 2
     if azilow >= 0 and azihigh < 2 * np.pi:  # 90 to 270  (SHADOW)
-        facesh = (np.logical_or(aspect < azilow, aspect >= azihigh).astype(float) - wallbol + 1)
+        facesh = (cp.logical_or(aspect < azilow, aspect >= azihigh).astype(float) - wallbol + 1)
     elif azilow < 0 and azihigh <= 2 * np.pi:  # 0 to 90
         azilow = azilow + 2 * np.pi
-        facesh = np.logical_or(aspect > azilow, aspect <= azihigh) * -1 + 1  # (SHADOW)    # check for the -1
+        facesh = cp.logical_or(aspect > azilow, aspect <= azihigh) * -1 + 1  # (SHADOW)    # check for the -1
     elif azilow > 0 and azihigh >= 2 * np.pi:  # 270 to 360
         azihigh = azihigh - 2 * np.pi
-        facesh = np.logical_or(aspect > azilow, aspect <= azihigh) * -1 + 1  # (SHADOW)
+        facesh = cp.logical_or(aspect > azilow, aspect <= azihigh) * -1 + 1  # (SHADOW)
 
-    # removing walls in self shadoing
+    # removing walls in self shadowing
     keep = (weightsumwall == second) - facesh
     keep[keep == -1] = 0
 
