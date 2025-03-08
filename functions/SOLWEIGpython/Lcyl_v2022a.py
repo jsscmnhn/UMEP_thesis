@@ -1,7 +1,7 @@
 import numpy as np
 from copy import deepcopy
 from . import emissivity_models
-from . import patch_characteristics
+from . import patch_characteristics_cupy
 
 ''' This function combines the method to divide the sky vault into patches (Tregenza (1987) and Robinson & Stone (2004)) 
     and the approach by Unsworth & Monteith or Martin & Berdahl (1984) or Bliss (1961) to calculate emissivities of the 
@@ -81,7 +81,7 @@ def Lcyl_v2022a(esky, sky_patches, Ta, Tgwall, ewall, Lup, shmat, vegshmat, vbsh
 
     # Estimate longwave radiation in each patch based on patch characteristics, i.e. sky, vegetation or building (shaded or sunlit)
     Ldown, Lside, Lside_sky, Lside_veg, Lside_sh, Lside_sun, Lside_ref, \
-            Least_, Lwest_, Lnorth_, Lsouth_ = patch_characteristics.define_patch_characteristics(solar_altitude, solar_azimuth, 
+            Least_, Lwest_, Lnorth_, Lsouth_ = patch_characteristics_cupy.define_patch_characteristics(solar_altitude, solar_azimuth,
                                  patch_altitude, patch_azimuth, steradian,
                                  asvf,
                                  shmat, vegshmat, vbshvegshmat,

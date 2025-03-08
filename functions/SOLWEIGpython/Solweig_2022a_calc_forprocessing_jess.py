@@ -17,18 +17,8 @@ from functions.SOLWEIGpython.UTIL.create_patches import create_patches
 
 # Anisotropic longwave
 from .Lcyl_v2022a import Lcyl_v2022a
-from .Lside_veg_v2022a import Lside_veg_v2022a
+from .Lside_veg_v2022a_cupy import Lside_veg_v2022a
 from copy import deepcopy
-
-
-def plot_array(array, title):
-    plt.figure(figsize=(10, 8))
-    plt.imshow(array, cmap='gray')
-    plt.colorbar()
-    plt.title(title)
-    plt.axis('off')
-    plt.show()
-
 
 def Solweig_2022a_calc(i, dsm, scale, rows, cols, svf, svfN, svfW, svfE, svfS, svfveg, svfNveg, svfEveg, svfSveg,
                        svfWveg, svfaveg, svfEaveg, svfSaveg, svfWaveg, svfNaveg, vegdem, vegdem2, albedo_b, absK, absL,
@@ -114,8 +104,6 @@ def Solweig_2022a_calc(i, dsm, scale, rows, cols, svf, svfN, svfW, svfE, svfS, s
     msteg = 46.5 * (ea / (Ta + 273.15))
     esky = (1 - (1 + msteg) * np.exp(-((1.2 + 3.0 * msteg) ** 0.5))) + elvis  # -0.04 old error from Jonsson et al.2006
 
-    plot_array(dirwalls, "walls before algo")
-
     if altitude > 0: # # # # # # DAYTIME # # # # # #
         # Clearness Index on Earth's surface after Crawford and Dunchon (1999) with a correction
         #  factor for low sun elevations after Lindberg et al.(2008)
@@ -139,7 +127,7 @@ def Solweig_2022a_calc(i, dsm, scale, rows, cols, svf, svfN, svfW, svfE, svfS, s
             # Relative luminance
             lv, pc_, pb_ = Perez_v3(zenDeg, azimuth, radD, radI, jday, patchchoice, patch_option)   
             # Total relative luminance from sky, i.e. from each patch, into each cell
-            aniLum = np.zeros((rows, cols))
+            aniLum = cp.zeros((rows, cols))
             for idx in range(lv.shape[0]):
                 aniLum += diffsh[:,:,idx] * lv[idx,2]     
 
@@ -153,7 +141,7 @@ def Solweig_2022a_calc(i, dsm, scale, rows, cols, svf, svfN, svfW, svfE, svfS, s
 
         # Shadow  images
         if usevegdem == 1:
-            vegsh, sh, _, wallsh, wallsun, wallshve, _, facesun = shadowingfunction_wallheight_23(dsm, vegdem, vegdem2,
+            vegsh, sh, wallsh, wallsun, wallshve, _, facesun = shadowingfunction_wallheight_23(dsm, vegdem, vegdem2,
                                         azimuth, altitude, scale, amaxvalue, bush, walls, dirwalls * np.pi / 180.)
             shadow = sh - (1 - vegsh) * (1 - psi)
         else:
@@ -303,14 +291,14 @@ def Solweig_2022a_calc(i, dsm, scale, rows, cols, svf, svfN, svfW, svfE, svfS, s
         Ldown, Lside, Least_, Lwest_, Lnorth_, Lsouth_ \
                   = Lcyl_v2022a(esky, L_patches, Ta, Tgwall, ewall, Lup, shmat, vegshmat, vbshvegshmat, 
                                 altitude, azimuth, rows, cols, asvf)
-    # CHECKPOINT
+
     else:
         Ldown = (svf + svfveg - 1) * esky * SBC * ((Ta + 273.15) ** 4) + (2 - svfveg - svfaveg) * ewall * SBC * \
                     ((Ta + 273.15) ** 4) + (svfaveg - svf) * ewall * SBC * ((Ta + 273.15 + Tgwall) ** 4) + \
                     (2 - svf - svfveg) * (1 - ewall) * esky * SBC * ((Ta + 273.15) ** 4)  # Jonsson et al.(2006)
         # Ldown = Ldown - 25 # Shown by Jonsson et al.(2006) and Duarte et al.(2006)
 
-        Lside = np.zeros((rows, cols))
+        Lside = cp.zeros((rows, cols))
         L_patches = None
  
         if CI < 0.95:  # non - clear conditions
@@ -346,7 +334,7 @@ def Solweig_2022a_calc(i, dsm, scale, rows, cols, svf, svfN, svfW, svfE, svfS, s
         Sstr = absK * ((Kdown + Kup) * Fup + (Knorth + Keast + Ksouth + Kwest) * Fside) + absL * \
                         ((Ldown + Lup) * Fup + (Lnorth + Least + Lsouth + Lwest) * Fside)
 
-    Tmrt = np.sqrt(np.sqrt((Sstr / (absL * SBC)))) - 273.2
+    Tmrt = cp.sqrt(cp.sqrt((Sstr / (absL * SBC)))) - 273.2
 
     # Add longwave to cardinal directions for output in POI
     if (cyl == 1) and (anisotropic_sky == 1):

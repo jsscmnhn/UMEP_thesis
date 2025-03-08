@@ -268,7 +268,7 @@ class SOLWEIGAlgorithm():
             lat = lonlat[1] #changed to gdal 2
         scale = 1 / geotransform[1]
 
-        alt = cp.median(dsm)
+        alt = cp.median(dsm).get()
         if alt < 0:
             alt = 3
         print('Longitude derived from DSM: ' + str(lon))
@@ -370,7 +370,8 @@ class SOLWEIGAlgorithm():
             else:
                 demraise = 0
 
-            alt = np.median(dem)
+            alt = cp.median(dem).get()
+            print(type(alt))
             if alt > 0:
                 alt = 3.
 
@@ -575,7 +576,7 @@ class SOLWEIGAlgorithm():
         sitein = "landcoverclasses_2016a.txt"
         f = open(sitein)
         lin = f.readlines()
-        lc_class = np.zeros((lin.__len__() - 1, 6))
+        lc_class = cp.zeros((lin.__len__() - 1, 6))
         for i in range(1, lin.__len__()):
             lines = lin[i].split()
             for j in np.arange(1, 7):
@@ -596,7 +597,7 @@ class SOLWEIGAlgorithm():
             buildings[buildings >= 2.] = 0.
 
         if saveBuild:
-            saveraster(gdal_dsm, outputDir + '/buildings.tif', buildings)
+            saveraster(gdal_dsm, outputDir + '/buildings.tif', buildings.get())
 
         # Import shadow matrices (Anisotropic sky)
         if folderPathPerez:  #UseAniso
@@ -687,8 +688,8 @@ class SOLWEIGAlgorithm():
         # Main function
         print("Executing main model")
     
-        tmrtplot = np.zeros((rows, cols))
-        TgOut1 = np.zeros((rows, cols))
+        tmrtplot = cp.zeros((rows, cols))
+        TgOut1 = cp.zeros((rows, cols))
 
         # Initiate array for I0 values
         if np.unique(DOY).shape[0] > 1:
@@ -729,7 +730,7 @@ class SOLWEIGAlgorithm():
                     CI = 1.
 
             # radI[i] = radI[i]/np.sin(altitude[0][i] * np.pi/180)
-
+            print(i, " ", f"{altitude[0][i]}, {azimuth[0][i]}, {zen[0][i]}")
             Tmrt, Kdown, Kup, Ldown, Lup, Tg, ea, esky, I0, CI, shadow, firstdaytime, timestepdec, timeadd, \
                     Tgmap1, Tgmap1E, Tgmap1S, Tgmap1W, Tgmap1N, Keast, Ksouth, Kwest, Knorth, Least, \
                     Lsouth, Lwest, Lnorth, KsideI, TgOut1, TgOut, radIout, radDout, \
@@ -750,7 +751,7 @@ class SOLWEIGAlgorithm():
             if i < first_unique_day.shape[0]:
                 I0_array[i] = I0
 
-            tmrtplot = tmrtplot + Tmrt
+            tmrtplot += Tmrt
 
             if altitude[0][i] > 0:
                 w = 'D'
@@ -768,26 +769,26 @@ class SOLWEIGAlgorithm():
 
             if outputTmrt:
                 saveraster(gdal_dsm, outputDir + '/Tmrt_' + str(int(YYYY[0, i])) + '_' + str(int(DOY[i]))
-                                + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', Tmrt)
+                                + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', Tmrt.get())
             if outputKup:
                 saveraster(gdal_dsm, outputDir + '/Kup_' + str(int(YYYY[0, i])) + '_' + str(int(DOY[i]))
-                                + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', Kup)
+                                + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', Kup.get())
             if outputKdown:
                 saveraster(gdal_dsm, outputDir + '/Kdown_' + str(int(YYYY[0, i])) + '_' + str(int(DOY[i]))
-                                + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', Kdown)
+                                + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', Kdown.get())
             if outputLup:
                 saveraster(gdal_dsm, outputDir + '/Lup_' + str(int(YYYY[0, i])) + '_' + str(int(DOY[i]))
-                                + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', Lup)
+                                + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', Lup.get())
             if outputLdown:
                 saveraster(gdal_dsm, outputDir + '/Ldown_' + str(int(YYYY[0, i])) + '_' + str(int(DOY[i]))
-                                + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', Ldown)
+                                + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', Ldown.get())
             if outputSh:
                 saveraster(gdal_dsm, outputDir + '/Shadow_' + str(int(YYYY[0, i])) + '_' + str(int(DOY[i]))
-                                + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', shadow)
+                                + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', shadow.get())
                 
             if outputKdiff:
                 saveraster(gdal_dsm, outputDir + '/Kdiff_' + str(int(YYYY[0, i])) + '_' + str(int(DOY[i]))
-                                + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', dRad)
+                                + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', dRad.get())
 
 
         # Save files for Tree Planter
@@ -825,7 +826,7 @@ class SOLWEIGAlgorithm():
         copyfile(inputMet, outputDir + '/metforcing.txt')
         
         tmrtplot = tmrtplot / Ta.__len__()  # fix average Tmrt instead of sum, 20191022
-        saveraster(gdal_dsm, outputDir + '/Tmrt_average.tif', tmrtplot)
+        saveraster(gdal_dsm, outputDir + '/Tmrt_average.tif', tmrtplot.get())
         print("SOLWEIG: Model calculation finished.")
 
         rmtree(self.temp_dir, ignore_errors=True)  
@@ -840,11 +841,11 @@ INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
 INPUT_HEIGHT = "D:/Geomatics/thesis/heattryout/preprocess/wallheight.tif"
 INPUT_ASPECT = "D:/Geomatics/thesis/heattryout/preprocess/wallaspect.tif"
 UTC = 1
-OUTPUT_DIR = "D:/Geomatics/thesis/codetest2"
+OUTPUT_DIR = "D:/Geomatics/thesis/codetest2_cupy_ani"
 INPUT_MET = "D:/Geomatics/thesis/heattryout/preprocess/climatedata/UMEPclimate_oneday.txt"
 
 
-test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET, INPUT_LC=INPUT_LC)
+test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET, INPUT_LC=INPUT_LC, INPUT_ANISO=INPUT_ANISO)
 
 with cProfile.Profile() as profiler:
     test.processAlgorithm()
@@ -854,4 +855,4 @@ stats = pstats.Stats(profiler)
 stats.sort_stats('cumulative')  # Sort by cumulative time
 stats.print_stats(20)  # Display the top 20 results
 
-stats.dump_stats("profile_results2.prof")
+stats.dump_stats("profile_results_cupy_ani.prof")

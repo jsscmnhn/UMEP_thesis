@@ -3,7 +3,7 @@ import cupy as cp
 
 def cylindric_wedge(zen, svfalfa, rows, cols):
 
-    cp.seterr(divide='ignore', invalid='ignore')
+    np.seterr(divide='ignore', invalid='ignore')
 
     # Fraction of sunlit walls based on sun altitude and svf wieghted building angles
     # input: 

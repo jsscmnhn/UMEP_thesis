@@ -2,7 +2,7 @@ from __future__ import absolute_import
 import numpy as np
 import cupy as cp
 from .Kvikt_veg import Kvikt_veg
-from functions import sunlit_shaded_patches
+from .sunlit_shaded_patches import shaded_or_sunlit
 
 def Kside_veg_v2022a(radI,radD,radG,
                     shadow,svfS,svfW,svfN,svfE,svfEveg,svfSveg,svfWveg,svfNveg,
@@ -135,7 +135,7 @@ def Kside_veg_v2022a(radI,radD,radG,
                 temp_vbsh = (1 - shmat[:,:,idx]) * vbshvegshmat[:,:,idx]
                 temp_sh = (temp_vbsh == 1) # & (vbshvegshmat[:,:,idx] == 1)
 
-                sunlit_patches, shaded_patches = sunlit_shaded_patches.shaded_or_sunlit(altitude, azimuth, patch_altitude[idx], patch_azimuth[idx], asvf)
+                sunlit_patches, shaded_patches = shaded_or_sunlit(altitude, azimuth, patch_altitude[idx], patch_azimuth[idx], asvf)
                 Kref_sun += sunlit_surface * sunlit_patches * temp_sh * steradian[idx] * np.cos(patch_altitude[idx] * deg2rad)
                 Kref_sh += shaded_surface * shaded_patches * temp_sh * steradian[idx] * np.cos(patch_altitude[idx] * deg2rad)
 

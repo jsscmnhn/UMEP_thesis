@@ -40,7 +40,7 @@ def sunonsurface_2018a(azimuthA, scale, buildings, shadow, sunwall, first, secon
     tempbubwall = cp.zeros((sizex, sizey))
     tempwallsun = cp.zeros((sizex, sizey))
     weightsumsh = cp.zeros((sizex, sizey))
-    weightsumwall = np.zeros((sizex, sizey))
+    weightsumwall = cp.zeros((sizex, sizey))
     first = np.round(first * scale)
     if first < 1:
         first = 1
@@ -100,7 +100,7 @@ def sunonsurface_2018a(azimuthA, scale, buildings, shadow, sunwall, first, secon
         tempalbsh[int(xp1):int(xp2), int(yp1):int(yp2)] = albshadow[int(xc1):int(xc2),
                                                           int(yc1):int(yc2)]  # moving Albedo/shadow
         tempalbnosh[int(xp1):int(xp2), int(yp1):int(yp2)] = alb[int(xc1):int(xc2), int(yc1):int(yc2)]  # moving Albedo
-        f = cp.min([f, tempbu], axis=0)  # utsmetning av buildings
+        f = cp.min(cp.stack([f, tempbu]), axis=0)  # utsmetning av buildings
 
         shadow2 = tempsh * f
         weightsumsh = weightsumsh + shadow2
@@ -120,9 +120,9 @@ def sunonsurface_2018a(azimuthA, scale, buildings, shadow, sunwall, first, secon
         tempbwall = f * -1 + 1
         tempbub = ((tempb + tempbub) > 0) * 1
         tempbubwall = ((tempbwall + tempbubwall) > 0) * 1
-        weightsumLwall = weightsumLwall + tempbub * Lwall
-        weightsumalbwall = weightsumalbwall + tempbub * albedo_b
-        weightsumwall = weightsumwall + tempbub
+        weightsumLwall += tempbub * Lwall
+        weightsumalbwall += tempbub * albedo_b
+        weightsumwall += tempbub
         weightsumalbwallnosh = weightsumalbwallnosh + tempbubwall * albedo_b
 
         ind = 1

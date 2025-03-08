@@ -243,7 +243,6 @@ def plot_array(array, title):
 #
 #     return vegsh, sh, vbshvegsh, wallsh, wallsun, wallshve, facesh, facesun
 
-@profile
 def shadowingfunction_wallheight_23(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, bush, walls, aspect):
     # conversion
     degrees = np.pi / 180.
@@ -382,6 +381,9 @@ def shadowingfunction_wallheight_23(a, vegdem, vegdem2, azimuth, altitude, scale
     wallshve[id] = 0
     wallsun[id] = 0
 
+    saveraster(gdal_dsm, folder + f"SH_{i}.tif", sh.get())
+    saveraster(gdal_dsm, folder + f"vegsh_{i}.tif", vegsh.get())
+
     return vegsh, sh, wallsh, wallsun, wallshve, facesh, facesun
 
 
@@ -404,6 +406,7 @@ gdal_vegdsm = gdal.Open(INPUT_CDSM)
 vegdsm = cp.array(gdal_vegdsm.ReadAsArray().astype(float), dtype=cp.float32)
 # vegdsm = gdal_vegdsm.ReadAsArray().astype(float)
 vegdsm2 = vegdsm * 0.25
+scale = 2
 
 if dsm.min() < 0:
     dsmraise = cp.abs(dsm.min())
@@ -427,10 +430,33 @@ vegdsm2[vegdsm2 == dsm] = 0
 # % Bush separation
 # bush = np.logical_not((vegdsm2 * vegdsm)) * vegdsm
 bush = cp.logical_not((vegdsm2 * vegdsm)) * vegdsm
-azimuth = 135
-altitude = 8
-scale = 2
+azimuth_altitude_pairs = [
+    (1.0, 50.01779819955806),
+    (7.648368565989529, 61.58371657769966),
+    (16.016519674811136, 72.74824421305907),
+    (24.947913354435443, 83.96328707022865),
+    (34.07701005698726, 95.8596089976628),
+    (42.99176144519088, 109.35570605958486),
+    (51.098147374599954, 125.81604248965994),
+    (57.42733050284383, 146.94411459739555),
+    (60.568730627457796, 173.2142247420149),
+    (59.429146124409456, 200.90784863329756),
+    (54.44413958470721, 224.65690050058242),
+    (47.03960009151508, 243.1607533985618),
+    (38.418890296336116, 257.8809553227283),
+    (29.330132175084984, 270.4075796599285),
+    (20.252671501603047, 281.85618205789103),
+    (11.559307633362977, 292.9778828898551),
+    (3.6586240011030924, 304.30261187923475),
+]
 
-folder = "D:/Geomatics/thesis/wallheight23/firstrunog/"
 
-shadowingfunction_wallheight_23(dsm, vegdsm, vegdsm2, azimuth, altitude, scale, amaxvalue, bush, wheight, (waspect) * np.pi / 180.)
+
+folder = "D:/Geomatics/thesis/wallheight23/shadowcheck/"
+
+for i, (altitude, azimuth) in enumerate(azimuth_altitude_pairs):
+    output_filename = f"{folder}shadow_result_{i}.tif"  # Modify based on desired output format
+    print(f"Processing azimuth {azimuth}, altitude {altitude}, saving to {output_filename}")
+
+    shadowingfunction_wallheight_23(dsm, vegdsm, vegdsm2, azimuth, altitude, scale, amaxvalue, bush, wheight,
+                                    (waspect) * np.pi / 180.)
