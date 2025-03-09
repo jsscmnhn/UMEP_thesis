@@ -258,6 +258,9 @@ def shadowingfunction_wallheight_23(a, vegdem, vegdem2, azimuth, altitude, scale
     temp = cp.full((sizex, sizey), np.nan, dtype=cp.float32)
     tempvegdem = cp.copy(temp)
     tempvegdem2 = cp.full((sizex, sizey), np.nan, dtype=cp.float32)
+    templastfabovea = cp.zeros((sizex, sizey))
+    templastgabovea = cp.zeros((sizex, sizey))
+
     bushplant = bush > 1.0
     sh = cp.zeros((sizex, sizey), dtype=cp.float32)
 
@@ -290,8 +293,13 @@ def shadowingfunction_wallheight_23(a, vegdem, vegdem2, azimuth, altitude, scale
     else:
         ds = dscos
 
+    print("dssin = ", dssin)
+    print("dscos = ", dscos)
+    print(isVert)
+
     preva = a - ds * tanaltitudebyscale
     index = 0.0
+    dzprev = 0.0
 
     # main loop
     while (amaxvalue >= dz) and (np.abs(dx) < sizex) and (np.abs(dy) < sizey):
@@ -307,6 +315,9 @@ def shadowingfunction_wallheight_23(a, vegdem, vegdem2, azimuth, altitude, scale
         tempvegdem.fill(np.nan)
         tempvegdem2.fill(np.nan)
         temp.fill(0.0)
+        templastfabovea[0:sizex, 0:sizey] = 0.
+        templastgabovea[0:sizex, 0:sizey] = 0.
+
 
         absdx = np.abs(dx)
         absdy = np.abs(dy)
@@ -327,8 +338,12 @@ def shadowingfunction_wallheight_23(a, vegdem, vegdem2, azimuth, altitude, scale
         sh = cp.where(f > a, 1.0, 0.0)
         tempvegdem[xp1:xp2, yp1:yp2] = vegdem[xc1:xc2, yc1:yc2] - dz
         fabovea = tempvegdem > a
+        # templastfabovea[xp1:xp2, yp1:yp2] = vegdem[xc1:xc2, yc1:yc2]-dzprev
+        # templastgabovea[xp1:xp2, yp1:yp2] = vegdem2[xc1:xc2, yc1:yc2]-dzprev
         lastfabovea = tempvegdem > preva
 
+        # lastfabovea = templastfabovea > a
+        # lastgabovea = templastgabovea > a
         tempvegdem2[xp1:xp2, yp1:yp2] = vegdem2[xc1:xc2, yc1:yc2] - dz
         gabovea = tempvegdem2 > a
         lastgabovea = tempvegdem2 > preva
@@ -342,7 +357,9 @@ def shadowingfunction_wallheight_23(a, vegdem, vegdem2, azimuth, altitude, scale
         vegsh = cp.fmax(vegsh, vegsh2)
         vegsh = cp.where(vegsh * sh > 0.0, 0.0, vegsh)
 
+        dzprev = dz
         index += 1.0
+        print(f' round:{i} index: {index} prev: {dzprev}')
 
     # Removing walls in shadow due to selfshadowing
     azilow = azimuth - np.pi / 2
@@ -381,8 +398,8 @@ def shadowingfunction_wallheight_23(a, vegdem, vegdem2, azimuth, altitude, scale
     wallshve[id] = 0
     wallsun[id] = 0
 
-    saveraster(gdal_dsm, folder + f"SH_{i}.tif", sh.get())
-    saveraster(gdal_dsm, folder + f"vegsh_{i}.tif", vegsh.get())
+    # saveraster(gdal_dsm, folder + f"SH_{i}.tif", sh.get())
+    # saveraster(gdal_dsm, folder + f"vegsh_{i}_higher.tif", vegsh.get())
 
     return vegsh, sh, wallsh, wallsun, wallshve, facesh, facesun
 
@@ -430,29 +447,35 @@ vegdsm2[vegdsm2 == dsm] = 0
 # % Bush separation
 # bush = np.logical_not((vegdsm2 * vegdsm)) * vegdsm
 bush = cp.logical_not((vegdsm2 * vegdsm)) * vegdsm
+# azimuth_altitude_pairs = [
+#     (1.0, 50.01779819955806),
+#     (7.648368565989529, 61.58371657769966),
+#     (16.016519674811136, 72.74824421305907),
+#     (24.947913354435443, 83.96328707022865),
+#     (34.07701005698726, 95.8596089976628),
+#     (42.99176144519088, 109.35570605958486),
+#     (51.098147374599954, 125.81604248965994),
+#     (57.42733050284383, 146.94411459739555),
+#     (60.568730627457796, 173.2142247420149),
+#     (59.429146124409456, 200.90784863329756),
+#     (54.44413958470721, 224.65690050058242),
+#     (47.03960009151508, 243.1607533985618),
+#     (38.418890296336116, 257.8809553227283),
+#     (29.330132175084984, 270.4075796599285),
+#     (20.252671501603047, 281.85618205789103),
+#     (11.559307633362977, 292.9778828898551),
+#     (3.6586240011030924, 304.30261187923475),
+# ]
+
 azimuth_altitude_pairs = [
-    (1.0, 50.01779819955806),
-    (7.648368565989529, 61.58371657769966),
-    (16.016519674811136, 72.74824421305907),
-    (24.947913354435443, 83.96328707022865),
-    (34.07701005698726, 95.8596089976628),
-    (42.99176144519088, 109.35570605958486),
-    (51.098147374599954, 125.81604248965994),
-    (57.42733050284383, 146.94411459739555),
-    (60.568730627457796, 173.2142247420149),
-    (59.429146124409456, 200.90784863329756),
-    (54.44413958470721, 224.65690050058242),
-    (47.03960009151508, 243.1607533985618),
-    (38.418890296336116, 257.8809553227283),
-    (29.330132175084984, 270.4075796599285),
-    (20.252671501603047, 281.85618205789103),
-    (11.559307633362977, 292.9778828898551),
-    (3.6586240011030924, 304.30261187923475),
+    (85, 180),
+    (65, 180),
+    (65, 270)
 ]
 
 
 
-folder = "D:/Geomatics/thesis/wallheight23/shadowcheck/"
+folder = "D:/Geomatics/thesis/wallheight23/shadowcheck_dsmraise/"
 
 for i, (altitude, azimuth) in enumerate(azimuth_altitude_pairs):
     output_filename = f"{folder}shadow_result_{i}.tif"  # Modify based on desired output format

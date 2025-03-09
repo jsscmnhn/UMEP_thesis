@@ -80,7 +80,7 @@ class SOLWEIGAlgorithm():
     """
 
     def __init__(self, INPUT_DSM, INPUT_SVF, INPUT_CDSM,  INPUT_HEIGHT, INPUT_ASPECT,
-                 UTC, OUTPUT_DIR, INPUT_MET, INPUT_LC=None,  INPUT_DEM=None, INPUT_ANISO=None,
+                 UTC, OUTPUT_DIR, INPUT_MET, INPUT_EXTRAHEIGHT=6, INPUT_LC=None,  INPUT_DEM=None, INPUT_ANISO=None,
                  CONIFER_TREES=False, INPUT_THEIGHT=25, INPUT_TDSM=None, TRANS_VEG=3, LEAF_START=97, LEAF_END=300,
                  USE_LC_BUILD=True, SAVE_BUILD=False, ALBEDO_WALLS=0.2, ALBEDO_GROUND=0.15,
                  EMIS_WALLS=0.9, EMIS_GROUND=0.95, ABS_S=0.7, ABS_L=0.95, POSTURE=0,  ONLYGLOBAL=True,
@@ -103,6 +103,7 @@ class SOLWEIGAlgorithm():
         self.INPUT_DEM = INPUT_DEM
         self.SAVE_BUILD = SAVE_BUILD
         self.INPUT_ANISO = INPUT_ANISO
+        self.INPUT_EXTRAHEIGHT = INPUT_EXTRAHEIGHT
 
         # Enivornmental parameters
         self.ALBEDO_WALLS = ALBEDO_WALLS
@@ -225,12 +226,16 @@ class SOLWEIGAlgorithm():
         # nd = gdal_dsm.GetRasterBand(1).GetNoDataValue()
         # dsm[dsm == nd] = 0.
         # dsmcopy = np.copy(dsm)
-        if dsm.min() < 0:
-            dsmraise = cp.abs(dsm.min())
-            dsm = dsm + dsmraise
-            print('Digital Surface Model (DSM) included negative values. DSM raised with ' + str(dsmraise) + 'm.')
+        dsm_min = dsm.min()
+        if 0 <= dsm_min < self.INPUT_EXTRAHEIGHT:
+            dsmraise = self.INPUT_EXTRAHEIGHT - dsm_min
+        elif dsm_min < 0:
+            dsmraise = cp.abs(dsm.min()) + self.INPUT_EXTRAHEIGHT
         else:
             dsmraise = 0
+
+        dsm += dsmraise
+        print('DSM raised with ' + str(dsmraise) + 'm.')
 
         # Get latlon from grid coordinate system
         old_cs = osr.SpatialReference()
@@ -730,7 +735,7 @@ class SOLWEIGAlgorithm():
                     CI = 1.
 
             # radI[i] = radI[i]/np.sin(altitude[0][i] * np.pi/180)
-            print(i, " ", f"{altitude[0][i]}, {azimuth[0][i]}, {zen[0][i]}")
+            # print(i, " ", f"{altitude[0][i]}, {azimuth[0][i]}, {zen[0][i]}")
             Tmrt, Kdown, Kup, Ldown, Lup, Tg, ea, esky, I0, CI, shadow, firstdaytime, timestepdec, timeadd, \
                     Tgmap1, Tgmap1E, Tgmap1S, Tgmap1W, Tgmap1N, Keast, Ksouth, Kwest, Knorth, Least, \
                     Lsouth, Lwest, Lnorth, KsideI, TgOut1, TgOut, radIout, radDout, \
@@ -834,14 +839,14 @@ class SOLWEIGAlgorithm():
         return {self.OUTPUT_DIR: outputDir}
 
 INPUT_DSM = "D:/Geomatics/thesis/heattryout/preprocess/DSM_smaller.tif"
-INPUT_SVF = "D:/Geomatics/thesis/codetestsvf/svfs_debug"
-INPUT_ANISO = "D:/Geomatics/thesis/codetestsvf/shadowmats.npz"
+INPUT_SVF = "D:/Geomatics/thesis/heattryout/preprocess/skyview/svfs"
+INPUT_ANISO = "D:/Geomatics/thesis/heattryout/preprocess/skyview/shadowmats.npz"
 INPUT_LC = "D:/Geomatics/thesis/heattryout/preprocess/landuse.tif"
 INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
 INPUT_HEIGHT = "D:/Geomatics/thesis/heattryout/preprocess/wallheight.tif"
 INPUT_ASPECT = "D:/Geomatics/thesis/heattryout/preprocess/wallaspect.tif"
-UTC = 1
-OUTPUT_DIR = "D:/Geomatics/thesis/codetest2_cupy_ani"
+UTC = 0
+OUTPUT_DIR = "D:/Geomatics/thesis/codetesting/cupy_ani_debug"
 INPUT_MET = "D:/Geomatics/thesis/heattryout/preprocess/climatedata/UMEPclimate_oneday.txt"
 
 
@@ -855,4 +860,4 @@ stats = pstats.Stats(profiler)
 stats.sort_stats('cumulative')  # Sort by cumulative time
 stats.print_stats(20)  # Display the top 20 results
 
-stats.dump_stats("profile_results_cupy_ani.prof")
+stats.dump_stats("profile_results_cupy_ani_debug.prof")

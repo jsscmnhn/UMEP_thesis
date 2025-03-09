@@ -548,8 +548,6 @@ class SOLWEIGAlgorithm():
         gdal_wallaspect = gdal.Open(walayer_path)
         wallaspect = gdal_wallaspect.ReadAsArray().astype(float)
 
-        plot_array(wallaspect, "walls aster loading")
-
         vasizex = wallaspect.shape[0]
         vasizey = wallaspect.shape[1]
         if not (vasizex == sizex) & (vasizey == sizey):
@@ -1013,17 +1011,18 @@ class SOLWEIGAlgorithm():
         return {self.OUTPUT_DIR: outputDir}
 
 INPUT_DSM = "D:/Geomatics/thesis/heattryout/preprocess/DSM_smaller.tif"
-INPUT_SVF = "D:/Geomatics/thesis/codetestsvf/svfs.zip"
+INPUT_SVF = "D:/Geomatics/thesis/heattryout/preprocess/skyview/svfs.zip"
+INPUT_ANISO = "D:/Geomatics/thesis/heattryout/preprocess/skyview/shadowmats.npz"
 INPUT_LC = "D:/Geomatics/thesis/heattryout/preprocess/landuse.tif"
 INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
 INPUT_HEIGHT = "D:/Geomatics/thesis/heattryout/preprocess/wallheight.tif"
 INPUT_ASPECT = "D:/Geomatics/thesis/heattryout/preprocess/wallaspect.tif"
 UTC = 1
-OUTPUT_DIR = "D:/Geomatics/thesis/codetest2"
+OUTPUT_DIR = "D:/Geomatics/thesis/codetesting/og_ANI"
 INPUT_MET = "D:/Geomatics/thesis/heattryout/preprocess/climatedata/UMEPclimate_oneday.txt"
 
 
-test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET, INPUT_LC=INPUT_LC)
+test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET, INPUT_LC=INPUT_LC, INPUT_ANISO=INPUT_ANISO)
 
 with cProfile.Profile() as profiler:
     test.processAlgorithm()
@@ -1033,4 +1032,4 @@ stats = pstats.Stats(profiler)
 stats.sort_stats('cumulative')  # Sort by cumulative time
 stats.print_stats(20)  # Display the top 20 results
 
-stats.dump_stats("profile_results2.prof")
+stats.dump_stats("profile_results_ANI.prof")

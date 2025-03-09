@@ -53,7 +53,7 @@ class ProcessingSkyViewFactorAlgorithm():
     """
     This algorithm is a processing version of SkyViewFactor
     """
-    def __init__(self, INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, dsm2=None, dsm3=None, INPUT_TDSM=None, USE_VEG=True, TRANS_VEG=3,
+    def __init__(self, INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_EXTRAHEIGHT=6, INPUT_MULT_DSMS = None, INPUT_TDSM=None, USE_VEG=True, TRANS_VEG=3,
                  TSDM_EXIST=False, INPUT_THEIGHT=25.0, ANISO=True,
                  ):
         self.INPUT_DSM = INPUT_DSM
@@ -63,11 +63,11 @@ class ProcessingSkyViewFactorAlgorithm():
         self.TRANS_VEG = TRANS_VEG
         self.TSDM_EXIST = TSDM_EXIST
         self.INPUT_THEIGHT = INPUT_THEIGHT
+        self.INPUT_EXTRAHEIGHT = INPUT_EXTRAHEIGHT
         self.ANISO = ANISO
         self.OUTPUT_DIR = OUTPUT_DIR
         self.OUTPUT_FILE = OUTPUT_FILE
-        self.DSM2 = dsm2
-        self.DSM3 = dsm3
+        self.MULT_DSMS = INPUT_MULT_DSMS
 
     def processAlgorithm(self):
         # InputParameters
@@ -85,13 +85,21 @@ class ProcessingSkyViewFactorAlgorithm():
         print('Initiating algorithm')
 
         gdal_dsm = gdal.Open(dsm_path)
-        dsm = gdal_dsm.ReadAsArray().astype(float)
+        dsm = cp.array(gdal_dsm.ReadAsArray(), dtype=cp.float32)
 
         # response to issue #85
         nd = gdal_dsm.GetRasterBand(1).GetNoDataValue()
         dsm[dsm == nd] = 0.
-        if dsm.min() < 0:
-            dsm = dsm + np.abs(dsm.min())
+        dsm_min = dsm.min()
+        if 0 <= dsm_min < self.INPUT_EXTRAHEIGHT:
+            dsmraise = self.INPUT_EXTRAHEIGHT - dsm_min
+        elif dsm_min < 0:
+            dsmraise = cp.abs(dsm.min()) + self.INPUT_EXTRAHEIGHT
+        else:
+            dsmraise = 0
+
+        dsm += dsmraise
+        print('DSM raised with ' + str(dsmraise) + 'm.')
 
         sizex = dsm.shape[0]
         sizey = dsm.shape[1]
@@ -110,7 +118,8 @@ class ProcessingSkyViewFactorAlgorithm():
 
             # load raster
             gdal_vegdsm = gdal.Open(vegdsm_path)
-            vegdsm = gdal_vegdsm.ReadAsArray().astype(float)
+            vegdsm = cp.array(gdal_vegdsm.ReadAsArray(), dtype=cp.float32)
+            vegdsm = cp.where(vegdsm <= 0, np.nan, vegdsm)
 
             vegsizex = vegdsm.shape[0]
             vegsizey = vegdsm.shape[1]
@@ -121,11 +130,12 @@ class ProcessingSkyViewFactorAlgorithm():
             if vegdsm2_path:
                 # vegdsm2 = self.parameterAsRasterLayer(parameters, self.INPUT_TDSM, context)
                 # if vegdsm2 is None:
-                    # raise QgsProcessingException("Error: No valid Trunk zone DSM selected")
+                # raise QgsProcessingException("Error: No valid Trunk zone DSM selected")
 
                 # load raster
                 gdal_vegdsm2 = gdal.Open(vegdsm2_path)
-                vegdsm2 = gdal_vegdsm2.ReadAsArray().astype(float)
+                vegdsm2 = cp.array(gdal_vegdsm2.ReadAsArray(), dtype=cp.float32)
+                vegdsm2 = cp.where(vegdsm2 <= 0, np.nan, vegdsm2)
             else:
                 trunkratio = trunkr / 100.0
                 vegdsm2 = vegdsm * trunkratio
@@ -224,9 +234,7 @@ class ProcessingSkyViewFactorAlgorithm():
         # InputParameters
         outputDir = self.OUTPUT_DIR
         outputFile = self.OUTPUT_FILE
-        dsm_path = self.INPUT_DSM
-        dsm2_path = self.DSM2
-        dsm3_path = self.DSM3
+        dsms_path = self.MULT_DSMS
 
         # multiple layers run 1
         # dsm4_path = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_2gap_3.tif"
@@ -238,8 +246,8 @@ class ProcessingSkyViewFactorAlgorithm():
 
 
         # multiple layers run 2
-        dsm4_path = "D:/Geomatics/thesis/gaptesting_database/case2/case2_2gap_3.tif"
-        dsm5_path = "D:/Geomatics/thesis/gaptesting_database/case2/case2_2gap_4.tif"
+        # dsm4_path = "D:/Geomatics/thesis/gaptesting_database/case2/case2_2gap_3.tif"
+        # dsm5_path = "D:/Geomatics/thesis/gaptesting_database/case2/case2_2gap_4.tif"
 
 
         # usevegdem = self.USE_VEG
@@ -252,44 +260,54 @@ class ProcessingSkyViewFactorAlgorithm():
 
         print('Initiating algorithm')
 
-        gdal_dsm = gdal.Open(dsm_path)
-        gdal_dsm2 = gdal.Open(dsm2_path)
-        gdal_dsm3 = gdal.Open(dsm3_path)
-        gdal_dsm4 = gdal.Open(dsm4_path)
-        gdal_dsm5 = gdal.Open(dsm5_path)
+        gdal_dsms = gdal.Open(dsms_path)
+        layers = gdal_dsms.RasterCount
+
+
+        # gdal_dsm2 = gdal.Open(dsm2_path)
+        # gdal_dsm3 = gdal.Open(dsm3_path)
+        # gdal_dsm4 = gdal.Open(dsm4_path)
+        # gdal_dsm5 = gdal.Open(dsm5_path)
         # gdal_dsm6 = gdal.Open(dsm6_path)
         # gdal_dsm7 = gdal.Open(dsm7_path)
         # gdal_dsm8 = gdal.Open(dsm8_path)
         # gdal_dsm9 = gdal.Open(dsm9_path)
 
-        dsm = gdal_dsm.ReadAsArray().astype(float)
-        dsm2 = gdal_dsm2.ReadAsArray().astype(float)
-        dsm3 = gdal_dsm3.ReadAsArray().astype(float)
-        dsm4 = gdal_dsm4.ReadAsArray().astype(float)
-        dsm5 = gdal_dsm5.ReadAsArray().astype(float)
+        dsms = cp.stack([cp.array(gdal_dsms.GetRasterBand(i).ReadAsArray(), dtype=cp.float32) for i in range(1, layers)],
+                        axis=0)
+
+        # dsm2 = gdal_dsm2.ReadAsArray().astype(float)
+        # dsm3 = gdal_dsm3.ReadAsArray().astype(float)
+        # dsm4 = gdal_dsm4.ReadAsArray().astype(float)
+        # dsm5 = gdal_dsm5.ReadAsArray().astype(float)
         # dsm6 = gdal_dsm6.ReadAsArray().astype(float)
         # dsm7 = gdal_dsm7.ReadAsArray().astype(float)
         # dsm8 = gdal_dsm8.ReadAsArray().astype(float)
         # dsm9 = gdal_dsm9.ReadAsArray().astype(float)
 
-        # response to issue #85
-        nd = gdal_dsm.GetRasterBand(1).GetNoDataValue()
-        dsm[dsm == nd] = 0.
-        if dsm.min() < 0:
-            dsm += np.abs(dsm.min())
-            dsm2 += np.abs(dsm.min())
-            dsm3 += np.abs(dsm.min())
-            dsm4 += np.abs(dsm.min())
-            dsm5 += np.abs(dsm.min())
+        dsm_min = dsms[0].min()
+        if 0 <= dsm_min < self.INPUT_EXTRAHEIGHT:
+            dsmraise = self.INPUT_EXTRAHEIGHT - dsm_min
+        elif dsm_min < 0:
+            dsmraise = cp.abs(dsm_min) + self.INPUT_EXTRAHEIGHT
+        else:
+            dsmraise = 0
+
+        dsms += dsmraise
+
+            # dsm2 += np.abs(dsm.min())
+            # dsm3 += np.abs(dsm.min())
+            # dsm4 += np.abs(dsm.min())
+            # dsm5 += np.abs(dsm.min())
             # dsm6 += np.abs(dsm.min())
             # dsm7 += np.abs(dsm.min())
             # dsm8 += np.abs(dsm.min())
             # dsm9 += np.abs(dsm.min())
 
-        sizex = dsm.shape[0]
-        sizey = dsm.shape[1]
+        sizex = dsms[0].shape[0]
+        sizey = dsms[0].shape[1]
 
-        geotransform = gdal_dsm.GetGeoTransform()
+        geotransform = gdal_dsms.GetGeoTransform()
         print(geotransform)
         scale = 1 / geotransform[1]
 
@@ -304,7 +322,8 @@ class ProcessingSkyViewFactorAlgorithm():
 
             # load raster
             gdal_vegdsm = gdal.Open(vegdsm_path)
-            vegdsm = gdal_vegdsm.ReadAsArray().astype(float)
+            vegdsm = cp.array(gdal_vegdsm.ReadAsArray(), dtype=cp.float32)
+            vegdsm = cp.where(vegdsm <= 0, np.nan, vegdsm)
 
             vegsizex = vegdsm.shape[0]
             vegsizey = vegdsm.shape[1]
@@ -319,7 +338,8 @@ class ProcessingSkyViewFactorAlgorithm():
 
                 # load raster
                 gdal_vegdsm2 = gdal.Open(vegdsm2_path)
-                vegdsm2 = gdal_vegdsm2.ReadAsArray().astype(float)
+                vegdsm2 = cp.array(gdal_vegdsm2.ReadAsArray(), dtype=cp.float32)
+                vegdsm2 = cp.where(vegdsm2 <= 0, np.nan, vegdsm2)
             else:
                 trunkratio = trunkr / 100.0
                 vegdsm2 = vegdsm * trunkratio
@@ -330,24 +350,20 @@ class ProcessingSkyViewFactorAlgorithm():
             if not (vegsizex == sizex) & (vegsizey == sizey):
                 raise Exception("Error in Trunk Zone DSM: All rasters must be of same extent and resolution")
         else:
-            rows = dsm.shape[0]
-            cols = dsm.shape[1]
-            vegdsm = np.zeros([rows, cols])
+            rows = dsms[0].shape[0]
+            cols = dsms[0].shape[1]
+            vegdsm = cp.zeros([rows, cols])
             vegdsm2 = 0.
             usevegdem = 0
 
         if aniso == 1:
             print('Calculating SVF using 153 iterations')
-            # ret = svf.svfForProcessing153(dsm, vegdsm, vegdsm2, scale, usevegdem)
-            # dsms = np.stack((dsm, dsm2, dsm3, dsm4, dsm5, dsm6, dsm7, dsm8, dsm9), axis=0)
-            # dsms = np.stack((dsm, dsm2, dsm3), axis=0)
-            dsms = np.stack((dsm, dsm2, dsm3, dsm4, dsm5), axis=0)
-            # ret = svf.svfForProcessing153_3d(dsms, vegdsm, vegdsm2, scale, usevegdem)
-            ret = svf.svfForProcessing153_3d_mult(dsms, vegdsm, vegdsm2, scale, usevegdem)
+
+            ret = svf.svfForProcessing153_3d(dsms, vegdsm, vegdsm2, scale, usevegdem)
 
         else:
             print('Calculating SVF using 655 iterations')
-            ret = svf.svfForProcessing655(dsm, vegdsm, vegdsm2, scale, usevegdem)
+            ret = svf.svfForProcessing655(dsms, vegdsm, vegdsm2, scale, usevegdem)
 
         filename = outputFile
 
@@ -364,11 +380,11 @@ class ProcessingSkyViewFactorAlgorithm():
             svfbuW = ret["svfW"].get()
             svfbuN = ret["svfN"].get()
 
-            misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svf.tif', svfbu)
-            misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfE.tif', svfbuE)
-            misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfS.tif', svfbuS)
-            misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfW.tif', svfbuW)
-            misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfN.tif', svfbuN)
+            misc.saveraster(gdal_dsms, outputDir + '/svfs/' + 'svf.tif', svfbu)
+            misc.saveraster(gdal_dsms, outputDir + '/svfs/' + 'svfE.tif', svfbuE)
+            misc.saveraster(gdal_dsms, outputDir + '/svfs/' + 'svfS.tif', svfbuS)
+            misc.saveraster(gdal_dsms, outputDir + '/svfs/' + 'svfW.tif', svfbuW)
+            misc.saveraster(gdal_dsms, outputDir + '/svfs/' + 'svfN.tif', svfbuN)
 
             if os.path.isfile(outputDir + '/' + 'svfs.zip'):
                 os.remove(outputDir + '/' + 'svfs.zip')
@@ -388,21 +404,21 @@ class ProcessingSkyViewFactorAlgorithm():
                 svfWaveg = ret["svfWaveg"].get()
                 svfNaveg = ret["svfNaveg"].get()
 
-                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfveg.tif', svfveg)
-                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfEveg.tif', svfEveg)
-                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfSveg.tif', svfSveg)
-                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfWveg.tif', svfWveg)
-                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfNveg.tif', svfNveg)
-                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfaveg.tif', svfaveg)
-                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfEaveg.tif', svfEaveg)
-                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfSaveg.tif', svfSaveg)
-                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfWaveg.tif', svfWaveg)
-                misc.saveraster(gdal_dsm, outputDir + '/svfs/' + 'svfNaveg.tif', svfNaveg)
+                misc.saveraster(gdal_vegdsm, outputDir + '/svfs/' + 'svfveg.tif', svfveg)
+                misc.saveraster(gdal_dsms, outputDir + '/svfs/' + 'svfEveg.tif', svfEveg)
+                misc.saveraster(gdal_dsms, outputDir + '/svfs/' + 'svfSveg.tif', svfSveg)
+                misc.saveraster(gdal_dsms, outputDir + '/svfs/' + 'svfWveg.tif', svfWveg)
+                misc.saveraster(gdal_dsms, outputDir + '/svfs/' + 'svfNveg.tif', svfNveg)
+                misc.saveraster(gdal_dsms, outputDir + '/svfs/' + 'svfaveg.tif', svfaveg)
+                misc.saveraster(gdal_dsms, outputDir + '/svfs/' + 'svfEaveg.tif', svfEaveg)
+                misc.saveraster(gdal_dsms, outputDir + '/svfs/' + 'svfSaveg.tif', svfSaveg)
+                misc.saveraster(gdal_dsms, outputDir + '/svfs/' + 'svfWaveg.tif', svfWaveg)
+                misc.saveraster(gdal_dsms, outputDir + '/svfs/' + 'svfNaveg.tif', svfNaveg)
 
                 trans = transVeg / 100.0
                 svftotal = (svfbu - (1 - svfveg) * (1 - trans))
 
-            misc.saveraster(gdal_dsm, filename, svftotal)
+            misc.saveraster(gdal_dsms, filename, svftotal)
 
             # Save shadow images for SOLWEIG 2019a
             if aniso == 1:

@@ -46,7 +46,7 @@ def write_output(output, name):
         dst.write(output, 1)
     print("File written to '%s'" % output_file)
 
-def shadowingfunctionglobalradiation(a, amaxvalue, azimuth, altitude, scale, forsvf):
+def shadowingfunctionglobalradiation_cupy(a, amaxvalue, azimuth, altitude, scale, forsvf):
     #%This m.file calculates shadows on a DEM
     #% conversion
     degrees = np.pi/180.
@@ -327,10 +327,6 @@ def shadowingfunction_20_cupy(a, vegdem, vegdem2, azimuth, altitude, scale, amax
     # max_steps = int(np.floor(np.min(np.array([amaxvalue / ds, min(sizex, sizey)]))))
 
     while (amaxvalue >= dz) and (np.abs(dx)) <sizex and (np.abs(dy) < sizey):
-        # if np.abs(dx) >= sizex:
-        #     break
-        # if np.abs(dy) >= sizey:
-        #     break
         if isVert:
             dy = signsinazimuth * i
             dx = -signcosazimuth * np.abs(np.round(i / tanazimuth))
@@ -634,12 +630,11 @@ def shadowingfunction_20_cupy_vector(a, vegdem, vegdem2, azimuth, altitude, scal
     }
     return shadowresult
 
-def shadowingfunction_20_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, bush, forsvf):
+def shadowingfunction_20_3d_old(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, bush, forsvf):
     # Conversion
     degrees = np.pi / 180.0
     azimuth *= degrees
     altitude *= degrees
-    # factor = cp.float32(2.0)
 
     # Grid size
     sizex, sizey = a[0].shape[0], a[0].shape[1]
@@ -772,7 +767,7 @@ def shadowingfunction_20_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxva
     return shadowresult
 
 
-def shadowingfunction_20_3d_mult(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, bush, forsvf):
+def shadowingfunction_20_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, bush, forsvf):
     # Conversion
     degrees = np.pi / 180.0
     azimuth *= degrees
@@ -785,7 +780,9 @@ def shadowingfunction_20_3d_mult(a, vegdem, vegdem2, azimuth, altitude, scale, a
     # Initialize parameters
     dx = dy = dz = 0.0
 
+    num_layers = len(a)
     temp = cp.zeros((sizex, sizey), dtype=cp.float32)
+    temp_layers = {i: cp.full((sizex, sizey), np.nan, dtype=cp.float32) for i in range(1, num_layers)}
     tempvegdem = cp.full((sizex, sizey), np.nan, dtype=cp.float32)
     tempvegdem2 = cp.full((sizex, sizey), np.nan, dtype=cp.float32)
 
@@ -794,24 +791,13 @@ def shadowingfunction_20_3d_mult(a, vegdem, vegdem2, azimuth, altitude, scale, a
     vegsh = cp.array(bushplant, dtype=cp.float32)
     dsm_ground = a[0]
 
-    temp_firstgap = cp.full((sizex, sizey), np.nan)
-    temp_secondlayer = cp.full((sizex, sizey), np.nan)
 
-    temp_secondgap = temp_firstgap.copy()
-    temp_thirdlayer = temp_firstgap.copy()
+    sh = cp.zeros((sizex, sizey),  dtype=cp.float32) #shadows from buildings
+    sh2 = cp.zeros((sizex, sizey), dtype=cp.float32)
 
-    # temp_thirdgap = temp_firstgap.copy()
-    # temp_fourthlayer = temp_firstgap.copy()
-    #
-    # temp_fourthgap = temp_firstgap.copy()
-    # temp_fifthlayer = temp_firstgap.copy()
+    num_combinations = (num_layers - 1) // 2
+    sh_stack = cp.full((num_combinations, sizex, sizey), np.nan, dtype=cp.float32)
 
-    sh = cp.zeros((sizex, sizey)) #shadows from buildings
-    sh2 = cp.zeros((sizex, sizey))
-
-    sh3 = sh2.copy()
-    sh4 = sh2.copy()
-    sh5 = sh2.copy()
 
     # Precompute trigonometric values
     pibyfour = np.pi / 4.0
@@ -852,17 +838,7 @@ def shadowingfunction_20_3d_mult(a, vegdem, vegdem2, azimuth, altitude, scale, a
         tempvegdem2.fill(np.nan)
         temp.fill(0.0)
 
-        temp_firstgap[:] = np.nan
-        temp_secondlayer[:] = np.nan
-
-        temp_secondgap[:] = np.nan
-        temp_thirdlayer[:] =  np.nan
-        #
-        # temp_thirdgap[:] = np.nan
-        # temp_fourthlayer[:] =  np.nan
-        #
-        # temp_fourthgap[:] =  np.nan
-        # temp_fifthlayer[:] =  np.nan
+        temp_layers[:] = np.nan
 
         absdx = np.abs(dx)
         absdy = np.abs(dy)
@@ -878,75 +854,33 @@ def shadowingfunction_20_3d_mult(a, vegdem, vegdem2, azimuth, altitude, scale, a
 
         # Building Part
         temp[xp1:xp2, yp1:yp2] = a[0][xc1:xc2, yc1:yc2] - dz
-        temp_firstgap[xp1:xp2, yp1:yp2] = a[1][xc1:xc2, yc1:yc2] - dz
-        temp_secondlayer[xp1:xp2, yp1:yp2] = a[2][xc1:xc2, yc1:yc2] - dz
-        temp_secondgap[xp1:xp2, yp1:yp2] = a[3][xc1:xc2, yc1:yc2] - dz
-        temp_thirdlayer[xp1:xp2, yp1:yp2] = a[4][xc1:xc2, yc1:yc2] - dz
-        # temp_thirdgap[xp1:xp2, yp1:yp2] = a[5][xc1:xc2, yc1:yc2] - dz
-        # temp_fourthlayer[xp1:xp2, yp1:yp2] = a[6][xc1:xc2, yc1:yc2] - dz
-        # temp_fourthgap[xp1:xp2, yp1:yp2] = a[7][xc1:xc2, yc1:yc2] - dz
-        # temp_fifthlayer[xp1:xp2, yp1:yp2] = a[8][xc1:xc2, yc1:yc2] - dz
+        temp_layers[:, xp1:xp2, yp1:yp2] = a[1:num_layers, xc1:xc2, yc1:yc2] - dz
+
 
         dsm_ground = cp.fmax(dsm_ground, temp)
 
         sh = (dsm_ground > a[0]).astype(cp.float32)
 
-        # first gap part
-        gapabovea = temp_firstgap > a[0]
-        layerabovea = temp_secondlayer > a[0]
+        for i in range(0, num_layers - 1, 2):
+            # first gap part
+            gap_layer_index = i
+            layer_index = i + 1
 
-        prevgapabovea = temp_firstgap > preva
-        prevlayerabovea = temp_secondlayer > preva
+            # Get gap and layer arrays for the current iteration
+            gapabovea = temp_layers[gap_layer_index] > a[0]
+            layerabovea = temp_layers[layer_index] > a[0]
+            prevgapabovea = temp_layers[gap_layer_index] > preva
+            prevlayerabovea = temp_layers[layer_index] > preva
 
-        sh2_temp = cp.add(cp.add(cp.add(layerabovea, gapabovea, dtype=float), prevgapabovea, dtype=float),
-                          prevlayerabovea, dtype=float)
+            sh_temp = cp.add(cp.add(cp.add(layerabovea, gapabovea, dtype=float), prevgapabovea, dtype=float),
+                              prevlayerabovea, dtype=float)
 
-        sh2_temp = cp.where(sh2_temp == 4.0, 0.0, sh2_temp)
-        sh2_temp = cp.where(sh2_temp > 0.0, 1.0, sh2_temp)
-        sh2 = cp.fmax(sh2, sh2_temp)
+            sh_temp = cp.where(sh_temp == 4.0, 0.0, sh_temp)
+            sh_temp = cp.where(sh_temp > 0.0, 1.0, sh_temp)
 
-        # second gap part
-        gapabovea3 = temp_secondgap > a[0]
-        layerabovea3 = temp_thirdlayer > a[0]
-
-        prevgapabovea3 = temp_secondgap > preva
-        prevlayerabovea3 = temp_thirdlayer > preva
-
-        sh3_temp = cp.add(cp.add(cp.add(layerabovea3, gapabovea3, dtype=float), prevgapabovea3, dtype=float),
-                          prevlayerabovea3, dtype=float)
-
-        sh3_temp = cp.where(sh3_temp == 4.0, 0.0, sh3_temp)
-        sh3_temp = cp.where(sh3_temp > 0.0, 1.0, sh3_temp)
-        sh3 = cp.fmax(sh3, sh3_temp)
-
-        # # third gap part
-        # gapabovea4 = temp_thirdgap > a[0]
-        # layerabovea4 = temp_fourthlayer > a[0]
-        #
-        # prevgapabovea4 = temp_thirdgap > preva
-        # prevlayerabovea4 = temp_fourthlayer > preva
-        #
-        # sh4_temp = cp.add(cp.add(cp.add(layerabovea4, gapabovea4, dtype=float), prevgapabovea4, dtype=float),
-        #                   prevlayerabovea4, dtype=float)
-        #
-        # sh4_temp = cp.where(sh4_temp == 4.0, 0.0, sh4_temp)
-        # sh4_temp = cp.where(sh4_temp > 0.0, 1.0, sh4_temp)
-        # sh4 = cp.fmax(sh4, sh4_temp)
-
-        # # fourth gap part
-        # gapabovea5 = temp_fourthgap > a[0]
-        # layerabovea5 = temp_fifthlayer > a[0]
-        #
-        # prevgapabovea5 = temp_fourthgap > preva
-        # prevlayerabovea5 = temp_fifthlayer > preva
-        #
-        # sh5_temp = cp.add(cp.add(cp.add(layerabovea5, gapabovea5, dtype=float), prevgapabovea5, dtype=float),
-        #                   prevlayerabovea5, dtype=float)
-        #
-        # sh5_temp = cp.where(sh5_temp == 4.0, 0.0, sh5_temp)
-        # sh5_temp = cp.where(sh5_temp > 0.0, 1.0, sh5_temp)
-        #
-        # sh5 = cp.fmax(sh5, sh5_temp)
+            # Store the result in the corresponding index of the 3D array (sh_stack)
+            # The first dimension is the combination index
+            sh_stack[i // 2] = cp.fmax(sh_stack[i // 2], sh_temp)
 
         # Vegetation Part
         tempvegdem[xp1:xp2, yp1:yp2] = vegdem[xc1:xc2, yc1:yc2]- dz
@@ -971,7 +905,10 @@ def shadowingfunction_20_3d_mult(a, vegdem, vegdem2, azimuth, altitude, scale, a
         index += 1.0
 
     # sh = cp.fmax(cp.fmax(cp.fmax(cp.fmax(sh, sh2), sh3), sh4), sh5)
-    sh = cp.fmax(cp.fmax(sh, sh2), sh3)
+    sh_combined = sh_stack[0]
+    for i in range(1, num_combinations):
+        sh_combined = cp.fmax(sh_combined, sh_stack[i])
+    sh = cp.fmax(cp.fmax(sh, sh_combined))
     sh = 1.0 - sh
     vbshvegsh[vbshvegsh > 0.0] = 1.0
     vbshvegsh -= vegsh

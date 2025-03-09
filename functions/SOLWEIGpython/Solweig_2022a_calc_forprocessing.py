@@ -113,8 +113,6 @@ def Solweig_2022a_calc(i, dsm, scale, rows, cols, svf, svfN, svfW, svfE, svfS, s
     msteg = 46.5 * (ea / (Ta + 273.15))
     esky = (1 - (1 + msteg) * np.exp(-((1.2 + 3.0 * msteg) ** 0.5))) + elvis  # -0.04 old error from Jonsson et al.2006
 
-    plot_array(dirwalls, "walls before algo")
-
     if altitude > 0: # # # # # # DAYTIME # # # # # #
         # Clearness Index on Earth's surface after Crawford and Dunchon (1999) with a correction
         #  factor for low sun elevations after Lindberg et al.(2008)

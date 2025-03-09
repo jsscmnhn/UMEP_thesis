@@ -16,7 +16,7 @@ from functions.SOLWEIGpython.UTIL.Perez_v3 import Perez_v3
 from functions.SOLWEIGpython.UTIL.create_patches import create_patches
 
 # Anisotropic longwave
-from .Lcyl_v2022a import Lcyl_v2022a
+from .Lcyl_v2022a_cupy import Lcyl_v2022a
 from .Lside_veg_v2022a_cupy import Lside_veg_v2022a
 from copy import deepcopy
 
