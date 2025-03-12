@@ -273,7 +273,7 @@ class ProcessingSkyViewFactorAlgorithm():
         # gdal_dsm8 = gdal.Open(dsm8_path)
         # gdal_dsm9 = gdal.Open(dsm9_path)
 
-        dsms = cp.stack([cp.array(gdal_dsms.GetRasterBand(i).ReadAsArray(), dtype=cp.float32) for i in range(1, layers)],
+        dsms = cp.stack([cp.array(gdal_dsms.GetRasterBand(i).ReadAsArray(), dtype=cp.float32) for i in range(1, layers + 1)],
                         axis=0)
 
         # dsm2 = gdal_dsm2.ReadAsArray().astype(float)
@@ -440,13 +440,13 @@ class ProcessingSkyViewFactorAlgorithm():
 # INPUT_DSM = "D:/Geomatics/thesis/heattryout/preprocess/DSM_smaller.tif"
 # INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
 # INPUT_CDSM = None
-OUTPUT_DIR = "D:/Geomatics/thesis/codetestsvf/cupy/"
-OUTPUT_FILE = "profiling/skyviewvector3d"
+OUTPUT_DIR = "D:/Geomatics/thesis/codetestsvf/3D_layeredtiff"
+OUTPUT_FILE = "profiling/3dlayeredtiff"
 
 
 # ===================== RUN TEST CASE 1  ==============================
-INPUT_DSM = "D:/Geomatics/thesis/gaptesting_database/case1_0.tif"
-INPUT_CDSM = "D:/Geomatics/thesis/gaptesting_database/case1_veg.tif"
+# INPUT_DSM = "D:/Geomatics/thesis/gaptesting_database/case1_0.tif"
+# INPUT_CDSM = "D:/Geomatics/thesis/gaptesting_database/case1_veg.tif"
 
 # ===================== RUN TEST CASE 1 1 gap ==============================
 # DSM2= "D:/Geomatics/thesis/gaptesting_database/smaller/case1_1gap_1.tif"
@@ -474,12 +474,17 @@ INPUT_CDSM = "D:/Geomatics/thesis/gaptesting_database/case1_veg.tif"
 # INPUT_DSM="../j_dataprep/output/final_dsm_test.tif"
 # INPUT_CDSM=None
 
+# ======================== Joined tif fille
+INPUT_DSM = None
+INPUT_CDSM = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_veg.tif"
+INPUT_MULT_DSMS = "D:/Geomatics/thesis/gaptesting_database/case2/case2_5layers.tif"
+
 
 # stats.dump_stats("profilewithchm.prof")
 
 with cProfile.Profile() as profiler2:
-    ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE).processAlgorithm()
-    # ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, dsm2=DSM2, dsm3=DSM3).processAlgorithm_3d()
+    # ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE).processAlgorithm()
+    ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_MULT_DSMS=INPUT_MULT_DSMS).processAlgorithm_3d()
 
     # ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, dsm2=DSM2, dsm3=DSM3).processAlgorithm()
 
@@ -487,4 +492,4 @@ stats3 = pstats.Stats(profiler2)
 stats3.sort_stats('cumulative')
 print("\nProfiling with veg cap CDSM:\n")
 stats3.print_stats(20)
-stats3.dump_stats("profiling/profile_cupy_vector.prof")
+stats3.dump_stats("profiling/profile_cupy_layered3d.prof")

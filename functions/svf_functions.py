@@ -75,7 +75,7 @@ def svfForProcessing153(dsm, vegdem, vegdem2, scale, usevegdem):
     # % amaxvalue
     vegmax = vegdem.max()
     amaxvalue = dsm.max()
-    amaxvalue = cp.maximum(amaxvalue, vegmax)
+    amaxvalue = cp.nanmax(cp.array([amaxvalue, vegmax]))
     amaxvalueinput = amaxvalue.get()
     aminvalue = dsm.min()
 
@@ -122,7 +122,7 @@ def svfForProcessing153(dsm, vegdem, vegdem2, scale, usevegdem):
 
             if usevegdem == 1:
                 if altitude == 90:
-                    vegsh = cp.where(vegsh != np.nan, 0.0, 1.0)
+                    vegsh = cp.where(cp.logical_and(~cp.isnan(vegdem), ~cp.isnan(vegdem2)), 0.0, 1.0)
                     vbshvegsh = cp.full((rows, cols), 1.0, dtype=cp.float32)
                     sh = cp.full((rows, cols), 1.0, dtype=cp.float32)
                 else:
@@ -137,7 +137,7 @@ def svfForProcessing153(dsm, vegdem, vegdem2, scale, usevegdem):
                 if altitude == 90:
                     sh = cp.full((rows, cols), 1.0, dtype=cp.float32)
                 else:
-                    sh = shadow.shadowingfunctionglobalradiation_cupy(dsm, amaxvalue, azimuth, altitude, scale,1)
+                    sh = shadow.shadowingfunctionglobalradiation_cupy(dsm, amaxvalueinput, azimuth, altitude, scale,1)
 
             shmat[:, :, index] = sh
 
@@ -244,8 +244,7 @@ def svfForProcessing153_3d_old(dsms, vegdem, vegdem2, scale, usevegdem):
     # % amaxvalue
     vegmax = vegdem.max()
     amaxvalue = dsms[0].max()
-    amaxvalue = np.maximum(amaxvalue, vegmax)
-
+    amaxvalue = cp.nanmax(cp.array([amaxvalue, vegmax]))
     # % Elevation vegdems if buildingDSM inclused ground heights
     vegdem = vegdem + dsms[0]
     vegdem[vegdem == dsms[0]] = 0
@@ -414,7 +413,7 @@ def svfForProcessing153_3d(dsms, vegdem, vegdem2, scale, usevegdem):
     # % amaxvalue
     vegmax = vegdem.max()
     amaxvalue = dsms[0].max()
-    amaxvalue = np.maximum(amaxvalue, vegmax)
+    amaxvalue = cp.nanmax(cp.array([amaxvalue, vegmax]))
 
     # % Elevation vegdems if buildingDSM inclused ground heights
     vegdem = vegdem + dsms[0]
@@ -449,8 +448,9 @@ def svfForProcessing153_3d(dsms, vegdem, vegdem2, scale, usevegdem):
     aziintervalaniso = np.ceil(aziinterval / 2.0)
     index = int(0)
 
+    # WATCH OUT TEMPORARY FOR MY 0 DATASET
     for i in range(1, dsms.shape[0]):
-        dsms[i] = cp.where(dsms[i] <= 0, np.nan, dsms[i])
+        dsms[i] = cp.where(dsms[i] <= 6, np.nan, dsms[i])
 
 
     for i in range(0, skyvaultaltint.shape[0]):
@@ -459,7 +459,11 @@ def svfForProcessing153_3d(dsms, vegdem, vegdem2, scale, usevegdem):
             azimuth = iazimuth[int(index)]
             # Casting shadow
             if usevegdem == 1:
-                shadowresult = shadow.shadowingfunction_20_3d(dsms, vegdem, vegdem2, azimuth, altitude,
+                if altitude == 90:
+                    shadowresult = shadow.shadowingfunction_20_3d_90(dsms, vegdem, vegdem2)
+                    pass
+                else:
+                    shadowresult = shadow.shadowingfunction_20_3d(dsms, vegdem, vegdem2, azimuth, altitude,
                                                             scale, amaxvalue, bush, 1)
 
                 vegsh = shadowresult["vegsh"]
@@ -468,7 +472,10 @@ def svfForProcessing153_3d(dsms, vegdem, vegdem2, scale, usevegdem):
                 vegshmat[:, :, index] = vegsh
                 vbshvegshmat[:, :, index] = vbshvegsh
             else:
-                sh = shadow.shadowingfunctionglobalradiation(dsms, amaxvalue, azimuth, altitude, scale, 1)
+                if altitude == 90:
+                    sh = shadow.shadowingfunctionglobalradiation_3d_90(dsms)
+                else:
+                    sh = shadow.shadowingfunctionglobalradiation_3d(dsms, amaxvalue, azimuth, altitude, scale, 1)
 
             shmat[:, :, index] = sh
 
@@ -576,7 +583,7 @@ def svfForProcessing153_3d_test(dsms, vegdem, vegdem2, scale, usevegdem):
     # % amaxvalue
     vegmax = vegdem.max()
     amaxvalue = dsms[0].max()
-    amaxvalue = np.maximum(amaxvalue, vegmax)
+    amaxvalue = cp.nanmax(cp.array([amaxvalue, vegmax]))
 
     # % Elevation vegdems if buildingDSM inclused ground heights
     vegdem = vegdem + dsms[0]
@@ -748,8 +755,7 @@ def svfForProcessing655(dsm, vegdem, vegdem2, scale, usevegdem):
     # % amaxvalue
     vegmax = vegdem.max()
     amaxvalue = dsm.max()
-    amaxvalue = np.maximum(amaxvalue, vegmax)
-
+    amaxvalue = cp.nanmax(cp.array([amaxvalue, vegmax]))
     # % Elevation vegdems if buildingDSM inclused ground heights
     vegdem = vegdem + dsm
     vegdem[vegdem == dsm] = 0

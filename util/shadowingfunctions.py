@@ -124,6 +124,122 @@ def shadowingfunctionglobalradiation_cupy(a, amaxvalue, azimuth, altitude, scale
 
     return sh
 
+
+def shadowingfunctionglobalradiation_3d(a, amaxvalue, azimuth, altitude, scale, forsvf):
+    #%This m.file calculates shadows on a DEM
+    #% conversion
+    degrees = np.pi/180.
+    # if azimuth == 0.0:
+        # azimuth = 0.000000000001
+    azimuth *= degrees
+    altitude *= degrees
+    #% measure the size of the image
+    sizex = a.shape[0]
+    sizey = a.shape[1]
+    if forsvf == 0:
+        barstep = np.max([sizex, sizey])
+        total = 100. / barstep #dlg.progressBar.setRange(0, barstep)
+
+    dx = 0.
+    dy = 0.
+    dz = 0.
+
+    num_layers = len(a)
+    temp = cp.zeros((sizex, sizey), dtype=cp.float32)
+    temp_layers = {i: cp.full((sizex, sizey), np.nan, dtype=cp.float32) for i in range(0, num_layers - 1)}
+    dsm_ground = a[0]
+
+    sh = cp.zeros((sizex, sizey), dtype=cp.float32)  # shadows from buildings
+
+    num_combinations = (num_layers - 1) // 2
+    sh_stack = cp.full((num_combinations, sizex, sizey), np.nan, dtype=cp.float32)
+
+    # Precompute trigonometric values
+    pibyfour = np.pi / 4.0
+    threetimespibyfour = 3.0 * pibyfour
+    fivetimespibyfour = 5.0 * pibyfour
+    seventimespibyfour = 7.0 * pibyfour
+    sinazimuth = np.sin(azimuth)
+    cosazimuth = np.cos(azimuth)
+    tanazimuth = np.tan(azimuth)
+    signsinazimuth = np.sign(sinazimuth)
+    signcosazimuth = np.sign(cosazimuth)
+    dssin = np.abs(1.0 / sinazimuth)
+    dscos = np.abs(1.0 / cosazimuth)
+    tanaltitudebyscale = np.tan(altitude) / scale
+
+    isVert = ((pibyfour <= azimuth) & (azimuth < threetimespibyfour)) | \
+             ((fivetimespibyfour <= azimuth) & (azimuth < seventimespibyfour))
+    if isVert:
+        ds = dssin
+    else:
+        ds = dscos
+
+    preva = a[0] - ds * tanaltitudebyscale
+
+    index = 0.0
+    #% main loop
+    while (amaxvalue >= dz) and (np.abs(dx) < sizex) and (np.abs(dy) < sizey):
+        if isVert:
+            dy = signsinazimuth * index
+            dx = -signcosazimuth * np.abs(np.round(index / tanazimuth))
+        else:
+            dy = signsinazimuth * np.abs(np.round(index * tanazimuth))
+            dx = -signcosazimuth * index
+
+        dz = (ds * index) * tanaltitudebyscale
+        temp.fill(0.0)
+
+        temp_layers[:] = np.nan
+
+        absdx = np.abs(dx)
+        absdy = np.abs(dy)
+
+        xc1 = int((dx + absdx) / 2.)
+        xc2 = int(sizex + (dx - absdx) / 2.)
+        yc1 = int((dy + absdy) / 2.)
+        yc2 = int(sizey + (dy - absdy) / 2.)
+        xp1 = int(-((dx - absdx) / 2.))
+        xp2 = int(sizex - (dx + absdx) / 2.)
+        yp1 = int(-((dy - absdy) / 2.))
+        yp2 = int(sizey - (dy + absdy) / 2.)
+
+        # Building Part
+        temp[xp1:xp2, yp1:yp2] = a[0][xc1:xc2, yc1:yc2] - dz
+        temp_layers[:, xp1:xp2, yp1:yp2] = a[1:num_layers, xc1:xc2, yc1:yc2] - dz
+
+        dsm_ground = cp.fmax(dsm_ground, temp)
+
+        sh = (dsm_ground > a[0]).astype(cp.float32)
+
+        for i in range(0, num_layers - 1, 2):
+            # first gap part
+            gap_layer_index = i
+            layer_index = i + 1
+
+            # Get gap and layer arrays for the current iteration
+            gapabovea = temp_layers[gap_layer_index] > a[0]
+            layerabovea = temp_layers[layer_index] > a[0]
+            prevgapabovea = temp_layers[gap_layer_index] > preva
+            prevlayerabovea = temp_layers[layer_index] > preva
+
+            sh_temp = cp.add(cp.add(cp.add(layerabovea, gapabovea, dtype=float), prevgapabovea, dtype=float),
+                             prevlayerabovea, dtype=float)
+
+            sh_temp = cp.where(sh_temp == 4.0, 0.0, sh_temp)
+            sh_temp = cp.where(sh_temp > 0.0, 1.0, sh_temp)
+
+            sh_stack[i // 2] = cp.fmax(sh_stack[i // 2], sh_temp)
+
+        index += 1.
+    sh_combined = sh_stack[0]
+    for i in range(1, num_combinations):
+        sh_combined = cp.fmax(sh_combined, sh_stack[i])
+    sh = cp.fmax(cp.fmax(sh, sh_combined))
+    sh = 1.0 - sh
+
+    return sh
+
 # # @jit(nopython=True)
 # # @profile
 def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, aminvalue, trunkcheck, bush, forsvf):
@@ -749,7 +865,7 @@ def shadowingfunction_20_3d_old(a, vegdem, vegdem2, azimuth, altitude, scale, am
 
         vegsh = cp.fmax(vegsh, vegsh2)
         vegsh = cp.where((vegsh * sh > 0.0) | (vegsh * sh2 > 0.0), 0.0, vegsh)
-        cp.add(vbshvegsh, vegsh)
+        cp.add(vbshvegsh, vegsh,  out=vbshvegsh)
 
 
     sh = cp.fmax(sh, sh2)
@@ -773,16 +889,14 @@ def shadowingfunction_20_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxva
     azimuth *= degrees
     altitude *= degrees
     # factor = cp.float32(2.0)
-
     # Grid size
     sizex, sizey = a[0].shape[0], a[0].shape[1]
 
     # Initialize parameters
     dx = dy = dz = 0.0
-
     num_layers = len(a)
     temp = cp.zeros((sizex, sizey), dtype=cp.float32)
-    temp_layers = {i: cp.full((sizex, sizey), np.nan, dtype=cp.float32) for i in range(1, num_layers)}
+    temp_layers = cp.full((num_layers - 1, sizex, sizey), np.nan, dtype=cp.float32)
     tempvegdem = cp.full((sizex, sizey), np.nan, dtype=cp.float32)
     tempvegdem2 = cp.full((sizex, sizey), np.nan, dtype=cp.float32)
 
@@ -793,7 +907,6 @@ def shadowingfunction_20_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxva
 
 
     sh = cp.zeros((sizex, sizey),  dtype=cp.float32) #shadows from buildings
-    sh2 = cp.zeros((sizex, sizey), dtype=cp.float32)
 
     num_combinations = (num_layers - 1) // 2
     sh_stack = cp.full((num_combinations, sizex, sizey), np.nan, dtype=cp.float32)
@@ -825,6 +938,7 @@ def shadowingfunction_20_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxva
     index = 0.0
 
     while (amaxvalue >= dz) and (np.abs(dx) < sizex) and (np.abs(dy) < sizey):
+
         if isVert:
             dy = signsinazimuth * index
             dx = -signcosazimuth * np.abs(np.round(index / tanazimuth))
@@ -856,7 +970,6 @@ def shadowingfunction_20_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxva
         temp[xp1:xp2, yp1:yp2] = a[0][xc1:xc2, yc1:yc2] - dz
         temp_layers[:, xp1:xp2, yp1:yp2] = a[1:num_layers, xc1:xc2, yc1:yc2] - dz
 
-
         dsm_ground = cp.fmax(dsm_ground, temp)
 
         sh = (dsm_ground > a[0]).astype(cp.float32)
@@ -871,15 +984,12 @@ def shadowingfunction_20_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxva
             layerabovea = temp_layers[layer_index] > a[0]
             prevgapabovea = temp_layers[gap_layer_index] > preva
             prevlayerabovea = temp_layers[layer_index] > preva
-
             sh_temp = cp.add(cp.add(cp.add(layerabovea, gapabovea, dtype=float), prevgapabovea, dtype=float),
                               prevlayerabovea, dtype=float)
-
             sh_temp = cp.where(sh_temp == 4.0, 0.0, sh_temp)
             sh_temp = cp.where(sh_temp > 0.0, 1.0, sh_temp)
 
-            # Store the result in the corresponding index of the 3D array (sh_stack)
-            # The first dimension is the combination index
+
             sh_stack[i // 2] = cp.fmax(sh_stack[i // 2], sh_temp)
 
         # Vegetation Part
@@ -899,16 +1009,28 @@ def shadowingfunction_20_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxva
         vegsh2 = cp.where(vegsh2 > 0.0, 1.0, vegsh2)
 
         vegsh = cp.fmax(vegsh, vegsh2)
-        vegsh = cp.where((vegsh * sh > 0.0) | (vegsh * sh2 > 0.0), 0.0, vegsh)
-        cp.add(vbshvegsh, vegsh)
+        vegsh = cp.where((vegsh * sh > 0.0), 0.0, vegsh)
+        vegsh = cp.where(cp.any(sh_stack * vegsh > 0.0, axis=0), 0.0, vegsh)
+        cp.add(vbshvegsh, vegsh,  out=vbshvegsh)
 
         index += 1.0
 
     # sh = cp.fmax(cp.fmax(cp.fmax(cp.fmax(sh, sh2), sh3), sh4), sh5)
+    for i in range(0, num_combinations):
+        name = f"D:/Geomatics/thesis/3dthings/testcase2_output_multi/sh_multgap_stack_{i}" + str(round(azimuth, 2)) + "   " + str(
+            round(altitude, 2)) + ".tif"
+        # write_output(sh_stack[i].get(), name)
     sh_combined = sh_stack[0]
     for i in range(1, num_combinations):
+        name = f"D:/Geomatics/thesis/3dthings/testcase2_output_multi/sh_multgap_stack_{i}" + str(round(azimuth, 2)) + "   " + str(
+            round(altitude, 2)) + ".tif"
+        # write_output(sh_stack[i].get(), name)
         sh_combined = cp.fmax(sh_combined, sh_stack[i])
-    sh = cp.fmax(cp.fmax(sh, sh_combined))
+    name = "D:/Geomatics/thesis/3dthings/testcase2_output_multi/sh_comb_multgap_" + str(round(azimuth, 2)) + "   " + str(round(altitude, 2)) + ".tif"
+    # write_output(sh_combined.get(), name)
+    name = "D:/Geomatics/thesis/3dthings/testcase2_output_multi/sh_multgap_" + str(round(azimuth, 2)) + "   " + str(round(altitude, 2)) + ".tif"
+    # write_output(sh.get(), name)
+    sh = (cp.fmax(sh, sh_combined))
     sh = 1.0 - sh
     vbshvegsh[vbshvegsh > 0.0] = 1.0
     vbshvegsh -= vegsh
@@ -916,8 +1038,8 @@ def shadowingfunction_20_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxva
     vbshvegsh = 1.0 - vbshvegsh
 
 
-    name = "D:/Geomatics/thesis/3dthings/testcase2_output/multgap_" + str(round(azimuth, 2)) + "   " + str(round(altitude, 2)) + ".tif"
-    write_output(sh.get(), name)
+    name = "D:/Geomatics/thesis/3dthings/testcase2_output_multi/multgap_" + str(round(azimuth, 2)) + "   " + str(round(altitude, 2)) + ".tif"
+    # write_output(sh.get(), name)
 
     shadowresult = {
         'sh': sh,
@@ -925,3 +1047,50 @@ def shadowingfunction_20_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxva
         'vbshvegsh': vbshvegsh
     }
     return shadowresult
+
+
+def shadowingfunction_20_3d_90(a, vegdem, vegdem2):
+    # Conversion
+    # Grid size
+    sizex, sizey = a[0].shape[0], a[0].shape[1]
+
+    # Initialize parameters
+
+    num_layers = len(a)
+
+    vbshvegsh = cp.zeros((sizex, sizey), dtype=cp.float32)
+
+    sh2 = cp.zeros((sizex, sizey),  dtype=cp.float32)
+
+    for i in range(0, num_layers - 1, 2):
+        sh_temp = cp.where(a[i + 1] > 0, 1.0, 0.0)
+        sh2 = cp.fmax(sh2, sh_temp)
+
+    # Vegetation Part
+    vegsh = cp.where(cp.logical_and(vegdem > 0, vegdem2 > 0), 1.0, 0.0)
+    vegsh = cp.where((vegsh * sh2 > 0.0), 0.0, vegsh)
+    cp.add(vbshvegsh, vegsh,  out=vbshvegsh)
+
+    sh = 1.0 - sh2
+    vbshvegsh[vbshvegsh > 0.0] = 1.0
+    vbshvegsh -= vegsh
+    vegsh = 1.0 - vegsh
+    vbshvegsh = 1.0 - vbshvegsh
+
+    shadowresult = {
+        'sh': sh,
+        'vegsh': vegsh,
+        'vbshvegsh': vbshvegsh
+    }
+    return shadowresult
+
+def shadowingfunctionglobalradiation_3d_90(a):
+    sizex, sizey = a[0].shape[0], a[0].shape[1]
+    num_layers = len(a)
+    sh2 = cp.zeros((sizex, sizey),  dtype=cp.float32)
+
+    for i in range(0, num_layers - 1, 2):
+        sh_temp = cp.where(a[i + 1] > 0, 1.0, 0.0)
+        sh2 = cp.fmax(sh2, sh_temp)
+
+    return 1.0 - sh2

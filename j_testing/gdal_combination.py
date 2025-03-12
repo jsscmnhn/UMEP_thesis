@@ -22,7 +22,7 @@ def combine_tiffs(folder, input_files, output_file):
 
 
 folder = "D:/Geomatics/thesis/gaptesting_database/case2/"
-# Example usage with a specific order of layers:
+
 input_files = ['case2_0.tif', 'case2_1gap_1.tif', 'case2_2gap_2.tif', 'case2_2gap_3.tif', 'case2_2gap_4.tif']  # List files in the desired order
 output_file = 'case2_5layers.tif'
 
