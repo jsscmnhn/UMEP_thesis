@@ -440,7 +440,7 @@ class ProcessingSkyViewFactorAlgorithm():
 # INPUT_DSM = "D:/Geomatics/thesis/heattryout/preprocess/DSM_smaller.tif"
 # INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
 # INPUT_CDSM = None
-OUTPUT_DIR = "D:/Geomatics/thesis/codetestsvf/3D_layeredtiff"
+OUTPUT_DIR = "E:/Geomatics/thesis/codetestsvf/3D_layeredtiff"
 OUTPUT_FILE = "profiling/3dlayeredtiff"
 
 
@@ -476,8 +476,8 @@ OUTPUT_FILE = "profiling/3dlayeredtiff"
 
 # ======================== Joined tif fille
 INPUT_DSM = None
-INPUT_CDSM = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_veg.tif"
-INPUT_MULT_DSMS = "D:/Geomatics/thesis/gaptesting_database/case2/case2_5layers.tif"
+INPUT_CDSM = "E:/Geomatics/thesis/gaptesting_database/smaller/case1_veg.tif"
+INPUT_MULT_DSMS = "E:/Geomatics/thesis/gaptesting_database/case2/case2_5layers.tif"
 
 
 # stats.dump_stats("profilewithchm.prof")

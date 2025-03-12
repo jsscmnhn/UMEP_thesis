@@ -363,10 +363,6 @@ def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue
             vegsh2 = (fabovea | lastfabovea).astype(float)
         vegsh = np.fmax(vegsh, vegsh2)
 
-        # TO DO: THINK MORE ABOUT THIS LOGIC
-        # vegsh2 = np.zeros_like(vegdem, dtype=float)
-        # vegsh2[(fabovea) & (~gabovea)] = 1
-
         vegsh[(vegsh * sh > 0.)] = 0.
         vbshvegsh = vegsh + vbshvegsh  # removing shadows 'behind' buildings
 
@@ -746,143 +742,7 @@ def shadowingfunction_20_cupy_vector(a, vegdem, vegdem2, azimuth, altitude, scal
     }
     return shadowresult
 
-def shadowingfunction_20_3d_old(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, bush, forsvf):
-    # Conversion
-    degrees = np.pi / 180.0
-    azimuth *= degrees
-    altitude *= degrees
-
-    # Grid size
-    sizex, sizey = a[0].shape[0], a[0].shape[1]
-
-    # Initialize parameters
-    dx = dy = dz = 0.0
-
-    temp = cp.zeros((sizex, sizey), dtype=cp.float32)
-    tempvegdem = cp.full((sizex, sizey), np.nan, dtype=cp.float32)
-    tempvegdem2 = cp.full((sizex, sizey), np.nan, dtype=cp.float32)
-
-    bushplant = bush > 1.0
-    vbshvegsh = cp.zeros((sizex, sizey), dtype=cp.float32)
-    vegsh = cp.array(bushplant, dtype=cp.float32)
-    dsm_ground = a[0]
-
-    temp_firstgap = cp.full((sizex, sizey), np.nan)
-    temp_secondlayer = cp.full((sizex, sizey), np.nan)
-    sh = cp.zeros((sizex, sizey)) #shadows from buildings
-    sh2 = cp.zeros((sizex, sizey))
-
-    # Precompute trigonometric values
-    pibyfour = np.pi / 4.0
-    threetimespibyfour = 3.0 * pibyfour
-    fivetimespibyfour = 5.0 * pibyfour
-    seventimespibyfour = 7.0 * pibyfour
-    sinazimuth = np.sin(azimuth)
-    cosazimuth = np.cos(azimuth)
-    tanazimuth = np.tan(azimuth)
-    signsinazimuth = np.sign(sinazimuth)
-    signcosazimuth = np.sign(cosazimuth)
-    dssin = np.abs(1.0 / sinazimuth)
-    dscos = np.abs(1.0 / cosazimuth)
-    tanaltitudebyscale = np.tan(altitude) /scale
-
-    isVert = ((pibyfour <= azimuth) & (azimuth < threetimespibyfour)) | \
-             ((fivetimespibyfour <= azimuth) & (azimuth < seventimespibyfour))
-    if isVert:
-        ds = dssin
-    else:
-        ds = dscos
-
-    preva = a[0] - ds * tanaltitudebyscale
-
-    index = 0.0
-
-    while (amaxvalue >= dz) and (np.abs(dx) < sizex) and (np.abs(dy) < sizey):
-        if isVert:
-            dy = signsinazimuth * index
-            dx = -signcosazimuth * np.abs(np.round(index / tanazimuth))
-        else:
-            dy = signsinazimuth * np.abs(np.round(index * tanazimuth))
-            dx = -signcosazimuth * index
-
-        dz = (ds * index) * tanaltitudebyscale
-
-        tempvegdem.fill(np.nan)
-        tempvegdem2.fill(np.nan)
-        temp.fill(0.0)
-
-        temp_firstgap[:] = np.nan
-        temp_secondlayer[:] = np.nan
-
-        absdx = np.abs(dx)
-        absdy = np.abs(dy)
-
-        xc1 = int((dx + absdx) / 2.)
-        xc2 = int(sizex + (dx - absdx) / 2.)
-        yc1 = int((dy + absdy) / 2.)
-        yc2 = int(sizey + (dy - absdy) / 2.)
-        xp1 = int(-((dx - absdx) / 2.))
-        xp2 = int(sizex - (dx + absdx) / 2.)
-        yp1 = int(-((dy - absdy) / 2.))
-        yp2 = int(sizey - (dy + absdy) / 2.)
-
-        # Building Part
-        temp[xp1:xp2, yp1:yp2] = a[0][xc1:xc2, yc1:yc2] - dz
-        temp_firstgap[xp1:xp2, yp1:yp2] = a[1][xc1:xc2, yc1:yc2] - dz
-        temp_secondlayer[xp1:xp2, yp1:yp2] = a[2][xc1:xc2, yc1:yc2] - dz
-        # Building part
-        dsm_ground = cp.fmax(dsm_ground, temp)
-
-        sh = (dsm_ground > a[0]).astype(cp.float32)
-
-        gapabovea = temp_firstgap > a[0]
-        layerabovea = temp_secondlayer > a[0]
-
-        prevgapabovea = temp_firstgap > preva
-        prevlayerabovea = temp_secondlayer > preva
-
-        sh2_temp = cp.add(cp.add(cp.add(layerabovea, gapabovea, dtype=float), prevgapabovea, dtype=float),
-                          prevlayerabovea, dtype=float)
-
-        sh2_temp = cp.where(sh2_temp == 4.0, 0.0, sh2_temp)
-        sh2_temp = cp.where(sh2_temp > 0.0, 1.0, sh2_temp)
-        sh2 = cp.fmax(sh2, sh2_temp)
-        # Vegetation Part
-        tempvegdem[xp1:xp2, yp1:yp2] = vegdem[xc1:xc2, yc1:yc2]- dz
-        fabovea = tempvegdem > a[0]
-        lastfabovea = tempvegdem > preva
-
-        tempvegdem2[xp1:xp2, yp1:yp2] = vegdem2[xc1:xc2, yc1:yc2] - dz
-        gabovea = tempvegdem2 > a[0]
-        lastgabovea = tempvegdem2 > preva
-
-
-        vegsh2 = cp.add(cp.add(cp.add(fabovea, gabovea, dtype=cp.float32), lastfabovea, dtype=cp.float32),
-                        lastgabovea, dtype=cp.float32)
-
-        vegsh2 = cp.where(vegsh2 == 4.0, 0.0, vegsh2)
-        vegsh2 = cp.where(vegsh2 > 0.0, 1.0, vegsh2)
-
-        vegsh = cp.fmax(vegsh, vegsh2)
-        vegsh = cp.where((vegsh * sh > 0.0) | (vegsh * sh2 > 0.0), 0.0, vegsh)
-        cp.add(vbshvegsh, vegsh,  out=vbshvegsh)
-
-
-    sh = cp.fmax(sh, sh2)
-    sh = 1.0 - sh
-    vbshvegsh[vbshvegsh > 0.0] = 1.0
-    vbshvegsh -= vegsh
-    vegsh = 1.0 - vegsh
-    vbshvegsh = 1.0 - vbshvegsh
-
-    shadowresult = {
-        'sh': sh,
-        'vegsh': vegsh,
-        'vbshvegsh': vbshvegsh
-    }
-    return shadowresult
-
-
+# @profile
 def shadowingfunction_20_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, bush, forsvf):
     # Conversion
     degrees = np.pi / 180.0
@@ -1016,20 +876,21 @@ def shadowingfunction_20_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxva
         index += 1.0
 
     # sh = cp.fmax(cp.fmax(cp.fmax(cp.fmax(sh, sh2), sh3), sh4), sh5)
-    for i in range(0, num_combinations):
-        name = f"D:/Geomatics/thesis/3dthings/testcase2_output_multi/sh_multgap_stack_{i}" + str(round(azimuth, 2)) + "   " + str(
-            round(altitude, 2)) + ".tif"
+    # for i in range(0, num_combinations):
+        # name = f"D:/Geomatics/thesis/3dthings/testcase2_output_multi/sh_multgap_stack_{i}" + str(round(azimuth, 2)) + "   " + str(
+        #     round(altitude, 2)) + ".tif"
         # write_output(sh_stack[i].get(), name)
     sh_combined = sh_stack[0]
     for i in range(1, num_combinations):
-        name = f"D:/Geomatics/thesis/3dthings/testcase2_output_multi/sh_multgap_stack_{i}" + str(round(azimuth, 2)) + "   " + str(
-            round(altitude, 2)) + ".tif"
-        # write_output(sh_stack[i].get(), name)
+        # name = f"D:/Geomatics/thesis/3dthings/testcase2_output_multi/sh_multgap_stack_{i}" + str(round(azimuth, 2)) + "   " + str(
+        #     round(altitude, 2)) + ".tif"
+        # # write_output(sh_stack[i].get(), name)
         sh_combined = cp.fmax(sh_combined, sh_stack[i])
-    name = "D:/Geomatics/thesis/3dthings/testcase2_output_multi/sh_comb_multgap_" + str(round(azimuth, 2)) + "   " + str(round(altitude, 2)) + ".tif"
-    # write_output(sh_combined.get(), name)
-    name = "D:/Geomatics/thesis/3dthings/testcase2_output_multi/sh_multgap_" + str(round(azimuth, 2)) + "   " + str(round(altitude, 2)) + ".tif"
-    # write_output(sh.get(), name)
+
+    # name = "D:/Geomatics/thesis/3dthings/testcase2_output_multi/sh_comb_multgap_" + str(round(azimuth, 2)) + "   " + str(round(altitude, 2)) + ".tif"
+    # # write_output(sh_combined.get(), name)
+    # name = "D:/Geomatics/thesis/3dthings/testcase2_output_multi/sh_multgap_" + str(round(azimuth, 2)) + "   " + str(round(altitude, 2)) + ".tif"
+    # # write_output(sh.get(), name)
     sh = (cp.fmax(sh, sh_combined))
     sh = 1.0 - sh
     vbshvegsh[vbshvegsh > 0.0] = 1.0
@@ -1038,7 +899,7 @@ def shadowingfunction_20_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxva
     vbshvegsh = 1.0 - vbshvegsh
 
 
-    name = "D:/Geomatics/thesis/3dthings/testcase2_output_multi/multgap_" + str(round(azimuth, 2)) + "   " + str(round(altitude, 2)) + ".tif"
+    # name = "D:/Geomatics/thesis/3dthings/testcase2_output_multi/multgap_" + str(round(azimuth, 2)) + "   " + str(round(altitude, 2)) + ".tif"
     # write_output(sh.get(), name)
 
     shadowresult = {
