@@ -892,6 +892,7 @@ def shadowingfunction_20_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxva
     # name = "D:/Geomatics/thesis/3dthings/testcase2_output_multi/sh_multgap_" + str(round(azimuth, 2)) + "   " + str(round(altitude, 2)) + ".tif"
     # # write_output(sh.get(), name)
     sh = (cp.fmax(sh, sh_combined))
+
     sh = 1.0 - sh
     vbshvegsh[vbshvegsh > 0.0] = 1.0
     vbshvegsh -= vegsh

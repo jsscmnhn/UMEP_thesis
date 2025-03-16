@@ -40,7 +40,8 @@ import zipfile
 from functions.SOLWEIGpython.UTIL.Solweig_v2015_metdata_noload import Solweig_2015a_metdata_noload
 from functions.SOLWEIGpython.UTIL.clearnessindex_2013b import clearnessindex_2013b
 from functions.SOLWEIGpython.Tgmaps_v1_cupy import Tgmaps_v1
-from functions.SOLWEIGpython import Solweig_2022a_calc_forprocessing_jess as so
+from functions.SOLWEIGpython import Solweig_2022a_calc_forprocessing_cupy as so
+from functions.SOLWEIGpython import Solweig_2022a_calc_forprocessing_cupy_3d as so_3d
 from functions.SOLWEIGpython import WriteMetadataSOLWEIG
 from functions.SOLWEIGpython import PET_calculations as p
 from functions.SOLWEIGpython import UTCI_calculations as utci
@@ -80,7 +81,7 @@ class SOLWEIGAlgorithm():
     """
 
     def __init__(self, INPUT_DSM, INPUT_SVF, INPUT_CDSM,  INPUT_HEIGHT, INPUT_ASPECT,
-                 UTC, OUTPUT_DIR, INPUT_MET, INPUT_EXTRAHEIGHT=6, INPUT_LC=None,  INPUT_DEM=None, INPUT_ANISO=None,
+                 UTC, OUTPUT_DIR, INPUT_MET, INPUT_EXTRAHEIGHT=6, INPUT_MULT_DSMS=None, INPUT_LC=None,  INPUT_DEM=None, INPUT_ANISO=None,
                  CONIFER_TREES=False, INPUT_THEIGHT=25, INPUT_TDSM=None, TRANS_VEG=3, LEAF_START=97, LEAF_END=300,
                  USE_LC_BUILD=True, SAVE_BUILD=False, ALBEDO_WALLS=0.2, ALBEDO_GROUND=0.15,
                  EMIS_WALLS=0.9, EMIS_GROUND=0.95, ABS_S=0.7, ABS_L=0.95, POSTURE=0,  ONLYGLOBAL=True,
@@ -104,6 +105,7 @@ class SOLWEIGAlgorithm():
         self.SAVE_BUILD = SAVE_BUILD
         self.INPUT_ANISO = INPUT_ANISO
         self.INPUT_EXTRAHEIGHT = INPUT_EXTRAHEIGHT
+        self.MULT_DSMS = INPUT_MULT_DSMS
 
         # Enivornmental parameters
         self.ALBEDO_WALLS = ALBEDO_WALLS
@@ -648,9 +650,9 @@ class SOLWEIGAlgorithm():
 
         # % Ts parameterisation maps
         if landcover == 1.:
-            if cp.max(lcgrid) > 21 or cp.min(lcgrid) < 1:
+            if cp.max(lcgrid) > 21 or cp.min(lcgrid) < 0:
                 raise Exception("The land cover grid includes integer values higher (or lower) than UMEP-formatted" 
-                    "land cover grid (should be integer between 1 and 7). If other LC-classes should be included they also need to be included in landcoverclasses_2016a.txt")
+                    "land cover grid (should be integer between 0 and 7). If other LC-classes should be included they also need to be included in landcoverclasses_2016a.txt")
             if cp.where(lcgrid) == 3 or cp.where(lcgrid) == 4:
                 raise Exception("The land cover grid includes values (decidouos and/or conifer) not appropriate for SOLWEIG-formatted land cover grid (should not include 3 or 4).")
 
@@ -838,6 +840,721 @@ class SOLWEIGAlgorithm():
      
         return {self.OUTPUT_DIR: outputDir}
 
+    def processAlgorithm_3d(self):
+        np.seterr(divide='ignore', invalid='ignore')
+
+        # InputParameters
+        dsms_path = self.MULT_DSMS
+        transVeg = float(self.TRANS_VEG / 100.)
+        firstdayleaf = int(self.LEAF_START)
+        lastdayleaf = int(self.LEAF_START)
+        conifer_bool = bool(self.CONIFER_TREES)
+        vegdsm_path = self.INPUT_CDSM
+        vegdsm2_path = self.INPUT_TDSM
+        lcgrid_path = self.INPUT_LC
+        useLcBuild = bool(self.USE_LC_BUILD)
+        dem = None
+        inputSVF = self.INPUT_SVF
+        whlayer_path = self.INPUT_HEIGHT
+        walayer_path = self.INPUT_ASPECT
+        trunkr = float(self.INPUT_THEIGHT)
+        onlyglobal = bool(self.ONLYGLOBAL)
+        utc = float(self.UTC)
+        inputMet = self.INPUT_MET
+        saveBuild = bool(self.SAVE_BUILD)
+        demforbuild = 0
+        folderPathPerez = self.INPUT_ANISO
+
+        # Other parameters #
+        absK = float(self.ABS_S)
+        absL = float(self.ABS_L)
+        pos = int(self.POSTURE)
+
+        if bool(self.CYL):
+            cyl = 1
+        else:
+            cyl = 0
+
+        if pos == 0:
+            Fside = 0.22
+            Fup = 0.06
+            height = 1.1
+            Fcyl = 0.28
+        else:
+            Fside = 0.166666
+            Fup = 0.166666
+            height = 0.75
+            Fcyl = 0.2
+
+        albedo_b = float(self.ALBEDO_WALLS)
+        albedo_g = float(self.ALBEDO_GROUND)
+        ewall = float(self.EMIS_WALLS)
+        eground = float(self.EMIS_GROUND)
+        elvis = 0  # option removed 20200907 in processing UMEP
+
+        outputDir = self.OUTPUT_DIR
+        outputTmrt = bool(self.OUTPUT_TMRT)
+        outputSh = bool(self.OUTPUT_SH)
+        outputKup = bool(self.OUTPUT_KUP)
+        outputKdown = bool(self.OUTPUT_KDOWN)
+        outputLup = bool(self.OUTPUT_LUP)
+        outputLdown = bool(self.OUTPUT_LDOWN)
+        outputTreeplanter = bool(self.OUTPUT_TREEPLANTER)
+        outputKdiff = False
+        # outputSstr = False
+
+        # If "Save necessary rasters for TreePlanter tool" is ticked, save the following raster for TreePlanter or Spatial TC
+        if outputTreeplanter:
+            outputTmrt = True
+            outputKup = True
+            outputKdown = True
+            outputLup = True
+            outputLdown = True
+            outputSh = True
+            saveBuild = True
+            outputKdiff = True
+            # outputSstr = True
+
+        if not (os.path.isdir(outputDir)):
+            os.mkdir(outputDir)
+
+        gdal_dsms = gdal.Open(dsms_path)
+        layers = gdal_dsms.RasterCount
+
+        dsms = cp.stack([cp.array(gdal_dsms.GetRasterBand(i).ReadAsArray(), dtype=cp.float32) for i in range(1, layers + 1)],
+                        axis=0)
+
+        sizex = dsms[0].shape[0]
+        sizey = dsms[0].shape[1]
+        rows = dsms[0].shape[0]
+        cols = dsms[0].shape[1]
+
+        # response to issue #85
+        # nd = gdal_dsm.GetRasterBand(1).GetNoDataValue()
+        # dsm[dsm == nd] = 0.
+        # dsmcopy = np.copy(dsm)
+        dsm_min = dsms[0].min()
+        if 0 <= dsm_min < self.INPUT_EXTRAHEIGHT:
+            dsmraise = self.INPUT_EXTRAHEIGHT - dsm_min
+        elif dsm_min < 0:
+            dsmraise = cp.abs(dsm_min) + self.INPUT_EXTRAHEIGHT
+        else:
+            dsmraise = 0
+
+        dsms += dsmraise
+        print('DSM raised with ' + str(dsmraise) + 'm.')
+
+        # Get latlon from grid coordinate system
+        old_cs = osr.SpatialReference()
+        dsm_ref = gdal_dsms.GetProjection()
+        old_cs.ImportFromWkt(dsm_ref)
+
+        wgs84_wkt = """
+        GEOGCS["WGS 84",
+            DATUM["WGS_1984",
+                SPHEROID["WGS 84",6378137,298.257223563,
+                    AUTHORITY["EPSG","7030"]],
+                AUTHORITY["EPSG","6326"]],
+            PRIMEM["Greenwich",0,
+                AUTHORITY["EPSG","8901"]],
+            UNIT["degree",0.01745329251994328,
+                AUTHORITY["EPSG","9122"]],
+            AUTHORITY["EPSG","4326"]]"""
+
+        new_cs = osr.SpatialReference()
+        new_cs.ImportFromWkt(wgs84_wkt)
+
+        transform = osr.CoordinateTransformation(old_cs, new_cs)
+        widthx = gdal_dsms.RasterXSize
+        heightx = gdal_dsms.RasterYSize
+        geotransform = gdal_dsms.GetGeoTransform()
+        minx = geotransform[0]
+        miny = geotransform[3] + widthx * geotransform[4] + heightx * geotransform[5]
+        lonlat = transform.TransformPoint(minx, miny)
+        gdalver = float(gdal.__version__[0])
+        if gdalver == 3.:
+            lon = lonlat[1]  # changed to gdal 3
+            lat = lonlat[0]  # changed to gdal 3
+        else:
+            lon = lonlat[0]  # changed to gdal 2
+            lat = lonlat[1]  # changed to gdal 2
+        scale = 1 / geotransform[1]
+
+        alt = cp.median(dsms[0]).get()
+        if alt < 0:
+            alt = 3
+        print('Longitude derived from DSM: ' + str(lon))
+        print('Latitude derived from DSM: ' + str(lat))
+
+        trunkfile = 0
+        trunkratio = 0
+        # psi = transVeg / 100.0
+
+        # if useVegdem:
+        if vegdsm_path is not None:
+            usevegdem = 1
+            print('Vegetation scheme activated')
+
+            gdal_vegdsm = gdal.Open(vegdsm_path)
+            vegdsm = cp.array(gdal_vegdsm.ReadAsArray().astype(float), dtype=cp.float32)
+
+            vegsizex = vegdsm.shape[0]
+            vegsizey = vegdsm.shape[1]
+
+            if not (vegsizex == sizex) & (vegsizey == sizey):
+                raise Exception("Error in Vegetation Canopy DSM: All rasters must be of same extent and resolution")
+
+            if vegdsm2_path is not None:
+                gdal_vegdsm2 = gdal.Open(vegdsm2_path)
+                vegdsm2 = cp.array(gdal_vegdsm2.ReadAsArray().astype(float), dtype=cp.float32)
+            else:
+                trunkratio = trunkr / 100.0
+                vegdsm2 = vegdsm * trunkratio
+                vegdsm2_path = None
+
+            vegsizex = vegdsm2.shape[0]
+            vegsizey = vegdsm2.shape[1]
+
+            if not (vegsizex == sizex) & (vegsizey == sizey):  # &
+                raise Exception("Error in Trunk Zone DSM: All rasters must be of same extent and resolution")
+        else:
+            vegdsm = cp.zeros([rows, cols])
+            vegdsm2 = cp.zeros([rows, cols])
+            usevegdem = 0
+            vegdsm_path = None
+            vegdsm2_path = None
+
+        # Land cover
+        if lcgrid_path is not None:
+            landcover = 1
+            print('Land cover scheme activated')
+
+            # load raster
+            gdal_lcgrid = gdal.Open(lcgrid_path)
+            lcgrid = cp.array(gdal_lcgrid.ReadAsArray().astype(float), dtype=cp.float32)
+
+            lcsizex = lcgrid.shape[0]
+            lcsizey = lcgrid.shape[1]
+
+            if not (lcsizex == sizex) & (lcsizey == sizey):
+                raise Exception("Error in land cover grid: All grids must be of same extent and resolution")
+
+            baddataConifer = (lcgrid == 3)
+            baddataDecid = (lcgrid == 4)
+            if baddataConifer.any():
+                raise Exception(
+                    "Error in land cover grid: Land cover grid includes Confier land cover class. Ground cover information (underneath canopy) is required.")
+            if baddataDecid.any():
+                raise Exception(
+                    "Error in land cover grid: Land cover grid includes Decidiuous land cover class. Ground cover information (underneath canopy) is required.")
+            if cp.isnan(lcgrid).any():
+                raise Exception(
+                    "Error in land cover grid: Land cover grid includes NaN values. Use the QGIS Fill NoData cells tool to remove NaN values.")
+        else:
+            lcgrid_path = None
+            landcover = 0
+
+        # DEM #
+        if not useLcBuild:
+            demforbuild = 1
+            dem = self.INPUT_DEM
+
+            if dem is None:
+                raise Exception("Error: No valid DEM selected")
+
+            # load raster
+            gdal.AllRegister()
+            provider = dem.dataProvider()
+            filePathOld = str(provider.dataSourceUri())
+            dataSet = gdal.Open(filePathOld)
+            dem = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
+
+            demsizex = dem.shape[0]
+            demsizey = dem.shape[1]
+
+            if not (demsizex == sizex) & (demsizey == sizey):
+                raise Exception("Error in DEM: All grids must be of same extent and resolution")
+
+            # response to issue and #230
+            # nd = dataSet.GetRasterBand(1).GetNoDataValue()
+            # dem[dem == nd] = 0.
+            if dem.min() < 0:
+                demraise = np.abs(dem.min())
+                dem = dem + demraise
+                print('Digital Evevation Model (DEM) included negative values. DEM raised with ' + str(demraise) + 'm.')
+            else:
+                demraise = 0
+
+            alt = cp.median(dem).get()
+            print(type(alt))
+            if alt > 0:
+                alt = 3.
+
+            if (dsmraise != demraise) and (dsmraise - demraise > 0.5):
+                print('WARNiNG! DEM and DSM was raised unequally (difference > 0.5 m). Check your input data!')
+
+        # SVFs
+        print(inputSVF + "/svfveg.tif")
+
+        try:
+            dataSet = gdal.Open(inputSVF + "/svf.tif")
+            svf = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
+            dataSet = gdal.Open(inputSVF + "/svfN.tif")
+            svfN = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
+            dataSet = gdal.Open(inputSVF + "/svfS.tif")
+            svfS = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
+            dataSet = gdal.Open(inputSVF + "/svfE.tif")
+            svfE = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
+            dataSet = gdal.Open(inputSVF + "/svfW.tif")
+            svfW = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
+
+            if usevegdem == 1:
+                dataSet = gdal.Open(inputSVF + "/svfveg.tif")
+                svfveg = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
+                dataSet = gdal.Open(inputSVF + "/svfNveg.tif")
+                svfNveg = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
+                dataSet = gdal.Open(inputSVF + "/svfSveg.tif")
+                svfSveg = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
+                dataSet = gdal.Open(inputSVF + "/svfEveg.tif")
+                svfEveg = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
+                dataSet = gdal.Open(inputSVF + "/svfWveg.tif")
+                svfWveg = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
+
+                dataSet = gdal.Open(inputSVF + "/svfaveg.tif")
+                svfaveg = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
+                dataSet = gdal.Open(inputSVF + "/svfNaveg.tif")
+                svfNaveg = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
+                dataSet = gdal.Open(inputSVF + "/svfSaveg.tif")
+                svfSaveg = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
+                dataSet = gdal.Open(inputSVF + "/svfEaveg.tif")
+                svfEaveg = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
+                dataSet = gdal.Open(inputSVF + "/svfWaveg.tif")
+                svfWaveg = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
+            else:
+                svfveg = cp.ones((rows, cols))
+                svfNveg = cp.ones((rows, cols))
+                svfSveg = cp.ones((rows, cols))
+                svfEveg = cp.ones((rows, cols))
+                svfWveg = cp.ones((rows, cols))
+                svfaveg = cp.ones((rows, cols))
+                svfNaveg = cp.ones((rows, cols))
+                svfSaveg = cp.ones((rows, cols))
+                svfEaveg = cp.ones((rows, cols))
+                svfWaveg = cp.ones((rows, cols))
+        except:
+            raise Exception(
+                "SVF import error: The zipfile including the SVFs seems corrupt. Retry calcualting the SVFs in the Pre-processor or choose another file.")
+
+        svfsizex = svf.shape[0]
+        svfsizey = svf.shape[1]
+
+        if not (svfsizex == sizex) & (svfsizey == sizey):  # &
+            raise Exception("Error in svf rasters: All grids must be of same extent and resolution")
+
+        tmp = svf + svfveg - 1.
+        tmp[tmp < 0.] = 0.
+        # %matlab crazyness around 0
+        svfalfa = np.arcsin(np.exp((np.log((1. - tmp)) / 2.)))
+
+        print('Sky View Factor rasters loaded')
+
+        # wall height layer
+        if whlayer_path is None:
+            raise Exception("Error: No valid wall height raster layer is selected")
+        gdal_wallheight = gdal.Open(whlayer_path)
+        wallheight = cp.array(gdal_wallheight.ReadAsArray().astype(float), dtype=cp.float32)
+        nodata_value_walls = gdal_wallheight.GetRasterBand(1).GetNoDataValue()
+
+        vhsizex = wallheight.shape[0]
+        vhsizey = wallheight.shape[1]
+
+        if not (vhsizex == sizex) & (vhsizey == sizey):
+            raise Exception("Error in Wall height raster: All rasters must be of same extent and resolution")
+
+        # wall aspectlayer
+        if walayer_path is None:
+            raise Exception("Error: No valid wall aspect raster layer is selected")
+        gdal_wallaspect = gdal.Open(walayer_path)
+        wallaspect = cp.array(gdal_wallaspect.ReadAsArray().astype(float), dtype=cp.float32)
+
+        vasizex = wallaspect.shape[0]
+        vasizey = wallaspect.shape[1]
+        if not (vasizex == sizex) & (vasizey == sizey):
+            raise Exception("Error in Wall aspect raster: All rasters must be of same extent and resolution")
+
+        if nodata_value_walls is not None:
+            wallheight = cp.where(wallheight == nodata_value_walls, 0, wallheight)
+            wallaspect = cp.where(wallheight == nodata_value_walls, 0, wallaspect)
+
+        voxelheight = geotransform[1]  # float
+
+        # Metdata
+        headernum = 1
+        delim = ' '
+        Twater = []
+
+        try:
+            self.metdata = np.loadtxt(inputMet, skiprows=headernum, delimiter=delim)
+            metfileexist = 1
+        except:
+            raise Exception("Error: Make sure format of meteorological file is correct. You can"
+                            "prepare your data by using 'Prepare Existing Data' in "
+                            "the Pre-processor")
+
+        testwhere = np.where((self.metdata[:, 14] < 0.0) | (self.metdata[:, 14] > 1300.0))
+        if testwhere[0].__len__() > 0:
+            raise Exception("Error: Kdown - beyond what is expected at line: " + str(testwhere[0] + 1))
+
+        if self.metdata.shape[1] == 24:
+            print("Meteorological data successfully loaded")
+        else:
+            raise Exception("Error: Wrong number of columns in meteorological data.")
+
+        print("Calculating sun positions for each time step")
+        location = {'longitude': lon, 'latitude': lat, 'altitude': alt}
+        YYYY, altitude, azimuth, zen, jday, leafon, dectime, altmax = \
+            Solweig_2015a_metdata_noload(self.metdata, location, utc)
+
+        # Creating vectors from meteorological input
+        DOY = self.metdata[:, 1]
+        hours = self.metdata[:, 2]
+        minu = self.metdata[:, 3]
+        Ta = self.metdata[:, 11]
+        RH = self.metdata[:, 10]
+        radG = self.metdata[:, 14]
+        radD = self.metdata[:, 21]
+        radI = self.metdata[:, 22]
+        P = self.metdata[:, 12]
+
+        # Check if diffuse and direct radiation exist
+        if onlyglobal == 0:
+            if np.min(radD) == -999:
+                raise Exception("Diffuse radiation include NoData values",
+                                'Tick in the box "Estimate diffuse and direct shortwave..." or aqcuire '
+                                'observed values from external data sources.')
+            if np.min(radI) == -999:
+                raise Exception("Direct radiation include NoData values",
+                                'Tick in the box "Estimate diffuse and direct shortwave..." or aqcuire '
+                                'observed values from external data sources.')
+
+        # %Parameterisarion for Lup
+        if not height:
+            height = 1.1
+
+        # %Radiative surface influence, Rule of thumb by Schmid et al. (1990).
+        first = np.round(height)
+        if first == 0.:
+            first = 1.
+        second = np.round((height * 20.))
+
+        if usevegdem == 1:
+            # Conifer or deciduous
+            if conifer_bool:
+                leafon = np.ones((1, DOY.shape[0]))
+            else:
+                leafon = np.zeros((1, DOY.shape[0]))
+                if firstdayleaf > lastdayleaf:
+                    leaf_bool = ((DOY > firstdayleaf) | (DOY < lastdayleaf))
+                else:
+                    leaf_bool = ((DOY > firstdayleaf) & (DOY < lastdayleaf))
+                leafon[0, leaf_bool] = 1
+
+            # % Vegetation transmisivity of shortwave radiation
+            psi = leafon * transVeg
+            psi[leafon == 0] = 0.5
+            # amaxvalue
+            vegmax = vegdsm.max()
+
+            # TO DO: maybe change this to max value of all dsms layers
+            amaxvalue_dsm = dsms[0].max() - dsms[0].min()
+            amaxvalue = np.maximum(amaxvalue_dsm, vegmax)
+
+            # Elevation vegdsms if buildingDEM includes ground heights
+            # TO DO: CHANGE THIS TO DTM!!!
+            vegdsm = vegdsm + dsms[0]
+            vegdsm[vegdsm == dsms[0]] = 0
+            vegdsm2 = vegdsm2 + dsms[0]
+            vegdsm2[vegdsm2 == dsms[0]] = 0
+
+            # % Bush separation
+            bush = cp.logical_not((vegdsm2 * vegdsm)) * vegdsm
+
+            svfbuveg = (svf - (1. - svfveg) * (1. - transVeg))  # % major bug fixed 20141203
+        else:
+            psi = leafon * 0. + 1.
+            svfbuveg = svf
+            bush = cp.zeros([rows, cols])
+            amaxvalue = 0
+
+        # %Initialization of maps
+        Knight = cp.zeros((rows, cols))
+        Tgmap1 = cp.zeros((rows, cols))
+        Tgmap1E = cp.zeros((rows, cols))
+        Tgmap1S = cp.zeros((rows, cols))
+        Tgmap1W = cp.zeros((rows, cols))
+        Tgmap1N = cp.zeros((rows, cols))
+
+        # building grid and land cover preparation
+        # TO DO: MAYBE NOT HAVE HARD CODED?
+        sitein = "landcoverclasses_2016a.txt"
+        f = open(sitein)
+        lin = f.readlines()
+        lc_class = cp.zeros((lin.__len__() - 1, 6))
+        for i in range(1, lin.__len__()):
+            lines = lin[i].split()
+            for j in np.arange(1, 7):
+                lc_class[i - 1, j - 1] = float(lines[j])
+        f.close()
+
+        if demforbuild == 0:
+            buildings = cp.copy(lcgrid)
+            buildings = cp.where(buildings == 2, 1.0, 0.0)
+        else:
+            buildings = dsms[0] - dem
+            buildings[buildings < 2.] = 1.
+            buildings[buildings >= 2.] = 0.
+
+        if saveBuild:
+            saveraster(gdal_dsms, outputDir + '/buildings.tif', buildings.get())
+
+        # Import shadow matrices (Anisotropic sky)
+        if folderPathPerez:  # UseAniso
+            anisotropic_sky = 1
+            data = cp.load(folderPathPerez)
+            shmat = data['shadowmat']
+            vegshmat = data['vegshadowmat']
+            vbshvegshmat = data['vbshmat']
+            if usevegdem == 1:
+                diffsh = cp.zeros((rows, cols, shmat.shape[2]))
+                for i in range(0, shmat.shape[2]):
+                    diffsh[:, :, i] = shmat[:, :, i] - (1 - vegshmat[:, :, i]) * (
+                                1 - transVeg)  # changes in psi not implemented yet
+            else:
+                diffsh = shmat
+                vegshmat += 1
+                vbshvegshmat += 1
+
+            # Estimate number of patches based on shadow matrices
+            if shmat.shape[2] == 145:
+                patch_option = 1  # patch_option = 1 # 145 patches
+            elif shmat.shape[2] == 153:
+                patch_option = 2  # patch_option = 2 # 153 patches
+            elif shmat.shape[2] == 306:
+                patch_option = 3  # patch_option = 3 # 306 patches
+            elif shmat.shape[2] == 612:
+                patch_option = 4  # patch_option = 4 # 612 patches
+
+            # asvf to calculate sunlit and shaded patches
+            asvf = cp.arccos(cp.sqrt(svf))
+
+            anisotropic_feedback = "Sky divided into " + str(int(shmat.shape[2])) + " patches\n \
+                                    Anisotropic sky for diffuse shortwave radiation (Perez et al., 1993) and longwave radiation (Martin & Berdahl, 1984)"
+            print(anisotropic_feedback)
+        else:
+            print("Isotropic sky")
+            anisotropic_sky = 0
+            diffsh = None
+            shmat = None
+            vegshmat = None
+            vbshvegshmat = None
+            asvf = None
+            patch_option = 0
+
+        # % Ts parameterisation maps
+        if landcover == 1.:
+            if cp.max(lcgrid) > 21 or cp.min(lcgrid) < 0:
+                raise Exception("The land cover grid includes integer values higher (or lower) than UMEP-formatted"
+                                "land cover grid (should be integer between 0 and 7). If other LC-classes should be included they also need to be included in landcoverclasses_2016a.txt")
+            if cp.where(lcgrid) == 3 or cp.where(lcgrid) == 4:
+                raise Exception(
+                    "The land cover grid includes values (decidouos and/or conifer) not appropriate for SOLWEIG-formatted land cover grid (should not include 3 or 4).")
+
+            [TgK, Tstart, alb_grid, emis_grid, TgK_wall, Tstart_wall, TmaxLST, TmaxLST_wall] = Tgmaps_v1(lcgrid,
+                                                                                                         lc_class)
+        else:
+            TgK = Knight + 0.37
+            Tstart = Knight - 3.41
+            alb_grid = Knight + albedo_g
+            emis_grid = Knight + eground
+            TgK_wall = 0.37
+            Tstart_wall = -3.41
+            TmaxLST = 15.
+            TmaxLST_wall = 15.
+
+        # Initialisation of time related variables
+        if Ta.__len__() == 1:
+            timestepdec = 0
+        else:
+            timestepdec = dectime[1] - dectime[0]
+        timeadd = 0.
+        timeaddE = 0.
+        timeaddS = 0.
+        timeaddW = 0.
+        timeaddN = 0.
+        firstdaytime = 1.
+
+        WriteMetadataSOLWEIG.writeRunInfo(outputDir, dsms_path, gdal_dsms, usevegdem,
+                                          vegdsm_path, trunkfile, vegdsm2_path, lat, lon, utc, landcover,
+                                          lcgrid_path, metfileexist, inputMet, self.metdata,
+                                          absK, absL, albedo_b, albedo_g, ewall, eground, onlyglobal, trunkratio,
+                                          transVeg, rows, cols, pos, elvis, cyl, demforbuild, anisotropic_sky)
+
+        print(
+            "Writing settings for this model run to specified output folder (Filename: RunInfoSOLWEIG_YYYY_DOY_HHMM.txt)")
+
+        #  If metfile starts at night
+        CI = 1.
+
+        # Main function
+        print("Executing main model")
+
+        tmrtplot = cp.zeros((rows, cols))
+        TgOut1 = cp.zeros((rows, cols))
+
+        # Initiate array for I0 values
+        if np.unique(DOY).shape[0] > 1:
+            unique_days = np.unique(DOY)
+            first_unique_day = DOY[DOY == unique_days[0]]
+            I0_array = np.zeros((first_unique_day.shape[0]))
+        else:
+            first_unique_day = DOY.copy()
+            I0_array = np.zeros((DOY.shape[0]))
+
+        # numformat = '%d %d %d %d %.5f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f ' \
+        #            '%.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f'
+
+        numformat = '%d %d %d %d %.5f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f ' \
+                    '%.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f ' \
+                    '%.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f'
+
+        for i in np.arange(0, Ta.__len__()):
+            print(int(i * (100. / Ta.__len__())))  # move progressbar forward
+            # Daily water body temperature
+            if landcover == 1:
+                if ((dectime[i] - np.floor(dectime[i]))) == 0 or (i == 0):
+                    Twater = np.mean(Ta[jday[0] == np.floor(dectime[i])])
+            # Nocturnal cloudfraction from Offerle et al. 2003
+            if (dectime[i] - np.floor(dectime[i])) == 0:
+                daylines = np.where(np.floor(dectime) == dectime[i])
+                if daylines.__len__() > 1:
+                    alt = altitude[0][daylines]
+                    alt2 = np.where(alt > 1)
+                    rise = alt2[0][0]
+                    [_, CI, _, _, _] = clearnessindex_2013b(zen[0, i + rise + 1], jday[0, i + rise + 1],
+                                                            Ta[i + rise + 1],
+                                                            RH[i + rise + 1] / 100., radG[i + rise + 1], location,
+                                                            P[i + rise + 1])  # i+rise+1 to match matlab code. correct?
+                    if (CI > 1.) or (CI == np.inf):
+                        CI = 1.
+                else:
+                    CI = 1.
+
+            # radI[i] = radI[i]/np.sin(altitude[0][i] * np.pi/180)
+            # print(i, " ", f"{altitude[0][i]}, {azimuth[0][i]}, {zen[0][i]}")
+            Tmrt, Kdown, Kup, Ldown, Lup, Tg, ea, esky, I0, CI, shadow, firstdaytime, timestepdec, timeadd, \
+                Tgmap1, Tgmap1E, Tgmap1S, Tgmap1W, Tgmap1N, Keast, Ksouth, Kwest, Knorth, Least, \
+                Lsouth, Lwest, Lnorth, KsideI, TgOut1, TgOut, radIout, radDout, \
+                Lside, Lsky_patch_characteristics, CI_Tg, CI_TgG, KsideD, \
+                dRad, Kside = so_3d.Solweig_2022a_calc(
+                i, dsms, scale, rows, cols, svf, svfN, svfW, svfE, svfS, svfveg,
+                svfNveg, svfEveg, svfSveg, svfWveg, svfaveg, svfEaveg, svfSaveg, svfWaveg, svfNaveg, \
+                vegdsm, vegdsm2, albedo_b, absK, absL, ewall, Fside, Fup, Fcyl, altitude[0][i],
+                azimuth[0][i], zen[0][i], jday[0][i], usevegdem, onlyglobal, buildings, location,
+                psi[0][i], landcover, lcgrid, dectime[i], altmax[0][i], wallaspect,
+                wallheight, cyl, elvis, Ta[i], RH[i], radG[i], radD[i], radI[i], P[i], amaxvalue, amaxvalue_dsm,
+                bush, Twater, TgK, Tstart, alb_grid, emis_grid, TgK_wall, Tstart_wall, TmaxLST,
+                TmaxLST_wall, first, second, svfalfa, svfbuveg, firstdaytime, timeadd, timestepdec,
+                Tgmap1, Tgmap1E, Tgmap1S, Tgmap1W, Tgmap1N, CI, TgOut1, diffsh, shmat, vegshmat, vbshvegshmat,
+                anisotropic_sky, asvf, patch_option)
+
+            # Save I0 for I0 vs. Kdown output plot to check if UTC is off
+            if i < first_unique_day.shape[0]:
+                I0_array[i] = I0
+
+            tmrtplot += Tmrt
+
+            if altitude[0][i] > 0:
+                w = 'D'
+            else:
+                w = 'N'
+
+            if hours[i] < 10:
+                XH = '0'
+            else:
+                XH = ''
+            if minu[i] < 10:
+                XM = '0'
+            else:
+                XM = ''
+
+            if outputTmrt:
+                saveraster(gdal_dsms, outputDir + '/Tmrt_' + str(int(YYYY[0, i])) + '_' + str(int(DOY[i]))
+                           + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', Tmrt.get())
+            if outputKup:
+                saveraster(gdal_dsms, outputDir + '/Kup_' + str(int(YYYY[0, i])) + '_' + str(int(DOY[i]))
+                           + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', Kup.get())
+            if outputKdown:
+                saveraster(gdal_dsms, outputDir + '/Kdown_' + str(int(YYYY[0, i])) + '_' + str(int(DOY[i]))
+                           + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', Kdown.get())
+            if outputLup:
+                saveraster(gdal_dsms, outputDir + '/Lup_' + str(int(YYYY[0, i])) + '_' + str(int(DOY[i]))
+                           + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', Lup.get())
+            if outputLdown:
+                saveraster(gdal_dsms, outputDir + '/Ldown_' + str(int(YYYY[0, i])) + '_' + str(int(DOY[i]))
+                           + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', Ldown.get())
+            if outputSh:
+                saveraster(gdal_dsms, outputDir + '/Shadow_' + str(int(YYYY[0, i])) + '_' + str(int(DOY[i]))
+                           + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', shadow.get())
+
+            if outputKdiff:
+                saveraster(gdal_dsms, outputDir + '/Kdiff_' + str(int(YYYY[0, i])) + '_' + str(int(DOY[i]))
+                           + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', dRad.get())
+
+        # Save files for Tree Planter
+        if outputTreeplanter:
+            print("Saving files for Tree Planter tool")
+            # Save DSM
+            copyfile(dsms_path, outputDir + '/DSM.tif')
+
+            # Save met file
+            # copyfile(inputMet, outputDir + '/metfile.txt')
+
+            # Save CDSM
+            if usevegdem == 1:
+                copyfile(vegdsm_path, outputDir + '/CDSM.tif')
+
+            # Saving settings from SOLWEIG for SOLWEIG1D in TreePlanter
+            settingsHeader = 'UTC, posture, onlyglobal, landcover, anisotropic, cylinder, albedo_walls, albedo_ground, emissivity_walls, emissivity_ground, absK, absL, elevation, patch_option'
+            settingsFmt = '%i', '%i', '%i', '%i', '%i', '%i', '%1.2f', '%1.2f', '%1.2f', '%1.2f', '%1.2f', '%1.2f', '%1.2f', '%i'
+            settingsData = np.array([[utc, pos, onlyglobal, landcover, anisotropic_sky, cyl, albedo_b, albedo_g, ewall,
+                                      eground, absK, absL, alt, patch_option]])
+            np.savetxt(outputDir + '/treeplantersettings.txt', settingsData, fmt=settingsFmt, header=settingsHeader,
+                       delimiter=' ')
+
+        # Output I0 vs. Kglobal plot
+        radG_for_plot = radG[DOY == first_unique_day[0]]
+        hours_for_plot = hours[DOY == first_unique_day[0]]
+        fig, ax = plt.subplots()
+        ax.plot(hours_for_plot, I0_array, label='I0')
+        ax.plot(hours_for_plot, radG_for_plot, label='Kglobal')
+        ax.set_ylabel('Shortwave radiation [$Wm^{-2}$]')
+        ax.set_xlabel('Hours')
+        ax.set_title('UTC' + str(int(utc)))
+        ax.legend()
+        fig.savefig(outputDir + '/metCheck.png', dpi=150)
+
+        # Copying met file for SpatialTC
+        copyfile(inputMet, outputDir + '/metforcing.txt')
+
+        tmrtplot = tmrtplot / Ta.__len__()  # fix average Tmrt instead of sum, 20191022
+        saveraster(gdal_dsms, outputDir + '/Tmrt_average.tif', tmrtplot.get())
+        print("SOLWEIG: Model calculation finished.")
+
+        rmtree(self.temp_dir, ignore_errors=True)
+
+        return {self.OUTPUT_DIR: outputDir}
+
+"""
 INPUT_DSM = "D:/Geomatics/thesis/heattryout/preprocess/DSM_smaller.tif"
 INPUT_SVF = "D:/Geomatics/thesis/heattryout/preprocess/skyview/svfs"
 INPUT_ANISO = "D:/Geomatics/thesis/heattryout/preprocess/skyview/shadowmats.npz"
@@ -861,3 +1578,31 @@ stats.sort_stats('cumulative')  # Sort by cumulative time
 stats.print_stats(20)  # Display the top 20 results
 
 stats.dump_stats("profile_results_cupy_ani_debug.prof")
+"""
+
+# 3d testing
+INPUT_DSM = None
+INPUT_CDSM = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_veg.tif"
+INPUT_MULT_DSMS = "D:/Geomatics/thesis/gaptesting_database/case2/case2_5layers.tif"
+INPUT_SVF = "D:/Geomatics/thesis/codetestsvf/3d_layeredtiff/svfs"
+INPUT_ANISO ="D:/Geomatics/thesis/codetestsvf/3d_layeredtiff/shadowmats.npz"
+INPUT_LC = "D:/Geomatics/thesis/gaptesting_database/case2/case2_5layers_landcover.tif"
+INPUT_HEIGHT = "D:/Geomatics/thesis/gaptesting_database/case2/case2_5layers_height.tif"
+INPUT_ASPECT = "D:/Geomatics/thesis/gaptesting_database/case2/case2_5layers_aspect.tif"
+UTC = 1
+OUTPUT_DIR = "D:/Geomatics/thesis/3D_solweig/case2_5layer"
+INPUT_MET = "D:/Geomatics/thesis/heattryout/preprocess/climatedata/UMEPclimate_oneday.txt"
+
+
+
+test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET, INPUT_MULT_DSMS=INPUT_MULT_DSMS, INPUT_LC=INPUT_LC, INPUT_ANISO=INPUT_ANISO)
+
+with cProfile.Profile() as profiler:
+    test.processAlgorithm_3d()
+
+# Print profiling results
+stats = pstats.Stats(profiler)
+stats.sort_stats('cumulative')  # Sort by cumulative time
+stats.print_stats(20)  # Display the top 20 results
+
+stats.dump_stats("profile_results_cupy_debug_3D.prof")

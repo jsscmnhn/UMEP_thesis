@@ -355,15 +355,15 @@ class CHM:
         self.bbox = bbox
         self.crs = (CRS.from_epsg(28992))
         self.dtm = dtm
+        self.gdf = gpd.read_file("geotiles/AHN_lookup.geojson")
         self.chm, self.polygons, self.transform = self.init_chm(bbox, output_folder=output_folder, input_folder=input_folder)
         self.original_chm, self.og_polygons = self.chm, self.polygons
 
-    @staticmethod
-    def find_tiles(gdf, x_min, y_min, x_max, y_max):
+    def find_tiles(self, x_min, y_min, x_max, y_max):
         query_geom = box(x_min, y_min, x_max, y_max)
-        matches = gdf.sindex.query(
+        matches = self.gdf.sindex.query(
             query_geom)  # predicate="overlaps": tricky i want to still get something if it is all contained in one
-        return gdf.iloc[matches]["GT_AHNSUB"].tolist()
+        return self.gdf.iloc[matches]["GT_AHNSUB"].tolist()
 
     @staticmethod
     def filter_points_within_bounds(las_data, bounds):
@@ -535,15 +535,7 @@ class CHM:
 
         return interpolated_grid, grid_center_xy
 
-    def download_las_tiles(self, bbox, output_folder):
-        shapefile_path = "geotiles/AHN_lookup.geojson"
-        gdf = gpd.read_file(shapefile_path)
-
-        matching_tiles = self.find_tiles(gdf, *bbox)
-
-        print("Tiles covering the area:", matching_tiles)
-
-
+    def download_las_tiles(self, matching_tiles, output_folder):
         base_url = "https://geotiles.citg.tudelft.nl/AHN5_T"
         os.makedirs(output_folder, exist_ok=True)
 
@@ -698,20 +690,37 @@ class CHM:
         shapes_gen = shapes(labeled_array.astype(np.uint8), mask=(labeled_array > 0), transform=transform)
         polygons = [shape(geom) for geom, value in shapes_gen]
 
-        gdf = gpd.GeoDataFrame(geometry=polygons, crs=crs)
+        gdf = gpd.GeoDataFrame(geometry=polygons, crs=CRS.from_epsg(28992))
         gdf.to_file("output/tree_clusters.geojson", driver="GeoJSON")
 
         return veg_raster, polygons, new_transform
 
     def init_chm(self, bbox, output_folder="output", input_folder="temp",  merged_output="output/pointcloud.las",  smooth_chm=True, resolution=0.5, ndvi_threshold=0.05, filter_size=3):
+
+        matching_tiles = self.find_tiles(*bbox)
+        print("Tiles covering the area:", matching_tiles)
+
+        existing_tiles = {
+            os.path.splitext(file)[0] for file in os.listdir(input_folder) if file.endswith(".LAZ")
+        }
+
+        missing_tiles = [tile for tile in matching_tiles if tile not in existing_tiles]
+
+        if missing_tiles:
+            print("Missing tiles:", missing_tiles)
+            self.download_las_tiles(missing_tiles, input_folder)
+
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
-        # TO DO: maybe also add a check with the current tile list for if more laz files are in the directory
-        laz_files = [os.path.join(input_folder, file) for file in os.listdir(input_folder) if file.endswith(".LAZ")]
+        laz_files = [
+            os.path.join(input_folder, file)
+            for file in os.listdir(input_folder)
+            if file.endswith(".LAZ") and os.path.splitext(file)[0] in matching_tiles
+        ]
 
         if not laz_files:
-            print("No LAZ files found in the input folder or its subfolders.")
+            print("No relevant LAZ files found in the input folder or its subfolders.")
             return
 
         las_data = self.merge_las_files(laz_files, bbox, merged_output)
@@ -768,13 +777,15 @@ def load_buildings(buildings_path, layer):
 if __name__ == "__main__":
     # bbox = (94500, 469500, 95000, 470000)
     bbox = (121540, 487210, 122340, 487910)
-    buildings = Buildings(bbox).data
-    buildings_data = load_buildings("temp/buildings_test.gpkg", "buildings")
+    # buildings = Buildings(bbox).data
+    # buildings_data = load_buildings("temp/buildings_test.gpkg", "buildings")
 
-    DEMS = DEMS(bbox, buildings_data)
-    dtm = DEMS.dtm
-    dsm = DEMS.dsm
-    chm = CHM(bbox, dtm, "output", "temp").chm
+    # DEMS = DEMS(bbox, buildings_data)
+    # dtm = DEMS.dtm
+    # dsm = DEMS.dsm
+    with rasterio.open("output/final_dtm_test.tif") as src:
+        dtm = src.read(1)
+    chm = CHM(bbox, dtm, "output", "temp2").chm
 
 
     def plot_raster(filepath, title="Raster Data"):

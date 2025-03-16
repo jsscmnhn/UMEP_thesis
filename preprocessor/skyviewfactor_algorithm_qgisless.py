@@ -64,10 +64,11 @@ class ProcessingSkyViewFactorAlgorithm():
         self.TSDM_EXIST = TSDM_EXIST
         self.INPUT_THEIGHT = INPUT_THEIGHT
         self.INPUT_EXTRAHEIGHT = INPUT_EXTRAHEIGHT
+        self.MULT_DSMS = INPUT_MULT_DSMS
         self.ANISO = ANISO
         self.OUTPUT_DIR = OUTPUT_DIR
         self.OUTPUT_FILE = OUTPUT_FILE
-        self.MULT_DSMS = INPUT_MULT_DSMS
+
 
     def processAlgorithm(self):
         # InputParameters
@@ -91,6 +92,7 @@ class ProcessingSkyViewFactorAlgorithm():
         nd = gdal_dsm.GetRasterBand(1).GetNoDataValue()
         dsm[dsm == nd] = 0.
         dsm_min = dsm.min()
+        print(dsm_min)
         if 0 <= dsm_min < self.INPUT_EXTRAHEIGHT:
             dsmraise = self.INPUT_EXTRAHEIGHT - dsm_min
         elif dsm_min < 0:
@@ -235,21 +237,6 @@ class ProcessingSkyViewFactorAlgorithm():
         outputDir = self.OUTPUT_DIR
         outputFile = self.OUTPUT_FILE
         dsms_path = self.MULT_DSMS
-
-        # multiple layers run 1
-        # dsm4_path = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_2gap_3.tif"
-        # dsm5_path = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_2gap_4.tif"
-        # dsm6_path = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_2gap_5.tif"
-        # dsm7_path = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_2gap_6.tif"
-        # dsm8_path = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_2gap_7.tif"
-        # dsm9_path = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_1gap_2.tif"
-
-
-        # multiple layers run 2
-        # dsm4_path = "D:/Geomatics/thesis/gaptesting_database/case2/case2_2gap_3.tif"
-        # dsm5_path = "D:/Geomatics/thesis/gaptesting_database/case2/case2_2gap_4.tif"
-
-
         # usevegdem = self.USE_VEG
         transVeg = float(self.TRANS_VEG)
         vegdsm_path = self.INPUT_CDSM
@@ -263,27 +250,8 @@ class ProcessingSkyViewFactorAlgorithm():
         gdal_dsms = gdal.Open(dsms_path)
         layers = gdal_dsms.RasterCount
 
-
-        # gdal_dsm2 = gdal.Open(dsm2_path)
-        # gdal_dsm3 = gdal.Open(dsm3_path)
-        # gdal_dsm4 = gdal.Open(dsm4_path)
-        # gdal_dsm5 = gdal.Open(dsm5_path)
-        # gdal_dsm6 = gdal.Open(dsm6_path)
-        # gdal_dsm7 = gdal.Open(dsm7_path)
-        # gdal_dsm8 = gdal.Open(dsm8_path)
-        # gdal_dsm9 = gdal.Open(dsm9_path)
-
         dsms = cp.stack([cp.array(gdal_dsms.GetRasterBand(i).ReadAsArray(), dtype=cp.float32) for i in range(1, layers + 1)],
                         axis=0)
-
-        # dsm2 = gdal_dsm2.ReadAsArray().astype(float)
-        # dsm3 = gdal_dsm3.ReadAsArray().astype(float)
-        # dsm4 = gdal_dsm4.ReadAsArray().astype(float)
-        # dsm5 = gdal_dsm5.ReadAsArray().astype(float)
-        # dsm6 = gdal_dsm6.ReadAsArray().astype(float)
-        # dsm7 = gdal_dsm7.ReadAsArray().astype(float)
-        # dsm8 = gdal_dsm8.ReadAsArray().astype(float)
-        # dsm9 = gdal_dsm9.ReadAsArray().astype(float)
 
         dsm_min = dsms[0].min()
         if 0 <= dsm_min < self.INPUT_EXTRAHEIGHT:
@@ -437,11 +405,11 @@ class ProcessingSkyViewFactorAlgorithm():
         return {self.OUTPUT_DIR: outputDir, self.OUTPUT_FILE: outputFile}
 
 # ===================== normal test case ==============================
-# INPUT_DSM = "D:/Geomatics/thesis/heattryout/preprocess/DSM_smaller.tif"
-# INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
+INPUT_DSM = "D:/Geomatics/thesis/wcs_test/maps/new_dsm.TIF"
+INPUT_CDSM = None
 # INPUT_CDSM = None
-OUTPUT_DIR = "E:/Geomatics/thesis/codetestsvf/3D_layeredtiff"
-OUTPUT_FILE = "profiling/3dlayeredtiff"
+OUTPUT_DIR = "D:/Geomatics/thesis/wcs_test"
+OUTPUT_FILE = "profiling/wcstest"
 
 
 # ===================== RUN TEST CASE 1  ==============================
@@ -475,16 +443,16 @@ OUTPUT_FILE = "profiling/3dlayeredtiff"
 # INPUT_CDSM=None
 
 # ======================== Joined tif fille
-INPUT_DSM = None
-INPUT_CDSM = "E:/Geomatics/thesis/gaptesting_database/smaller/case1_veg.tif"
-INPUT_MULT_DSMS = "E:/Geomatics/thesis/gaptesting_database/case2/case2_5layers.tif"
+# INPUT_DSM = None
+# INPUT_CDSM = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_veg.tif"
+# INPUT_MULT_DSMS = "D:/Geomatics/thesis/gaptesting_database/case2/case2_5layers.tif"
 
 
 # stats.dump_stats("profilewithchm.prof")
 
 with cProfile.Profile() as profiler2:
-    # ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE).processAlgorithm()
-    ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_MULT_DSMS=INPUT_MULT_DSMS).processAlgorithm_3d()
+    ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE).processAlgorithm()
+    # ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_MULT_DSMS=INPUT_MULT_DSMS).processAlgorithm_3d()
 
     # ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, dsm2=DSM2, dsm3=DSM3).processAlgorithm()
 
@@ -492,4 +460,4 @@ stats3 = pstats.Stats(profiler2)
 stats3.sort_stats('cumulative')
 print("\nProfiling with veg cap CDSM:\n")
 stats3.print_stats(20)
-stats3.dump_stats("profiling/profile_cupy_layered3d.prof")
+# stats3.dump_stats("profiling/profile_cupy_layered3d.prof")

@@ -35,10 +35,10 @@ def saveraster(gdal_data, filename, raster):
     outBand = outDs.GetRasterBand(1)
 
     # write the data
+    outBand.SetNoDataValue(-9999)
     outBand.WriteArray(raster, 0, 0)
     # flush data to disk, set the NoData value and calculate stats
     outBand.FlushCache()
-    outBand.SetNoDataValue(-9999)
 
     # georeference the image and set the projection
     outDs.SetGeoTransform(gdal_data.GetGeoTransform())

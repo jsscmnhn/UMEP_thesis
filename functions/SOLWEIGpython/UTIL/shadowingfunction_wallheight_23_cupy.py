@@ -1,8 +1,50 @@
 from __future__ import division
 import numpy as np
 import cupy as cp
+from rasterio import CRS, Affine
+import rasterio
+
+
+def write_output(output, name):
+    """
+    Write grid to .tiff file.
+    ----
+    Input:
+    - dataset: Can be either a rasterio dataset (for rasters) or laspy dataset (for point clouds)
+    - output (Array): the output grid, a numpy grid.
+    - name (String): the name of the output file.
+    - transform:
+      a user defined rasterio Affine object, used for the transforming the pixel coordinates
+      to spatial coordinates.
+    - change_nodata (Boolean): true: use a no data value of -9999, false: use the datasets no data value
+    """
+    output_file = name
+
+    output = np.squeeze(output)
+    # Set the nodata value: use -9999 if nodata_value is True or dataset does not have nodata.
+    crs = CRS.from_epsg(28992)
+    nodata_value = -9999
+    # transform = Affine(0.50, 0.00, 119300.00,
+    #                    0.00, -0.50, 486500.00)
+    transform = Affine(0.50, 0.00, 153100.0,
+                       0.00, -0.50,  471200.0)
+
+    # output the dataset
+    with rasterio.open(output_file, 'w',
+                       driver='GTiff',
+                       height=output.shape[0],  # Assuming output is (rows, cols)
+                       width=output.shape[1],
+                       count=1,
+                       dtype=np.float32,
+                       crs=crs,
+                       nodata=nodata_value,
+                       transform=transform) as dst:
+        dst.write(output, 1)
+    print("File written to '%s'" % output_file)
+
 
 def shadowingfunction_wallheight_23(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, bush, walls, aspect):
+
     # conversion
     degrees = np.pi / 180.
     azimuth *= degrees
@@ -143,7 +185,7 @@ def shadowingfunction_wallheight_23(a, vegdem, vegdem2, azimuth, altitude, scale
     return vegsh, sh, wallsh, wallsun, wallshve, facesh, facesun
 
 
-def shadowingfunction_20_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, bush, walls, aspect):
+def shadowingfunction_23_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, bush, walls, aspect):
     # Conversion
     degrees = np.pi / 180.0
     azimuth *= degrees
@@ -236,7 +278,6 @@ def shadowingfunction_20_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxva
         dsm_ground = cp.fmax(dsm_ground, temp)
 
         sh = (dsm_ground > a[0]).astype(cp.float32)
-
         for i in range(0, num_layers - 1, 2):
             # first gap part
             gap_layer_index = i
@@ -249,9 +290,13 @@ def shadowingfunction_20_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxva
             prevlayerabovea = temp_layers[layer_index] > preva
             sh_temp = cp.add(cp.add(cp.add(layerabovea, gapabovea, dtype=float), prevgapabovea, dtype=float),
                               prevlayerabovea, dtype=float)
+            # for i in range(0, num_layers - 1):
+            #     name = f"D:/Geomatics/thesis/3D_solweig/shade_debug/add_check_{i}_{index}" + str(
+            #         round(azimuth, 2)) + "_" + str(round(altitude, 2)) + ".tif"
+            #     write_output(sh_temp.get(), name)
+
             sh_temp = cp.where(sh_temp == 4.0, 0.0, sh_temp)
             sh_temp = cp.where(sh_temp > 0.0, 1.0, sh_temp)
-
 
             sh_stack[i // 2] = cp.fmax(sh_stack[i // 2], sh_temp)
 
@@ -277,14 +322,17 @@ def shadowingfunction_20_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxva
 
         index += 1.0
 
+    # for i in range(0, num_combinations):
+    #
+    #     name = f"D:/Geomatics/thesis/3D_solweig/shade_debug/sh_multgap_stack_{i}" + str(round(azimuth, 2)) + "_" + str(round(altitude, 2)) + ".tif"
+    #     write_output(sh_stack[i].get(), name)
+
     sh_combined = sh_stack[0]
+
     for i in range(1, num_combinations):
         sh_combined = cp.fmax(sh_combined, sh_stack[i])
 
     sh = (cp.fmax(sh, sh_combined))
-    sh = 1.0 - sh
-    vegsh = 1.0 - vegsh
-
 
     # Removing walls in shadow due to selfshadowing
     azilow = azimuth - np.pi / 2
@@ -302,11 +350,11 @@ def shadowingfunction_20_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxva
     sh = 1 - sh
 
     vegsh[vegsh > 0] = 1
-    shvoveg = (shvoveg - a) * vegsh  # Vegetation shadow volume
+    shvoveg = (shvoveg - a[0]) * vegsh  # Vegetation shadow volume
     vegsh = 1 - vegsh
 
     # wall shadows
-    shvo = f - a  # building shadow volume
+    shvo = dsm_ground - a[0]  # first layer building shadow volume
     facesun = cp.logical_and(facesh + (walls > 0).astype(float) == 1, walls > 0).astype(float)
     wallsun = cp.copy(walls - shvo)
     wallsun[wallsun < 0] = 0
