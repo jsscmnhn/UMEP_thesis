@@ -408,7 +408,7 @@ class ProcessingSkyViewFactorAlgorithm():
 INPUT_DSM = "D:/Geomatics/thesis/wcs_test/maps/new_dsm.TIF"
 INPUT_CDSM = None
 # INPUT_CDSM = None
-OUTPUT_DIR = "D:/Geomatics/thesis/wcs_test"
+OUTPUT_DIR = "D:/Geomatics/thesis/wcs_test/pc"
 OUTPUT_FILE = "profiling/wcstest"
 
 

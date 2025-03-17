@@ -81,9 +81,9 @@ class WallData:
         return dirwalls
 
 if __name__ == "__main__":
-    file = "D:/Geomatics/thesis/gaptesting_database/case2/case2_5layers.tif"
-    output_aspect = "D:/Geomatics/thesis/gaptesting_database/case2/case2_5layers_aspect.tif"
-    output_height = "D:/Geomatics/thesis/gaptesting_database/case2/case2_5layers_height.tif"
+    file = "D:/Geomatics/thesis/wcs_test/maps/final_dsm_wcs.TIF"
+    output_aspect = "D:/Geomatics/thesis/wcs_test/wcs/wallaspect.tif"
+    output_height = "D:/Geomatics/thesis/wcs_test/wcs/wallheight.tif"
     gdal_dsms = gdal.Open(file)
 
     walldata = WallData(gdal_dsms, 2)

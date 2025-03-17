@@ -151,8 +151,8 @@ class SOLWEIGAlgorithm():
         vegdsm_path = self.INPUT_CDSM
         vegdsm2_path = self.INPUT_TDSM
         lcgrid_path =  self.INPUT_LC
-        useLcBuild = bool(self.USE_LC_BUILD)
-        dem = None
+        useLcBuild = 0 #bool(self.USE_LC_BUILD)
+        dem_path = self.INPUT_DEM
         inputSVF = self.INPUT_SVF
         whlayer_path = self.INPUT_HEIGHT
         walayer_path = self.INPUT_ASPECT
@@ -161,7 +161,7 @@ class SOLWEIGAlgorithm():
         utc = float(self.UTC)
         inputMet = self.INPUT_MET
         saveBuild = bool(self.SAVE_BUILD)
-        demforbuild = 0
+        demforbuild = 1
         folderPathPerez = self.INPUT_ANISO
 
         # Other parameters #
@@ -349,17 +349,14 @@ class SOLWEIGAlgorithm():
         # DEM #
         if not useLcBuild:
             demforbuild = 1
-            dem = self.INPUT_DEM
+            dem_path = self.INPUT_DEM
 
-            if dem is None:
-                raise Exception("Error: No valid DEM selected")
+            if dem_path is None:
+                raise Exception("Error: No valid DEM path selected")
 
             # load raster
-            gdal.AllRegister()
-            provider = dem.dataProvider()
-            filePathOld = str(provider.dataSourceUri())
-            dataSet = gdal.Open(filePathOld)
-            dem = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
+            gdal_dem = gdal.Open(dem_path)
+            dem = cp.array(gdal_dem.ReadAsArray().astype(float), dtype=cp.float32)
 
             demsizex = dem.shape[0]
             demsizey = dem.shape[1]
@@ -370,12 +367,16 @@ class SOLWEIGAlgorithm():
             # response to issue and #230
             # nd = dataSet.GetRasterBand(1).GetNoDataValue()
             # dem[dem == nd] = 0.
-            if dem.min() < 0:
-                demraise = np.abs(dem.min())
-                dem = dem + demraise
-                print('Digital Evevation Model (DEM) included negative values. DEM raised with ' + str(demraise) + 'm.')
+            dem_min = dem.min()
+            if 0 <= dem_min < self.INPUT_EXTRAHEIGHT:
+                demraise = self.INPUT_EXTRAHEIGHT - dem_min
+            elif dem_min < 0:
+                demraise = cp.abs(dem_min) + self.INPUT_EXTRAHEIGHT
             else:
                 demraise = 0
+
+            dem += demraise
+            print("raised dem")
 
             alt = cp.median(dem).get()
             print(type(alt))
@@ -384,6 +385,7 @@ class SOLWEIGAlgorithm():
 
             if (dsmraise != demraise) and (dsmraise - demraise > 0.5):
                 print('WARNiNG! DEM and DSM was raised unequally (difference > 0.5 m). Check your input data!')
+
 
         #SVFs
         print(inputSVF + "/svfveg.tif")
@@ -1057,17 +1059,13 @@ class SOLWEIGAlgorithm():
         # DEM #
         if not useLcBuild:
             demforbuild = 1
-            dem = self.INPUT_DEM
+            dem_path = self.INPUT_DEM
 
-            if dem is None:
+            if dem_path is None:
                 raise Exception("Error: No valid DEM selected")
 
-            # load raster
-            gdal.AllRegister()
-            provider = dem.dataProvider()
-            filePathOld = str(provider.dataSourceUri())
-            dataSet = gdal.Open(filePathOld)
-            dem = cp.array(dataSet.ReadAsArray().astype(float), dtype=cp.float32)
+            gdal_dem = gdal.Open(dem_path)
+            dem = cp.array(gdal_dem.ReadAsArray().astype(float), dtype=cp.float32)
 
             demsizex = dem.shape[0]
             demsizey = dem.shape[1]
@@ -1078,12 +1076,16 @@ class SOLWEIGAlgorithm():
             # response to issue and #230
             # nd = dataSet.GetRasterBand(1).GetNoDataValue()
             # dem[dem == nd] = 0.
-            if dem.min() < 0:
-                demraise = np.abs(dem.min())
-                dem = dem + demraise
-                print('Digital Evevation Model (DEM) included negative values. DEM raised with ' + str(demraise) + 'm.')
+            dem_min = dem.min()
+            if 0 <= dem_min < self.INPUT_EXTRAHEIGHT:
+                demraise = self.INPUT_EXTRAHEIGHT - dem_min
+            elif dem_min < 0:
+                demraise = cp.abs(dem_min) + self.INPUT_EXTRAHEIGHT
             else:
                 demraise = 0
+
+            dem += demraise
+            print("raised dem")
 
             alt = cp.median(dem).get()
             print(type(alt))
@@ -1554,20 +1556,32 @@ class SOLWEIGAlgorithm():
 
         return {self.OUTPUT_DIR: outputDir}
 
-"""
-INPUT_DSM = "D:/Geomatics/thesis/heattryout/preprocess/DSM_smaller.tif"
-INPUT_SVF = "D:/Geomatics/thesis/heattryout/preprocess/skyview/svfs"
-INPUT_ANISO = "D:/Geomatics/thesis/heattryout/preprocess/skyview/shadowmats.npz"
-INPUT_LC = "D:/Geomatics/thesis/heattryout/preprocess/landuse.tif"
-INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
-INPUT_HEIGHT = "D:/Geomatics/thesis/heattryout/preprocess/wallheight.tif"
-INPUT_ASPECT = "D:/Geomatics/thesis/heattryout/preprocess/wallaspect.tif"
+
+# INPUT_DSM = "D:/Geomatics/thesis/heattryout/preprocess/DSM_smaller.tif"
+# INPUT_SVF = "D:/Geomatics/thesis/heattryout/preprocess/skyview/svfs"
+# INPUT_ANISO = "D:/Geomatics/thesis/heattryout/preprocess/skyview/shadowmats.npz"
+# INPUT_LC = "D:/Geomatics/thesis/heattryout/preprocess/landuse.tif"
+# INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
+# INPUT_HEIGHT = "D:/Geomatics/thesis/heattryout/preprocess/wallheight.tif"
+# INPUT_ASPECT = "D:/Geomatics/thesis/heattryout/preprocess/wallaspect.tif"
+# UTC = 0
+# OUTPUT_DIR = "D:/Geomatics/thesis/codetesting/cupy_ani_debug"
+# INPUT_MET = "D:/Geomatics/thesis/heattryout/preprocess/climatedata/UMEPclimate_oneday.txt"
+
+INPUT_DSM = "D:/Geomatics/thesis/wcs_test/maps/final_dsm_wcs.tif"
+DEM = "D:/Geomatics/thesis/wcs_test/maps/final_dtm_wcs.tif"
+INPUT_SVF = "D:/Geomatics/thesis/wcs_test/wcs/svfs"
+INPUT_ANISO = "D:/Geomatics/thesis/wcs_test/wcs/shadowmats.npz"
+INPUT_LC = None
+INPUT_CDSM = None
+INPUT_HEIGHT = "D:/Geomatics/thesis/wcs_test/wcs/wallheight.tif"
+INPUT_ASPECT = "D:/Geomatics/thesis/wcs_test/wcs/wallaspect.tif"
 UTC = 0
-OUTPUT_DIR = "D:/Geomatics/thesis/codetesting/cupy_ani_debug"
+OUTPUT_DIR = "D:/Geomatics/thesis/wcs_test/wcs/output"
 INPUT_MET = "D:/Geomatics/thesis/heattryout/preprocess/climatedata/UMEPclimate_oneday.txt"
 
 
-test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET, INPUT_LC=INPUT_LC, INPUT_ANISO=INPUT_ANISO)
+test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET, INPUT_DEM=DEM, INPUT_ANISO=INPUT_ANISO)
 
 with cProfile.Profile() as profiler:
     test.processAlgorithm()
@@ -1577,9 +1591,10 @@ stats = pstats.Stats(profiler)
 stats.sort_stats('cumulative')  # Sort by cumulative time
 stats.print_stats(20)  # Display the top 20 results
 
-stats.dump_stats("profile_results_cupy_ani_debug.prof")
-"""
+# stats.dump_stats("profile_results_cupy_ani_debug.prof")
 
+
+"""
 # 3d testing
 INPUT_DSM = None
 INPUT_CDSM = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_veg.tif"
@@ -1596,13 +1611,13 @@ INPUT_MET = "D:/Geomatics/thesis/heattryout/preprocess/climatedata/UMEPclimate_o
 
 
 test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET, INPUT_MULT_DSMS=INPUT_MULT_DSMS, INPUT_LC=INPUT_LC, INPUT_ANISO=INPUT_ANISO)
-
-with cProfile.Profile() as profiler:
-    test.processAlgorithm_3d()
+"""
+# with cProfile.Profile() as profiler:
+#     test.processAlgorithm_3d()
 
 # Print profiling results
-stats = pstats.Stats(profiler)
-stats.sort_stats('cumulative')  # Sort by cumulative time
-stats.print_stats(20)  # Display the top 20 results
+# stats = pstats.Stats(profiler)
+# stats.sort_stats('cumulative')  # Sort by cumulative time
+# stats.print_stats(20)  # Display the top 20 results
 
-stats.dump_stats("profile_results_cupy_debug_3D.prof")
+# stats.dump_stats("profile_results_cupy_debug_3D.prof")
