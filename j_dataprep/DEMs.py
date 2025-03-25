@@ -351,13 +351,15 @@ class DEMS:
 
 
 class CHM:
-    def __init__(self, bbox, dtm, output_folder, input_folder):
+    def __init__(self, bbox, dtm, trunk_height, output_folder, input_folder):
         self.bbox = bbox
         self.crs = (CRS.from_epsg(28992))
         self.dtm = dtm
         self.gdf = gpd.read_file("geotiles/AHN_lookup.geojson")
         self.chm, self.polygons, self.transform = self.init_chm(bbox, output_folder=output_folder, input_folder=input_folder)
         self.original_chm, self.og_polygons = self.chm, self.polygons
+        self.trunk_array = self.chm * trunk_height
+
 
     def find_tiles(self, x_min, y_min, x_max, y_max):
         query_geom = box(x_min, y_min, x_max, y_max)
@@ -751,6 +753,88 @@ class CHM:
 
         self.chm = np.where(tree_mask, self.chm, 0)
         write_output(None, self.crs, chm, self.transform, "output/updated_chm.tif")
+
+    def insert_tree(self, array, trunk_array, position, height, crown_radius, resolution=0.5, trunk_height=0.0, type='gaussian', randomness=0.8):
+        '''
+        Function
+
+        Inputs:
+        array (2d-numpy array):         Canopy Height Model Array (CHM)
+        trunk_array (2d-numpy array):   Array of trunk heights
+        position (tuple):               (row, col) coordinates for tree center.
+        height (float):                 Total height of the tree.
+        crown_radius (float):           Radius of the crown in real-world units.
+        trunk_height (float):           Height of the trunk.
+        type (str):                     Canopy shape type ('gaussian', 'cone', etc.).
+        randomness (float):             Randomness/noise factor.
+        resolution (float)              Real-world units per pixel (default = 1.0).
+
+        Output:
+        new_array (2d-numpy array):         Modified CHM array.
+        new_trunk_array (2d-numpy array):   Modified Trunk height array
+        '''
+        new_array = np.copy(array)
+        new_trunk_array = np.copy(trunk_array)
+
+        crown_radius_px = crown_radius / resolution
+        size = int(crown_radius_px * 2.5)
+
+        # Calculate the distance from surrounding cells to the tree center
+        x = np.arange(-size//2, size//2 +1)
+        y = np.arange(-size//2, size//2 + 1)
+        X, Y = np.meshgrid(x, y)
+        distance = np.sqrt(X**2 + Y**2)
+
+        # Create canopy shape
+        if type == 'gaussian':
+            canopy = (height - trunk_height) * np.exp(-distance**2 / (2 * (crown_radius_px / 2)**2)) + trunk_height
+            print(canopy)
+        elif type == 'cone':
+            canopy = np.clip((height - trunk_height) * (1 - distance / crown_radius_px), 0, height - trunk_height) + trunk_height
+        elif type == 'parabolic':
+            canopy = (height - trunk_height) * (1 - (distance / crown_radius_px)**2)
+            canopy = np.clip(canopy, 0, height - trunk_height) + trunk_height
+        elif type == 'hemisphere':
+            canopy = np.sqrt(np.clip(crown_radius_px**2 - distance**2, 0, None)) / crown_radius_px * (height - trunk_height) + trunk_height
+        else:
+            raise ValueError("Unsupported tree type.")
+
+        mask = (distance <= crown_radius_px) & (canopy >= trunk_height)
+
+        noise = np.random.normal(0, randomness, canopy.shape)
+        canopy[mask] += noise[mask]
+
+        canopy[~mask] = 0
+        canopy = np.clip(canopy, 0, None)
+
+        print(canopy)
+
+        # Define insertion window
+        row, col = position
+        half_size = size // 2
+        r_start = max(0, row - half_size)
+        r_end = min(array.shape[0], row + half_size)
+        c_start = max(0, col - half_size)
+        c_end = min(array.shape[1], col + half_size)
+
+        # Calculate actual insertion indices
+        canopy_r_start = half_size - (row - r_start)
+        canopy_r_end = canopy_r_start + (r_end - r_start)
+        canopy_c_start = half_size - (col - c_start)
+        canopy_c_end = canopy_c_start + (c_end - c_start)
+
+        # Blend
+        new_array[r_start:r_end, c_start:c_end] = np.maximum(
+            array[r_start:r_end, c_start:c_end],
+            canopy[canopy_r_start:canopy_r_end, canopy_c_start:canopy_c_end]
+        )
+
+        new_trunk_array[r_start:r_end, c_start:c_end] = np.minimum(
+        trunk_array[r_start:r_end, c_start:c_end],
+        trunk_height
+        )
+
+        return new_array, new_trunk_array
 
 
 def load_buildings(buildings_path, layer):
