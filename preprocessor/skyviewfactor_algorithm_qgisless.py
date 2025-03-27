@@ -53,12 +53,13 @@ class ProcessingSkyViewFactorAlgorithm():
     """
     This algorithm is a processing version of SkyViewFactor
     """
-    def __init__(self, INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_EXTRAHEIGHT=6, INPUT_MULT_DSMS = None, INPUT_TDSM=None, USE_VEG=True, TRANS_VEG=3,
+    def __init__(self, INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_DTM=None, INPUT_EXTRAHEIGHT=6, INPUT_MULT_DSMS = None, INPUT_TDSM=None, USE_VEG=True, TRANS_VEG=3,
                  TSDM_EXIST=False, INPUT_THEIGHT=25.0, ANISO=True,
                  ):
         self.INPUT_DSM = INPUT_DSM
         self.INPUT_CDSM = INPUT_CDSM
         self.INPUT_TDSM = INPUT_TDSM
+        self.INPUT_DTM = INPUT_DTM
         self.USE_VEG = USE_VEG
         self.TRANS_VEG = TRANS_VEG
         self.TSDM_EXIST = TSDM_EXIST
@@ -82,8 +83,15 @@ class ProcessingSkyViewFactorAlgorithm():
         # tdsmExists = self.parameterAsBool(parameters, self.TSDM_EXIST, context)
         trunkr = float(self.INPUT_THEIGHT)
         aniso = bool(self.ANISO)
+        dtm_path = self.INPUT_DTM
 
         print('Initiating algorithm')
+
+        if dtm_path is not None:
+            gdal_dtm = gdal.Open(dtm_path)
+            dtm = cp.array(gdal_dtm.ReadAsArray().astype(float), dtype=cp.float32)
+        else:
+            dtm = None
 
         gdal_dsm = gdal.Open(dsm_path)
         dsm = cp.array(gdal_dsm.ReadAsArray(), dtype=cp.float32)
@@ -157,11 +165,11 @@ class ProcessingSkyViewFactorAlgorithm():
         if aniso == 1:
             print('Calculating SVF using 153 iterations')
             # ret = svf.svfForProcessing153(dsm, vegdsm, vegdsm2, scale, usevegdem)
-            ret = svf.svfForProcessing153(dsm, vegdsm, vegdsm2, scale, usevegdem)
+            ret = svf.svfForProcessing153(dsm, dtm, vegdsm, vegdsm2, scale, usevegdem)
 
         else:
             print('Calculating SVF using 655 iterations')
-            ret = svf.svfForProcessing655(dsm, vegdsm, vegdsm2, scale, usevegdem)
+            ret = svf.svfForProcessing655(dsm, dtm, vegdsm, vegdsm2, scale, usevegdem)
 
         filename = outputFile
 
@@ -244,6 +252,13 @@ class ProcessingSkyViewFactorAlgorithm():
         # tdsmExists = self.parameterAsBool(parameters, self.TSDM_EXIST, context)
         trunkr = float(self.INPUT_THEIGHT)
         aniso = bool(self.ANISO)
+        dtm_path = self.INPUT_DTM
+
+        if dtm_path is not None:
+            gdal_dtm = gdal.Open(dtm_path)
+            dtm = cp.array(gdal_dtm.ReadAsArray().astype(float), dtype=cp.float32)
+        else:
+            dtm = None
 
         print('Initiating algorithm')
 
@@ -276,7 +291,6 @@ class ProcessingSkyViewFactorAlgorithm():
         sizey = dsms[0].shape[1]
 
         geotransform = gdal_dsms.GetGeoTransform()
-        print(geotransform)
         scale = 1 / geotransform[1]
 
         trans = transVeg / 100.0
@@ -327,11 +341,11 @@ class ProcessingSkyViewFactorAlgorithm():
         if aniso == 1:
             print('Calculating SVF using 153 iterations')
 
-            ret = svf.svfForProcessing153_3d(dsms, vegdsm, vegdsm2, scale, usevegdem)
+            ret = svf.svfForProcessing153_3d(dsms, dtm, vegdsm, vegdsm2, scale, usevegdem)
 
         else:
             print('Calculating SVF using 655 iterations')
-            ret = svf.svfForProcessing655(dsms, vegdsm, vegdsm2, scale, usevegdem)
+            ret = svf.svfForProcessing655(dsms, dtm, vegdsm, vegdsm2, scale, usevegdem)
 
         filename = outputFile
 

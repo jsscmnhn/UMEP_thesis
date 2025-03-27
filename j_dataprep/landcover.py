@@ -8,9 +8,10 @@ from shapely.geometry import shape, mapping, Polygon, MultiPolygon, LineString, 
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, BoundaryNorm
 
+# TO DO: ADD METHOD TO HANDLE 3D CASE
 
 class LandCover:
-    def __init__(self, bbox, crs, dataset_path=None, buildings_path=None, layer=None, landcover_path="landcover.json"):
+    def __init__(self, bbox, crs, building_data=None, dataset_path=None, buildings_path=None, layer=None, landcover_path="landcover.json"):
         self.bbox = bbox
         self.crs = crs
         # TO DO: change dataset path to dataset instance itself
@@ -20,7 +21,11 @@ class LandCover:
         self.layer = layer
         self.landcover_path = landcover_path
         self.landcover_mapping = self.load_landcover_mapping()
+        self.building_data = building_data
         self.array = self.convert_to_raster()
+        self.landcover_withoutbuild = None
+        self.updated_landcover = None
+
 
     def load_landcover_mapping(self):
         """Load land cover mappings from a JSON file with explicit UTF-8 encoding."""
@@ -110,15 +115,17 @@ class LandCover:
         return road_features
 
     def load_buildings(self):
-        if not self.buildings_path or not self.layer:
+        if self.building_data is not None:
+            return self.building_data
+        elif not self.buildings_path or not self.layer:
             return []
         buildings_gdf = gpd.read_file(self.buildings_path, layer=self.layer)
         return [{"geometry": mapping(geom), "parcel_id": identificatie} for geom, identificatie in
                 zip(buildings_gdf.geometry, buildings_gdf["identificatie"])]
 
     def visualize_raster(self, raster_array):
-        cmap = ListedColormap(["purple", "grey", "black", "brown", "tan", "yellow", "green", "cyan"])
-        categories = [-9999, 0, 1, 2, 3, 4, 5, 6, 7]
+        cmap = ListedColormap(["purple", "grey", "black", "brown", "tan", "yellow", "green", "tan", "cyan"])
+        categories = [-9999, 0, 1, 2, 3, 4, 5, 6, 7, 8]
         norm = BoundaryNorm(categories, cmap.N)
         plt.figure(figsize=(6, 6))
         img = plt.imshow(raster_array, cmap=cmap, norm=norm, interpolation='nearest')
@@ -153,15 +160,23 @@ class LandCover:
                 road_mask = geometry_mask([geom], transform=transform, invert=False, out_shape=array.shape)
                 array = np.where(road_mask, array, landuse_road)
 
-        building_geometries = [shape(building['geometry']) for building in buildings]
-        building_mask = geometry_mask(building_geometries, transform=transform, invert=False, out_shape=array.shape)
-        array = np.where(building_mask, array, 2)
-
         water_geometries = [shape(wat['geometry']) if isinstance(shape(wat['geometry']),
                                                                              (LineString, MultiLineString)) else shape(
             wat['geometry']) for wat in water]
-        water_mask = geometry_mask(water_geometries, transform=transform, invert=False, out_shape=array.shape)
-        array = np.where(water_mask, array, 7)
+        if not water_geometries:
+            print("No valid water geometries found. Skipping water rasterization.")
+        else:
+            water_mask = geometry_mask(water_geometries, transform=transform, invert=False, out_shape=array.shape)
+            array = np.where(water_mask, array, 7)
+
+        self.landcover_withoutbuild = array
+
+        building_geometries = [shape(building['geometry']) for building in buildings]
+        if not building_geometries:
+            print("No valid building geometries found. Skipping building rasterization.")
+        else:
+            building_mask = geometry_mask(building_geometries, transform=transform, invert=False, out_shape=array.shape)
+            array = np.where(building_mask, array, 2)
 
         self.visualize_raster(array)
         return array
@@ -201,12 +216,26 @@ class LandCover:
             dst.write(output, 1)
         print("File written to '%s'" % output_file)
 
+        def update_build_landcover(self, new_building_data):
+            array = self.array.cp()
+
+            building_geometries = [shape(building['geometry']) for building in new_building_data]
+            if not building_geometries:
+                print("No valid building geometries found. Skipping building rasterization.")
+            else:
+                building_mask = geometry_mask(building_geometries, transform=transform, invert=False,
+                                              out_shape=array.shape)
+                array = np.where(building_mask, array, 2)
+
+            self.updated_landcover = array
+
 
 
 if __name__ == "__main__":
-    bbox = "94500,469500,95000,470000"  # xmin, ymin, xmax, ymax
+    bbox = "123150,487590,123550,487940"  # xmin, ymin, xmax, ymax
     crs = "http://www.opengis.net/def/crs/EPSG/0/28992"
-    new_bbox =  "121540,487210,122340,487910"
-
-    landcover = LandCover(new_bbox, crs, "output/final_dsm_test.tif", "temp/buildings_test.gpkg", "buildings")
-    landcover.save_raster("output/landcover_test.tif", 0)
+    dataset_path = "D:/Geomatics/thesis/_amsterdamset/location_1/original/final_dsm.tif"
+    buildings_path = "D:/Geomatics/thesis/_amsterdamset/location_1/original/buildings.gpkg"
+    output = "D:/Geomatics/thesis/_amsterdamset/location_1/original/landcover.tif"
+    landcover = LandCover(bbox, crs, dataset_path, buildings_path, "buildings")
+    landcover.save_raster(output, 0)

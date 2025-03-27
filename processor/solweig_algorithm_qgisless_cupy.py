@@ -81,7 +81,7 @@ class SOLWEIGAlgorithm():
     """
 
     def __init__(self, INPUT_DSM, INPUT_SVF, INPUT_CDSM,  INPUT_HEIGHT, INPUT_ASPECT,
-                 UTC, OUTPUT_DIR, INPUT_MET, INPUT_EXTRAHEIGHT=6, INPUT_MULT_DSMS=None, INPUT_LC=None,  INPUT_DEM=None, INPUT_ANISO=None,
+                 UTC, OUTPUT_DIR, INPUT_MET, INPUT_DTM=None, INPUT_EXTRAHEIGHT=6, INPUT_MULT_DSMS=None, INPUT_LC=None,  INPUT_DEM=None, INPUT_ANISO=None,
                  CONIFER_TREES=False, INPUT_THEIGHT=25, INPUT_TDSM=None, TRANS_VEG=3, LEAF_START=97, LEAF_END=300,
                  USE_LC_BUILD=True, SAVE_BUILD=False, ALBEDO_WALLS=0.2, ALBEDO_GROUND=0.15,
                  EMIS_WALLS=0.9, EMIS_GROUND=0.95, ABS_S=0.7, ABS_L=0.95, POSTURE=0,  ONLYGLOBAL=True,
@@ -106,6 +106,7 @@ class SOLWEIGAlgorithm():
         self.INPUT_ANISO = INPUT_ANISO
         self.INPUT_EXTRAHEIGHT = INPUT_EXTRAHEIGHT
         self.MULT_DSMS = INPUT_MULT_DSMS
+        self.INPUT_DTM = INPUT_DTM
 
         # Enivornmental parameters
         self.ALBEDO_WALLS = ALBEDO_WALLS
@@ -163,6 +164,7 @@ class SOLWEIGAlgorithm():
         saveBuild = bool(self.SAVE_BUILD)
         demforbuild = 1
         folderPathPerez = self.INPUT_ANISO
+        dtm_path = self.INPUT_DTM
 
         # Other parameters #
         absK = float(self.ABS_S)
@@ -219,6 +221,13 @@ class SOLWEIGAlgorithm():
 
         gdal_dsm = gdal.Open(filepath_dsm)
         dsm =  cp.array(gdal_dsm.ReadAsArray().astype(float), dtype=cp.float32)
+
+        if dtm_path is not None:
+            gdal_dtm = gdal.Open(dtm_path)
+            dtm = cp.array(gdal_dtm.ReadAsArray().astype(float), dtype=cp.float32)
+        else:
+            dtm = None
+
         sizex = dsm.shape[0]
         sizey = dsm.shape[1]
         rows = dsm.shape[0]
@@ -557,10 +566,20 @@ class SOLWEIGAlgorithm():
 
             # Elevation vegdsms if buildingDEM includes ground heights
             # TO DO: CHANGE THIS TO DTM!!!
-            vegdsm = vegdsm + dsm
-            vegdsm[vegdsm == dsm] = 0
-            vegdsm2 = vegdsm2 + dsm
-            vegdsm2[vegdsm2 == dsm] = 0
+            if dtm is not None:
+                vegdem = vegdsm + dtm
+                vegdem[vegdem == dtm] = 0
+                vegdem2 = vegdsm2 + dtm
+                vegdem2[vegdem2 == dtm] = 0
+
+            else:
+                # % Elevation vegdems if no DTM
+                vegdem = vegdsm + dsm
+                vegdem[vegdem == dsm] = 0
+                vegdem2 = vegdsm2 + dsm
+                vegdem2[vegdem2 == dsm] = 0
+            # % Bush separation
+            bush = cp.logical_not((vegdem2 * vegdem)) * vegdem
 
             # % Bush separation
             bush = cp.logical_not((vegdsm2 * vegdsm)) * vegdsm
@@ -866,6 +885,7 @@ class SOLWEIGAlgorithm():
         saveBuild = bool(self.SAVE_BUILD)
         demforbuild = 0
         folderPathPerez = self.INPUT_ANISO
+        dtm_path = self.INPUT_DTM
 
         # Other parameters #
         absK = float(self.ABS_S)
@@ -919,6 +939,12 @@ class SOLWEIGAlgorithm():
 
         if not (os.path.isdir(outputDir)):
             os.mkdir(outputDir)
+
+        if dtm_path is not None:
+            gdal_dtm = gdal.Open(dtm_path)
+            dtm = cp.array(gdal_dtm.ReadAsArray().astype(float), dtype=cp.float32)
+        else:
+            dtm = None
 
         gdal_dsms = gdal.Open(dsms_path)
         layers = gdal_dsms.RasterCount
@@ -1272,11 +1298,18 @@ class SOLWEIGAlgorithm():
             amaxvalue = np.maximum(amaxvalue_dsm, vegmax)
 
             # Elevation vegdsms if buildingDEM includes ground heights
-            # TO DO: CHANGE THIS TO DTM!!!
-            vegdsm = vegdsm + dsms[0]
-            vegdsm[vegdsm == dsms[0]] = 0
-            vegdsm2 = vegdsm2 + dsms[0]
-            vegdsm2[vegdsm2 == dsms[0]] = 0
+            if dtm is not None:
+                vegdem = vegdsm + dtm
+                vegdem[vegdem == dtm] = 0
+                vegdem2 = vegdsm2 + dtm
+                vegdem2[vegdem2 == dtm] = 0
+
+            else:
+                # % Elevation vegdems if no DTM
+                vegdem = vegdsm + dsms[0]
+                vegdem[vegdem == dsms[0]] = 0
+                vegdem2 = vegdsm2 + dsms[0]
+                vegdem2[vegdem2 == dsms[0]] = 0
 
             # % Bush separation
             bush = cp.logical_not((vegdsm2 * vegdsm)) * vegdsm

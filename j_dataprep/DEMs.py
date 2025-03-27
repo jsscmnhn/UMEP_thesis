@@ -18,6 +18,8 @@ from pathlib import Path
 import laspy
 from scipy.spatial import cKDTree
 from scipy.ndimage import median_filter, label
+import uuid
+from rtree import index
 
 
 def write_output(dataset, crs, output, transform, name, change_nodata=False):
@@ -64,11 +66,18 @@ def write_output(dataset, crs, output, transform, name, change_nodata=False):
 
 
 class Buildings:
-    def __init__(self, bbox, wfs_url="https://data.3dbag.nl/api/BAG3D/wfs", layer_name="BAG3D:lod13", gpkg_name="buildings_test", output_folder = "temp", output_layer_name="buildings"):
+    def __init__(self, bbox, wfs_url="https://data.3dbag.nl/api/BAG3D/wfs", layer_name="BAG3D:lod13", gpkg_name="buildings", output_folder = "output", output_layer_name="buildings"):
         self.bbox = bbox
         self.wfs_url = wfs_url
         self.layer_name = layer_name
         self.data = self.download_wfs_data(gpkg_name, output_folder, output_layer_name)
+        self.building_geometries = self.load_buildings(self.data)
+        self.removed_buildings = []
+        self.user_buildings = []
+        self.user_buildings_higher = []
+        self.removed_user_buildings = []
+        self.is3D = False
+
 
     def download_wfs_data(self, gpkg_name, output_folder, layer_name):
         all_features = []
@@ -118,17 +127,90 @@ class Buildings:
             print("No features were downloaded.")
             return None
 
-    def load_buildings(self, buildings_path, layer):
-        buildings_gdf = gpd.read_file(buildings_path, layer=layer)
-        return [mapping(geom) for geom in buildings_gdf.geometry]
+    @staticmethod
+    def load_buildings(buildings_gdf, buildings_path=None, layer=None):
+        if buildings_gdf is None:
+            if buildings_path is not None:
+                buildings_gdf = gpd.read_file(buildings_path, layer=layer)
+            else: return None
+
+        return [{"geometry": mapping(geom), "parcel_id": identificatie} for geom, identificatie in
+                zip(buildings_gdf.geometry, buildings_gdf["identificatie"])]
+
+    def remove_buildings(self, identification):
+        self.removed_buildings.append(identification)
+
+    def retrieve_buildings(self, identification):
+        self.removed_buildings.remove(identification)
+
+    def insert_user_buildings(self, highest_array, transform, footprint_array=None):
+        self.is3D is True if footprint_array is not None else False
+        self.removed_user_buildings = []
+        self.user_buildings_higher = []
+
+        labeled_array, num_clusters = label(highest_array > 0)
+
+        shapes_highest = shapes(labeled_array.astype(np.uint8), mask=(labeled_array > 0), transform=transform)
+
+        highest_buildings = [
+            {"geometry": mapping(shape(geom)), "parcel_id": str(uuid.uuid4())[:8]}
+            for geom, value in shapes_highest
+        ]
+
+        if footprint_array is not None:
+            rtree_index = index.Index()
+            for idx, building in enumerate(highest_buildings):
+                geom = shape(building['geometry'])
+                rtree_index.insert(idx, geom.bounds)
+
+            labeled_footprint_array, num_clusters_fp = label(footprint_array > 0)
+
+            shapes_fp = shapes(labeled_footprint_array.astype(np.uint8), mask=(labeled_footprint_array > 0),
+                                   transform=transform)
+
+            footprint_buildings = [
+                {"geometry": mapping(shape(geom)), "parcel_id": str(uuid.uuid4())[:8]}
+                for geom, value in shapes_fp
+            ]
+
+            for footprint_building in footprint_buildings:
+                footprint_geom = shape(footprint_building['geometry'])
+
+                possible_matches = list(
+                    rtree_index.intersection(footprint_geom.bounds))
+
+                for match_idx in possible_matches:
+                    highest_building = highest_buildings[match_idx]
+                    highest_geom = shape(highest_building['geometry'])
+
+                    if footprint_geom.intersects(highest_geom) or footprint_geom.within(highest_geom):
+                        footprint_building['parcel_id'] = highest_building['parcel_id']
+                        break
+            self.user_buildings = footprint_buildings
+            self.user_buildings_higher = highest_buildings
+        else:
+            self.user_buildings = highest_buildings
+
+
+
+    def remove_user_buildings(self, identification):
+        self.removed_user_buildings.append(identification)
+
+    def retrieve_user_buildings(self, identification):
+        self.removed_user_buildings.remove(identification)
+
 
 
 class DEMS:
-    def __init__(self, bbox, building_data):
+    def __init__(self, bbox, building_data, bridge=False):
         self.bbox = bbox
         self.building_data = building_data
+        self.user_building_data = []
+        self.bridge = bridge
         self.crs = (CRS.from_epsg(28992))
-        self.dtm, self.dsm = self.create_dem(bbox)
+        self.dtm, self.dsm, self.transform = self.create_dem(bbox)
+        self.og_dtm, self.og_dsm = self.dtm, self.dsm
+        self.is3D = False
 
     @staticmethod
     def fetch_ahn_wcs(bbox, output_file="output/dtm.tif", coverage="dtm_05m", resolution=0.5):
@@ -291,8 +373,7 @@ class DEMS:
 
         return new_data[1:-1, 1:-1], new_transform
 
-    @staticmethod
-    def replace_buildings(filled_dtm, dsm_buildings, buildings_geometries, transform):
+    def replace_buildings(self, filled_dtm, dsm_buildings, buildings_geometries, transform, bridge):
         """
         Replace the values of the filled dtm with the values of the filled dsm, if there is a building.
         ----
@@ -307,10 +388,23 @@ class DEMS:
                                         heights.
 
         """
-        geometries = [shape(building['geometry']) for building in buildings_geometries]
+        geometries = [shape(building['geometry']) for building in buildings_geometries if 'geometry' in building]
+        bridging_geometries = []
+        if bridge is True:
+            bridge_crs = "http://www.opengis.net/def/crs/EPSG/0/28992"
+            url = f"https://api.pdok.nl/lv/bgt/ogc/v1/collections/overbruggingsdeel/items?bbox={bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}&bbox-crs={bridge_crs}&crs={bridge_crs}&limit=1000&f=json"
+            response = requests.get(url)
+            if response.status_code == 200:
+                bridging_data = response.json()
+                if "features" in bridging_data:  # Ensure data contains geometries
+                    bridging_geometries = [shape(feature['geometry']) for feature in bridging_data["features"] if
+                                           'geometry' in feature]
+            else:
+                print(f"Error fetching bridges: {response.status_code}, {response.text}")
 
         # Ensure mask has same shape as filled_dtm
-        building_mask = geometry_mask(geometries, transform=transform, invert=False, out_shape=filled_dtm.shape)
+        all_geometries = bridging_geometries + geometries
+        building_mask = geometry_mask(all_geometries, transform=transform, invert=False, out_shape=filled_dtm.shape)
 
         # Get shape differences
         dtm_shape = filled_dtm.shape
@@ -336,18 +430,86 @@ class DEMS:
         return final_dsm
 
     def create_dem(self, bbox):
-        dtm_dst, dtm_array = self.fetch_ahn_wcs(bbox, output_file="output/dtm.tif", coverage="dtm_05m", resolution=0.5)
-        dsm_dst, dsm_array = self.fetch_ahn_wcs(bbox, output_file="output/dsm.tif", coverage="dsm_05m", resolution=0.5)
+        dtm_dst, dtm_array = self.fetch_ahn_wcs(bbox, output_file="archive/outputs/outputs2/dtm.tif", coverage="dtm_05m", resolution=0.5)
         transform = dtm_dst.transform
 
         filled_dtm, new_transform = self.fill_raster(dtm_array, dtm_dst.nodata, transform)
-        filled_dsm, _ = self.fill_raster(dsm_array, dsm_dst.nodata, transform)
-        final_dsm = self.replace_buildings(filled_dtm, filled_dsm, self.building_data, new_transform)
+        write_output(dtm_dst, self.crs, filled_dtm, new_transform, "output/final_dtm.tif")
 
-        write_output(dtm_dst, self.crs, filled_dtm, new_transform, "output/final_dtm_test.tif")
-        write_output(dsm_dst, self.crs, final_dsm, new_transform, "output/final_dsm_test.tif")
+        if self.building_data:
+            dsm_dst, dsm_array = self.fetch_ahn_wcs(bbox, output_file="archive/outputs/outputs2/dsm.tif",
+                                                    coverage="dsm_05m", resolution=0.5)
+            filled_dsm, _ = self.fill_raster(dsm_array, dsm_dst.nodata, transform)
+            final_dsm = self.replace_buildings(filled_dtm, filled_dsm, self.building_data, new_transform, self.bridge)
+            write_output(dsm_dst, self.crs, final_dsm, new_transform, "output/final_dsm_over.tif")
+        else:
+            write_output(dtm_dst, self.crs, filled_dtm, new_transform, "output/final_dsm_over.tif")
 
-        return filled_dtm, final_dsm
+        return filled_dtm, final_dsm, transform
+
+    def remove_buildings(self, remove_list, remove_user_list, user_buildings_higher=None):
+        remove_set = set(remove_list) 
+        remove_user_set = set(remove_user_list)
+
+        # Find buildings to remove from both datasets
+        to_remove = [building for building in self.building_data if building['identificatie'] in remove_set]
+        to_remove_user = [building for building in self.user_building_data if
+                          building['identificatie'] in remove_user_set]
+
+        remove_all = to_remove + to_remove_user
+
+        # Extract geometries for mask creation
+        geometries = [shape(building['geometry']) for building in remove_all if 'geometry' in building]
+
+        # Create the removal mask if there are geometries
+        if geometries:
+            remove_building_mask = geometry_mask(geometries, transform=self.transform, invert=False,
+                                                 out_shape=self.dtm.shape)
+
+            if not self.is3D:
+                self.dsm[...] = np.where(remove_building_mask, self.dsm, self.dtm)
+            else:
+                self.dsm[0][...] = np.where(remove_building_mask, self.dsm[0], self.dtm)
+
+                if user_buildings_higher:
+                    remove_other_layers = [building for building in user_buildings_higher if
+                                           building['identificatie'] in remove_user_set]
+                    other_geometries = [shape(building['geometry']) for building in remove_other_layers if
+                                        'geometry' in building]
+
+                    if other_geometries:
+                        remove_others_mask = geometry_mask(other_geometries, transform=self.transform, invert=False,
+                                                           out_shape=self.dtm.shape)
+
+                        for i in range(1, len(self.dsm)):
+                            self.dsm[i][...] = np.where(remove_others_mask, self.dsm[i], np.nan)
+
+    def update_dsm(self, user_buildings, user_array=None, user_arrays=None):
+        dsm = self.dsm
+        self.is3d is True if user_arrays is not None else False
+
+        for building in user_buildings:
+            if 'geometry' in building:
+                geom = shape(building['geometry'])
+
+                mask = geometry_mask([geom], transform=self.transform, invert=True, out_shape=self.dtm.shape)
+
+                ground_values = self.dtm[mask]
+
+                # Find the minimum value within the mask
+                min_value = np.min(ground_values)
+
+                # Now, set all the positions in the DTM that are within the building's geometry to the minimum value
+                if user_array is not None:
+                    dsm[mask] = user_array[mask] + min_value
+                else:
+                    for array in user_arrays:
+                        array[array > 0] += min_value
+
+
+
+
+
 
 
 class CHM:
@@ -735,7 +897,7 @@ class CHM:
         veg_points = self.extract_vegetation_points(las_data, ndvi_threshold=ndvi_threshold, pre_filter=False)
 
         vegetation_data = self.interpolation_vegetation(las_data, veg_points, 0.5)
-        output_filename = os.path.join(output_folder, f"CHM_test.TIF")
+        output_filename = os.path.join(output_folder, f"CHM.TIF")
 
         # Create the CHM and save it
         chm, polygons, transform = self.chm_creation(las_data, vegetation_data, output_filename, resolution=resolution, smooth=smooth_chm, nodata_value=-9999,
@@ -752,7 +914,7 @@ class CHM:
         )
 
         self.chm = np.where(tree_mask, self.chm, 0)
-        write_output(None, self.crs, chm, self.transform, "output/updated_chm.tif")
+        write_output(None, self.crs, self.chm, self.transform, "output/updated_chm.tif")
 
     def insert_tree(self, array, trunk_array, position, height, crown_radius, resolution=0.5, trunk_height=0.0, type='gaussian', randomness=0.8):
         '''
@@ -807,8 +969,6 @@ class CHM:
         canopy[~mask] = 0
         canopy = np.clip(canopy, 0, None)
 
-        print(canopy)
-
         # Define insertion window
         row, col = position
         half_size = size // 2
@@ -860,33 +1020,40 @@ def load_buildings(buildings_path, layer):
 
 if __name__ == "__main__":
     # bbox = (94500, 469500, 95000, 470000)
-    bbox = (121540, 487210, 122340, 487910)
+    bbox = (122630, 487150, 123030, 487550)
+
+
+    buildings = Buildings(bbox).building_geometries
+    DEMS = DEMS(bbox, buildings, bridge=True)
+    dtm = DEMS.dtm
+    # chm = CHM(bbox, dtm, 0.25, "output", "temp")
+
     # buildings = Buildings(bbox).data
-    # buildings_data = load_buildings("temp/buildings_test.gpkg", "buildings")
+    # # buildings_data = load_buildings("temp/buildings_test.gpkg", "buildings")
+    #
+    # # DEMS = DEMS(bbox, buildings_data)
+    # # dtm = DEMS.dtm
+    # # dsm = DEMS.dsm
+    # with rasterio.open("output/final_dtm_test.tif") as src:
+    #     dtm = src.read(1)
+    # chm = CHM(bbox, dtm, "output", "temp2").chm
 
-    # DEMS = DEMS(bbox, buildings_data)
-    # dtm = DEMS.dtm
-    # dsm = DEMS.dsm
-    with rasterio.open("output/final_dtm_test.tif") as src:
-        dtm = src.read(1)
-    chm = CHM(bbox, dtm, "output", "temp2").chm
 
+    # def plot_raster(filepath, title="Raster Data"):
+    #     with rasterio.open(filepath) as src:
+    #         array = src.read(1)
+    #         plt.figure(figsize=(10, 8))
+    #         plt.imshow(array, cmap="viridis", origin="upper")
+    #         plt.colorbar(label="Elevation (m)")
+    #         plt.title(title)
+    #         plt.show()
 
-    def plot_raster(filepath, title="Raster Data"):
-        with rasterio.open(filepath) as src:
-            array = src.read(1)
-            plt.figure(figsize=(10, 8))
-            plt.imshow(array, cmap="viridis", origin="upper")
-            plt.colorbar(label="Elevation (m)")
-            plt.title(title)
-            plt.show()
-
-    plot_raster("output/final_dtm_test.tif", "Final Filled DTM")
-    plot_raster("output/final_dsm_test.tif", "Final filled DSM")
-    plot_raster("output/CHM_test.tif", "Final CHM")
-
-    with rasterio.open("output/CHM_test.tif") as src:
-        tree_height = src.read(1)
-        transform = src.transform
-        crs = src.crs
+    # plot_raster("output/final_dtm_test.tif", "Final Filled DTM")
+    # plot_raster("output/final_dsm_test.tif", "Final filled DSM")
+    # plot_raster("output/CHM_test.tif", "Final CHM")
+    #
+    # with rasterio.open("output/CHM_test.tif") as src:
+    #     tree_height = src.read(1)
+    #     transform = src.transform
+    #     crs = src.crs
 

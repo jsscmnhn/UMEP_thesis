@@ -127,8 +127,8 @@ class TreeRemovalApp(QWidget):
         self.start_pos = None
 
 if __name__ == "__main__":
-    raster_file = "output/CHM.TIF"
-    geojson_file = "output/tree_clusters.geojson"
+    raster_file = "archive/outputs/outputs2/CHM.TIF"
+    geojson_file = "archive/outputs/outputs2/tree_clusters.geojson"
 
     app = QApplication(sys.argv)
     window = TreeRemovalApp(raster_file, geojson_file)
