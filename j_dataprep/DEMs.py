@@ -144,7 +144,7 @@ class Buildings:
         self.removed_buildings.remove(identification)
 
     def insert_user_buildings(self, highest_array, transform, footprint_array=None):
-        self.is3D is True if footprint_array is not None else False
+        self.is3D = footprint_array is not None
         self.removed_user_buildings = []
         self.user_buildings_higher = []
 
@@ -448,7 +448,7 @@ class DEMS:
         return filled_dtm, final_dsm, transform
 
     def remove_buildings(self, remove_list, remove_user_list, user_buildings_higher=None):
-        remove_set = set(remove_list) 
+        remove_set = set(remove_list)
         remove_user_set = set(remove_user_list)
 
         # Find buildings to remove from both datasets
@@ -484,27 +484,44 @@ class DEMS:
                         for i in range(1, len(self.dsm)):
                             self.dsm[i][...] = np.where(remove_others_mask, self.dsm[i], np.nan)
 
-    def update_dsm(self, user_buildings, user_array=None, user_arrays=None):
+    def update_dsm(self, user_buildings, user_array=None, user_arrays=None, higher_buildings=None):
         dsm = self.dsm
-        self.is3d is True if user_arrays is not None else False
+        self.is3D = user_arrays is not None
+
+        if self.is3D:
+            if isinstance(self.dsm, np.ndarray):
+                self.dsm = [self.dsm]
 
         for building in user_buildings:
             if 'geometry' in building:
                 geom = shape(building['geometry'])
 
                 mask = geometry_mask([geom], transform=self.transform, invert=True, out_shape=self.dtm.shape)
-
-                ground_values = self.dtm[mask]
-
                 # Find the minimum value within the mask
-                min_value = np.min(ground_values)
+                min_value = np.fmin(self.dtm[mask])
 
-                # Now, set all the positions in the DTM that are within the building's geometry to the minimum value
-                if user_array is not None:
+                if not self.is3D:
                     dsm[mask] = user_array[mask] + min_value
                 else:
-                    for array in user_arrays:
-                        array[array > 0] += min_value
+                    dsm[0][mask] = user_array[mask] + min_value
+
+                    if higher_buildings:
+                        new_build = next(
+                            (b for b in higher_buildings if b['identificatie'] == building["identificatie"]),
+                            None
+                        )
+
+                        if new_build and 'geometry' in new_build:
+                            new_geom = shape(new_build["geometry"])
+                            new_mask = geometry_mask([new_geom], transform=self.transform, invert=True,
+                                                     out_shape=self.dtm.shape)
+
+                            for i in range(1, len(user_array)):
+                                while len(self.dsm) <= i:
+                                    self.dsm.append(np.full_like(self.dtm, np.nan))
+
+                                dsm[i][new_mask] = user_array[i][new_mask] + min_value
+
 
 
 
@@ -519,8 +536,9 @@ class CHM:
         self.dtm = dtm
         self.gdf = gpd.read_file("geotiles/AHN_lookup.geojson")
         self.chm, self.polygons, self.transform = self.init_chm(bbox, output_folder=output_folder, input_folder=input_folder)
-        self.original_chm, self.og_polygons = self.chm, self.polygons
         self.trunk_array = self.chm * trunk_height
+        self.original_chm, self.og_polygons, self.original_trunk = self.chm, self.polygons, self.trunk_array
+
 
 
     def find_tiles(self, x_min, y_min, x_max, y_max):
@@ -852,7 +870,10 @@ class CHM:
         # create the polygons
         labeled_array, num_clusters = label(veg_raster > 0)
         shapes_gen = shapes(labeled_array.astype(np.uint8), mask=(labeled_array > 0), transform=transform)
-        polygons = [shape(geom) for geom, value in shapes_gen]
+        polygons = [
+            {"geometry": shape(geom), "polygon_id": int(value)}
+            for geom, value in shapes_gen if value > 0
+        ]
 
         gdf = gpd.GeoDataFrame(geometry=polygons, crs=CRS.from_epsg(28992))
         gdf.to_file("output/tree_clusters.geojson", driver="GeoJSON")
@@ -905,18 +926,25 @@ class CHM:
 
         return chm, polygons, transform
 
-    def remove_trees(self):
+    def remove_trees(self, tree_id):
+        target_polygons = [tree["geometry"] for tree in self.polygons if tree["polygon_id"] == tree_id]
+
+        if not target_polygons:
+            print(f"No trees found with ID: {tree_id}")
+            return
+
         tree_mask = geometry_mask(
-            geometries=self.polygons,
+            geometries=target_polygons,
             transform=self.transform,
             invert=True,
             out_shape=self.chm.shape
         )
 
-        self.chm = np.where(tree_mask, self.chm, 0)
+        self.chm = np.where(tree_mask, 0, self.chm)
+        self.trunk_array = np.where(tree_mask, 0, self.trunk_array)
         write_output(None, self.crs, self.chm, self.transform, "output/updated_chm.tif")
 
-    def insert_tree(self, array, trunk_array, position, height, crown_radius, resolution=0.5, trunk_height=0.0, type='gaussian', randomness=0.8):
+    def insert_tree(self, position, height, crown_radius, resolution=0.5, trunk_height=0.0, type='parabolic', randomness=0.8):
         '''
         Function
 
@@ -935,8 +963,8 @@ class CHM:
         new_array (2d-numpy array):         Modified CHM array.
         new_trunk_array (2d-numpy array):   Modified Trunk height array
         '''
-        new_array = np.copy(array)
-        new_trunk_array = np.copy(trunk_array)
+        new_array = np.copy(self.chm)
+        new_trunk_array = np.copy(self.trunk_array)
 
         crown_radius_px = crown_radius / resolution
         size = int(crown_radius_px * 2.5)
@@ -973,9 +1001,9 @@ class CHM:
         row, col = position
         half_size = size // 2
         r_start = max(0, row - half_size)
-        r_end = min(array.shape[0], row + half_size)
+        r_end = min(self.chm.shape[0], row + half_size)
         c_start = max(0, col - half_size)
-        c_end = min(array.shape[1], col + half_size)
+        c_end = min(self.chm.shape[1], col + half_size)
 
         # Calculate actual insertion indices
         canopy_r_start = half_size - (row - r_start)
@@ -985,16 +1013,24 @@ class CHM:
 
         # Blend
         new_array[r_start:r_end, c_start:c_end] = np.maximum(
-            array[r_start:r_end, c_start:c_end],
+            self.chm[r_start:r_end, c_start:c_end],
             canopy[canopy_r_start:canopy_r_end, canopy_c_start:canopy_c_end]
         )
 
         new_trunk_array[r_start:r_end, c_start:c_end] = np.minimum(
-        trunk_array[r_start:r_end, c_start:c_end],
+        self.trunk_array[r_start:r_end, c_start:c_end],
         trunk_height
         )
 
-        return new_array, new_trunk_array
+        tree_mask = (new_array > self.chm)
+        shapes_gen = shapes(tree_mask.astype(np.uint8), mask=tree_mask, transform=self.transform)
+        tree_polygons = [
+            {"geometry": mapping(shape(geom)), "tree_id": str(uuid.uuid4())[:8]}
+            for geom, value in shapes_gen if value > 0
+        ]
+
+        self.tree_polygons.extend(tree_polygons)
+        self.chm, self.trunk_array = new_array, new_trunk_array
 
 
 def load_buildings(buildings_path, layer):
