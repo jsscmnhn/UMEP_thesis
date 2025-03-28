@@ -21,9 +21,9 @@ def combine_tiffs(folder, input_files, output_file):
     print(f"Output file {output_file} created successfully!")
 
 
-folder = "D:/Geomatics/thesis/gaptesting_database/case2/"
+folder = "E:/Geomatics/thesis/_amsterdamset/location_6/3d/"
 
-input_files = ['case2_0.tif', 'case2_1gap_1.tif', 'case2_2gap_2.tif', 'case2_2gap_3.tif', 'case2_2gap_4.tif']  # List files in the desired order
-output_file = 'case2_5layers.tif'
+input_files = ['dsm_0.tif', 'dsm_1.tif', 'dsm_2.tif']
+output_file = "E:/Geomatics/thesis/_amsterdamset/location_6/3d/dsms.tif"
 
 combine_tiffs(folder, input_files, output_file)

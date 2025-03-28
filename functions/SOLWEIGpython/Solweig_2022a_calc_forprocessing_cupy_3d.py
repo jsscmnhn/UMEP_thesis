@@ -104,9 +104,8 @@ def Solweig_2022a_calc(i, dsms, scale, rows, cols, svf, svfN, svfW, svfE, svfS, 
     msteg = 46.5 * (ea / (Ta + 273.15))
     esky = (1 - (1 + msteg) * np.exp(-((1.2 + 3.0 * msteg) ** 0.5))) + elvis  # -0.04 old error from Jonsson et al.2006
 
-    # WATCH OUT TEMPORARY FOR MY 0 DATASET
     for i in range(1, dsms.shape[0]):
-        dsms[i] = cp.where(dsms[i] <= 6, np.nan, dsms[i])
+        dsms[i] = cp.where(dsms[i] <= 0, np.nan, dsms[i])
 
     if altitude > 0: # # # # # # DAYTIME # # # # # #
         # Clearness Index on Earth's surface after Crawford and Dunchon (1999) with a correction

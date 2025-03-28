@@ -152,7 +152,7 @@ class SOLWEIGAlgorithm():
         vegdsm_path = self.INPUT_CDSM
         vegdsm2_path = self.INPUT_TDSM
         lcgrid_path =  self.INPUT_LC
-        useLcBuild = 0 #bool(self.USE_LC_BUILD)
+        useLcBuild = 1 #bool(self.USE_LC_BUILD)
         dem_path = self.INPUT_DEM
         inputSVF = self.INPUT_SVF
         whlayer_path = self.INPUT_HEIGHT
@@ -162,7 +162,7 @@ class SOLWEIGAlgorithm():
         utc = float(self.UTC)
         inputMet = self.INPUT_MET
         saveBuild = bool(self.SAVE_BUILD)
-        demforbuild = 1
+        demforbuild = 0
         folderPathPerez = self.INPUT_ANISO
         dtm_path = self.INPUT_DTM
 
@@ -490,17 +490,25 @@ class SOLWEIGAlgorithm():
         Twater = []
 
         try:
-            self.metdata = np.loadtxt(inputMet,skiprows=headernum, delimiter=delim)
+            delim = ' '  # Try space delimiter first
+            self.metdata = np.loadtxt(inputMet, skiprows=headernum, delimiter=delim)
             metfileexist = 1
-        except:
-            raise Exception("Error: Make sure format of meteorological file is correct. You can"
-                                                        "prepare your data by using 'Prepare Existing Data' in "
-                                                        "the Pre-processor")
+        except ValueError:
+            print("Error with space delimiter, trying tab delimiter...")
+            try:
+                delim = '\t'  # Now try with tab delimiter
+                self.metdata = np.loadtxt(inputMet, skiprows=headernum, delimiter=delim)
+                metfileexist = 1
+            except ValueError:
+                raise Exception("Error: Make sure format of meteorological file is correct. You can "
+                                "prepare your data by using 'Prepare Existing Data' in the Pre-processor")
 
+        # Check for out-of-range Kdown values
         testwhere = np.where((self.metdata[:, 14] < 0.0) | (self.metdata[:, 14] > 1300.0))
-        if testwhere[0].__len__() > 0:
-             raise Exception("Error: Kdown - beyond what is expected at line: " + str(testwhere[0] + 1))
+        if testwhere[0].size > 0:
+            raise Exception("Error: Kdown - beyond what is expected at line: " + str(testwhere[0] + 1))
 
+        # Check for correct number of columns
         if self.metdata.shape[1] == 24:
             print("Meteorological data successfully loaded")
         else:
@@ -1222,22 +1230,29 @@ class SOLWEIGAlgorithm():
         Twater = []
 
         try:
+            delim = ' '  # Try space delimiter first
             self.metdata = np.loadtxt(inputMet, skiprows=headernum, delimiter=delim)
             metfileexist = 1
-        except:
-            raise Exception("Error: Make sure format of meteorological file is correct. You can"
-                            "prepare your data by using 'Prepare Existing Data' in "
-                            "the Pre-processor")
+        except ValueError:
+            print("Error with space delimiter, trying tab delimiter...")
+            try:
+                delim = '\t'  # Now try with tab delimiter
+                self.metdata = np.loadtxt(inputMet, skiprows=headernum, delimiter=delim)
+                metfileexist = 1
+            except ValueError:
+                raise Exception("Error: Make sure format of meteorological file is correct. You can "
+                                "prepare your data by using 'Prepare Existing Data' in the Pre-processor")
 
+        # Check for out-of-range Kdown values
         testwhere = np.where((self.metdata[:, 14] < 0.0) | (self.metdata[:, 14] > 1300.0))
-        if testwhere[0].__len__() > 0:
+        if testwhere[0].size > 0:
             raise Exception("Error: Kdown - beyond what is expected at line: " + str(testwhere[0] + 1))
 
+        # Check for correct number of columns
         if self.metdata.shape[1] == 24:
             print("Meteorological data successfully loaded")
         else:
             raise Exception("Error: Wrong number of columns in meteorological data.")
-
         print("Calculating sun positions for each time step")
         location = {'longitude': lon, 'latitude': lat, 'altitude': alt}
         YYYY, altitude, azimuth, zen, jday, leafon, dectime, altmax = \
@@ -1589,40 +1604,86 @@ class SOLWEIGAlgorithm():
 
         return {self.OUTPUT_DIR: outputDir}
 
+list = [1, 2, 6]
+# list = [3, 4, 5]
+for i in list:
+    loc = i
+    # bridging files
+    INPUT_DSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dsm_over.tif"
+    INPUT_CDSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
+    INPUT_DTM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
+    INPUT_SVF = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_over/svfs"
+    INPUT_ANISO = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_over/shadowmats.npz"
+    INPUT_LC = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/landcover.tif"
+    INPUT_HEIGHT = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/wallheight_over.tif"
+    INPUT_ASPECT = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/wallaspect_over.tif"
+    UTC = 0
+    OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/solweig_over"
+    INPUT_MET = "E:/Geomatics/thesis/_amsterdamset/12sep/sep12.txt"
 
-# INPUT_DSM = "D:/Geomatics/thesis/heattryout/preprocess/DSM_smaller.tif"
-# INPUT_SVF = "D:/Geomatics/thesis/heattryout/preprocess/skyview/svfs"
-# INPUT_ANISO = "D:/Geomatics/thesis/heattryout/preprocess/skyview/shadowmats.npz"
-# INPUT_LC = "D:/Geomatics/thesis/heattryout/preprocess/landuse.tif"
-# INPUT_CDSM = "D:/Geomatics/thesis/heattryout/preprocess/CHM_smaller.tif"
-# INPUT_HEIGHT = "D:/Geomatics/thesis/heattryout/preprocess/wallheight.tif"
-# INPUT_ASPECT = "D:/Geomatics/thesis/heattryout/preprocess/wallaspect.tif"
-# UTC = 0
-# OUTPUT_DIR = "D:/Geomatics/thesis/codetesting/cupy_ani_debug"
-# INPUT_MET = "D:/Geomatics/thesis/heattryout/preprocess/climatedata/UMEPclimate_oneday.txt"
+    test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,
+                            INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO)
+    with cProfile.Profile() as profiler:
+       test.processAlgorithm()
 
-INPUT_DSM = "D:/Geomatics/thesis/wcs_test/maps/final_dsm_wcs.tif"
-DEM = "D:/Geomatics/thesis/wcs_test/maps/final_dtm_wcs.tif"
-INPUT_SVF = "D:/Geomatics/thesis/wcs_test/wcs/svfs"
-INPUT_ANISO = "D:/Geomatics/thesis/wcs_test/wcs/shadowmats.npz"
-INPUT_LC = None
-INPUT_CDSM = None
-INPUT_HEIGHT = "D:/Geomatics/thesis/wcs_test/wcs/wallheight.tif"
-INPUT_ASPECT = "D:/Geomatics/thesis/wcs_test/wcs/wallaspect.tif"
-UTC = 0
-OUTPUT_DIR = "D:/Geomatics/thesis/wcs_test/wcs/output"
-INPUT_MET = "D:/Geomatics/thesis/heattryout/preprocess/climatedata/UMEPclimate_oneday.txt"
+    OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/solweig_over_schiphol"
+    INPUT_MET = "E:/Geomatics/thesis/_amsterdamset/12sep/sep12_schip.txt"
+
+    test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,
+                            INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO)
+    with cProfile.Profile() as profiler:
+       test.processAlgorithm()
 
 
-test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET, INPUT_DEM=DEM, INPUT_ANISO=INPUT_ANISO)
+    # og files
+    # INPUT_DSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dsm.tif"
+    # INPUT_CDSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
+    # INPUT_DTM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
+    # INPUT_SVF = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_og/svfs"
+    # INPUT_ANISO = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_og/shadowmats.npz"
+    # INPUT_LC = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/landcover.tif"
+    # INPUT_HEIGHT = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/wallheight.tif"
+    # INPUT_ASPECT = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/wallaspect.tif"
+    # UTC = 0
+    # OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/solweig_og"
+    # INPUT_MET = "E:/Geomatics/thesis/_amsterdamset/12sep/sep12.txt"
 
-with cProfile.Profile() as profiler:
-    test.processAlgorithm()
 
-# Print profiling results
-stats = pstats.Stats(profiler)
-stats.sort_stats('cumulative')  # Sort by cumulative time
-stats.print_stats(20)  # Display the top 20 results
+
+    # OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/solweig_og_schiphol"
+    # INPUT_MET = "E:/Geomatics/thesis/_amsterdamset/12sep/sep12_schip.txt"
+
+
+    # 3d files
+    # INPUT_DSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dsm.tif"
+    # INPUT_CDSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
+    # INPUT_DTM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
+    # MULT_DSMS =  f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/dsms.tif"
+    # INPUT_SVF = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/svf/svfs"
+    # INPUT_ANISO = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/svf/shadowmats.npz"
+    # INPUT_LC = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/landcover.tif"
+    # INPUT_HEIGHT = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/wallheight.tif"
+    # INPUT_ASPECT = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/wallaspect.tif"
+    # UTC = 0
+    # OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/solweig_og"
+    # INPUT_MET = "E:/Geomatics/thesis/_amsterdamset/12sep/sep12.txt"
+    # test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,  INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO, INPUT_MULT_DSMS=MULT_DSMS)
+
+       #  test.processAlgorithm()
+    # OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/solweig_og_schiphol"
+    # INPUT_MET = "E:/Geomatics/thesis/_amsterdamset/12sep/sep12_schip.txt"
+
+
+
+    #
+   # test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,  INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO, INPUT_MULT_DSMS=MULT_DSMS)
+
+        # test.processAlgorithm()
+
+    # Print profiling results
+    stats = pstats.Stats(profiler)
+    stats.sort_stats('cumulative')  # Sort by cumulative time
+    stats.print_stats(20)  # Display the top 20 results
 
 # stats.dump_stats("profile_results_cupy_ani_debug.prof")
 

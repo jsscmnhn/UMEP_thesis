@@ -110,10 +110,13 @@ class ProcessingSkyViewFactorAlgorithm():
 
         dsm += dsmraise
         print('DSM raised with ' + str(dsmraise) + 'm.')
+        if dtm_path is not None:
+            dtm += dsmraise
 
         sizex = dsm.shape[0]
         sizey = dsm.shape[1]
 
+        geotransform = gdal_dsm.GetGeoTransform()
         geotransform = gdal_dsm.GetGeoTransform()
         scale = 1 / geotransform[1]
         
@@ -277,6 +280,8 @@ class ProcessingSkyViewFactorAlgorithm():
             dsmraise = 0
 
         dsms += dsmraise
+        if dtm_path is not None:
+            dtm += dsmraise
 
             # dsm2 += np.abs(dsm.min())
             # dsm3 += np.abs(dsm.min())
@@ -419,54 +424,34 @@ class ProcessingSkyViewFactorAlgorithm():
         return {self.OUTPUT_DIR: outputDir, self.OUTPUT_FILE: outputFile}
 
 # ===================== normal test case ==============================
-INPUT_DSM = "D:/Geomatics/thesis/wcs_test/maps/new_dsm.TIF"
-INPUT_CDSM = None
-# INPUT_CDSM = None
-OUTPUT_DIR = "D:/Geomatics/thesis/wcs_test/pc"
+
+# #  og
+# INPUT_DSM = "E:/Geomatics/thesis/_amsterdamset/location_1/original/final_dsm.tif"
+# INPUT_CDSM = "E:/Geomatics/thesis/_amsterdamset/location_1/original/CHM.tif"
+# OUTPUT_DIR = "E:/Geomatics/thesis/_amsterdamset/location_1/original/svf_og"
+# OUTPUT_FILE = "profiling/wcstest"
+# INPUT_DTM = "E:/Geomatics/thesis/_amsterdamset/location_1/original/final_dtm.tif"
+
+# og over
+# INPUT_DSM = "E:/Geomatics/thesis/_amsterdamset/location_6/original/final_dsm_over.tif"
+# INPUT_CDSM = "E:/Geomatics/thesis/_amsterdamset/location_6/original/CHM.tif"
+# OUTPUT_DIR = "E:/Geomatics/thesis/_amsterdamset/location_6/original/svf_over"
+# OUTPUT_FILE = "profiling/wcstest"
+# INPUT_DTM = "E:/Geomatics/thesis/_amsterdamset/location_6/original/final_dtm.tif"
+
+
+#  3d
+INPUT_DSM = "E:/Geomatics/thesis/_amsterdamset/location_3/original/final_dsm.tif"
+INPUT_CDSM = "E:/Geomatics/thesis/_amsterdamset/location_3/original/CHM.tif"
+OUTPUT_DIR = "E:/Geomatics/thesis/_amsterdamset/location_3/3d/svf"
 OUTPUT_FILE = "profiling/wcstest"
+INPUT_DTM = "E:/Geomatics/thesis/_amsterdamset/location_3/original/final_dtm.tif"
+INPUT_DSMS =  "E:/Geomatics/thesis/_amsterdamset/location_3/3d/dsms.tif"
 
-
-# ===================== RUN TEST CASE 1  ==============================
-# INPUT_DSM = "D:/Geomatics/thesis/gaptesting_database/case1_0.tif"
-# INPUT_CDSM = "D:/Geomatics/thesis/gaptesting_database/case1_veg.tif"
-
-# ===================== RUN TEST CASE 1 1 gap ==============================
-# DSM2= "D:/Geomatics/thesis/gaptesting_database/smaller/case1_1gap_1.tif"
-# DSM3= "D:/Geomatics/thesis/gaptesting_database/smaller/case1_1gap_2.tif"
-#           4 gap
-# DSM2= "D:/Geomatics/thesis/gaptesting_database/smaller/case1_1gap_1.tif"
-# DSM3= "D:/Geomatics/thesis/gaptesting_database/smaller/case1_2gap_2.tif"
-
-# ===================== RUN TEST CASE 2  ==============================
-# INPUT_DSM = "D:/Geomatics/thesis/gaptesting_database/case2/case2_0.tif"
-# INPUT_CDSM = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_veg.tif"
-#
-# OUTPUT_DIR = "D:/Geomatics/thesis/codetestsvf/testrunwcs"
-# OUTPUT_FILE = "profiling/skyview_vector"
-
-#                                   1 gap
-# DSM2= "D:/Geomatics/thesis/gaptesting_database/case2/case2_1gap_1.tif"
-# DSM3= "D:/Geomatics/thesis/gaptesting_database/case2/case2_1gap_2.tif"
-
-#                                   2 gap
-# DSM2= "D:/Geomatics/thesis/gaptesting_database/case2/case2_1gap_1.tif"
-# DSM3= "D:/Geomatics/thesis/gaptesting_database/case2/case2_2gap_2.tif"
-
-# ==============
-# INPUT_DSM="../j_dataprep/output/final_dsm_test.tif"
-# INPUT_CDSM=None
-
-# ======================== Joined tif fille
-# INPUT_DSM = None
-# INPUT_CDSM = "D:/Geomatics/thesis/gaptesting_database/smaller/case1_veg.tif"
-# INPUT_MULT_DSMS = "D:/Geomatics/thesis/gaptesting_database/case2/case2_5layers.tif"
-
-
-# stats.dump_stats("profilewithchm.prof")
 
 with cProfile.Profile() as profiler2:
-    ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE).processAlgorithm()
-    # ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_MULT_DSMS=INPUT_MULT_DSMS).processAlgorithm_3d()
+    # ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_DTM=INPUT_DTM ).processAlgorithm()
+    ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_MULT_DSMS=INPUT_DSMS, INPUT_DTM=INPUT_DTM).processAlgorithm_3d()
 
     # ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, dsm2=DSM2, dsm3=DSM3).processAlgorithm()
 
