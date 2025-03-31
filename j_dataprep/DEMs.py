@@ -17,7 +17,7 @@ from rasterio.crs import CRS
 from pathlib import Path
 import laspy
 from scipy.spatial import cKDTree
-from scipy.ndimage import median_filter, label
+from scipy.ndimage import median_filter, label, binary_dilation
 import uuid
 from rtree import index
 import ezdxf
@@ -395,7 +395,7 @@ class DEMS:
         bridging_geometries = []
         if bridge is True:
             bridge_crs = "http://www.opengis.net/def/crs/EPSG/0/28992"
-            url = f"https://api.pdok.nl/lv/bgt/ogc/v1/collections/overbruggingsdeel/items?bbox={bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}&bbox-crs={bridge_crs}&crs={bridge_crs}&limit=1000&f=json"
+            url = f"https://api.pdok.nl/lv/bgt/ogc/v1/collections/overbruggingsdeel/items?bbox={self.bbox[0]},{self.bbox[1]},{self.bbox[2]},{self.bbox[3]}&bbox-crs={bridge_crs}&crs={bridge_crs}&limit=1000&f=json"
             response = requests.get(url)
             if response.status_code == 200:
                 bridging_data = response.json()
@@ -451,18 +451,19 @@ class DEMS:
         return filled_dtm, final_dsm, transform
 
     def remove_buildings(self, remove_list, remove_user_list, user_buildings_higher=None):
+        buffer_distance = self.resolution * 1.5
         remove_set = set(remove_list)
         remove_user_set = set(remove_user_list)
 
         # Find buildings to remove from both datasets
-        to_remove = [building for building in self.building_data if building['identificatie'] in remove_set]
+        to_remove = [building for building in self.building_data if building['parcel_id'] in remove_set]
         to_remove_user = [building for building in self.user_building_data if
-                          building['identificatie'] in remove_user_set]
+                          building['parcel_id'] in remove_user_set]
 
         remove_all = to_remove + to_remove_user
 
         # Extract geometries for mask creation
-        geometries = [shape(building['geometry']) for building in remove_all if 'geometry' in building]
+        geometries = [shape(building['geometry']).buffer(buffer_distance) for building in remove_all if 'geometry' in building]
 
         # Create the removal mask if there are geometries
         if geometries:
@@ -476,8 +477,8 @@ class DEMS:
 
                 if user_buildings_higher:
                     remove_other_layers = [building for building in user_buildings_higher if
-                                           building['identificatie'] in remove_user_set]
-                    other_geometries = [shape(building['geometry']) for building in remove_other_layers if
+                                           building['parcel_id'] in remove_user_set]
+                    other_geometries = [shape(building['geometry']).buffer(buffer_distance) for building in remove_other_layers if
                                         'geometry' in building]
 
                     if other_geometries:
@@ -510,7 +511,7 @@ class DEMS:
 
                     if higher_buildings:
                         new_build = next(
-                            (b for b in higher_buildings if b['identificatie'] == building["identificatie"]),
+                            (b for b in higher_buildings if b['parcel_id'] == building['parcel_id']),
                             None
                         )
 
@@ -938,7 +939,7 @@ class CHM:
 
         # create the polygons
         labeled_array, num_clusters = label(veg_raster > 0)
-        shapes_gen = shapes(labeled_array.astype(np.uint8), mask=(labeled_array > 0), transform=transform)
+        shapes_gen = shapes(labeled_array.astype(np.uint8), mask=(labeled_array > 0), transform=new_transform)
         polygons = [
             {"geometry": shape(geom), "polygon_id": int(value)}
             for geom, value in shapes_gen if value > 0
@@ -996,7 +997,7 @@ class CHM:
         return chm, polygons, transform
 
     def remove_trees(self, tree_id):
-        target_polygons = [tree["geometry"] for tree in self.polygons if tree["polygon_id"] == tree_id]
+        target_polygons = [tree["geometry"] for tree in self.tree_polygons if tree["polygon_id"] == tree_id]
 
         if not target_polygons:
             print(f"No trees found with ID: {tree_id}")
@@ -1123,14 +1124,15 @@ def load_buildings(buildings_path, layer):
 
 
 if __name__ == "__main__":
-    bbox = (120570, 487570, 120970, 487870)
-    # bbox = (122630, 487150, 123030, 487550)
-
-
-    buildings = Buildings(bbox).building_geometries
-    DEMS = DEMS(bbox, buildings, bridge=True)
-    dtm = DEMS.dtm
-    DEMS.export_context("export_test.dxf",'dxf')
+    pass
+    # bbox = (120570, 487570, 120970, 487870)
+    # # bbox = (122630, 487150, 123030, 487550)
+    #
+    #
+    # buildings = Buildings(bbox).building_geometries
+    # DEMS = DEMS(bbox, buildings, bridge=True)
+    # dtm = DEMS.dtm
+    # DEMS.export_context("export_test.dxf",'dxf')
 
 
     # buildings = Buildings(bbox).data

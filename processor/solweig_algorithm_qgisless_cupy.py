@@ -1605,29 +1605,29 @@ class SOLWEIGAlgorithm():
 
         return {self.OUTPUT_DIR: outputDir}
 #
-list = [2]
-# list = [1, 2, 6]
-# # list = [3, 4, 5]
-for i in list:
-    loc = i
-    d = "D"
-    # bridging files
-    INPUT_DSM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dsm_over.tif"
-    INPUT_CDSM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
-    INPUT_DTM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
-    INPUT_SVF = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_over/svfs"
-    INPUT_ANISO = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_over/shadowmats.npz"
-    INPUT_LC = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/landcover.tif"
-    INPUT_HEIGHT = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/wallheight_over.tif"
-    INPUT_ASPECT = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/wallaspect_over.tif"
-    UTC = 0
-    OUTPUT_DIR = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/solweig_shinytest"
-    INPUT_MET = f"{d}:/Geomatics/thesis/_amsterdamset/12sep/sep12_test.txt"
-
-    test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,
-                            INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO)
-    # with cProfile.Profile() as profiler:
-    test.processAlgorithm()
+# list = [2]
+# # list = [1, 2, 6]
+# # # list = [3, 4, 5]
+# for i in list:
+#     loc = i
+#     d = "D"
+#     # bridging files
+#     INPUT_DSM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dsm_over.tif"
+#     INPUT_CDSM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
+#     INPUT_DTM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
+#     INPUT_SVF = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_over/svfs"
+#     INPUT_ANISO = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_over/shadowmats.npz"
+#     INPUT_LC = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/landcover.tif"
+#     INPUT_HEIGHT = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/wallheight_over.tif"
+#     INPUT_ASPECT = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/wallaspect_over.tif"
+#     UTC = 0
+#     OUTPUT_DIR = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/solweig_shinytest"
+#     INPUT_MET = f"{d}:/Geomatics/thesis/_amsterdamset/12sep/sep12_test.txt"
+#
+#     test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,
+#                             INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO)
+#     # with cProfile.Profile() as profiler:
+#     test.processAlgorithm()
 #
 #     OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/solweig_over_schiphol"
 #     INPUT_MET = "E:/Geomatics/thesis/_amsterdamset/12sep/sep12_schip.txt"
@@ -1710,22 +1710,23 @@ INPUT_MET = "D:/Geomatics/thesis/heattryout/preprocess/climatedata/UMEPclimate_o
 test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET, INPUT_MULT_DSMS=INPUT_MULT_DSMS, INPUT_LC=INPUT_LC, INPUT_ANISO=INPUT_ANISO)
 """
 #
-# INPUT_DSM = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dsm.tif"
-# INPUT_DTM = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dtm.tif"
-# INPUT_SVF =  "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/svfs"
-# INPUT_ANISO = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/shadowmats.npz"
-# INPUT_LC = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/landcover.tif"
-# INPUT_HEIGHT = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/wallheight.tif"
-# INPUT_ASPECT = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/wallaspect_old.tif"
-# INPUT_CDSM = None
-# UTC = 0
-# OUTPUT_DIR =  "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/original"
+INPUT_DSM = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dsm.tif"
+INPUT_DTM = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dtm.tif"
+INPUT_SVF =  "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/svfs"
+INPUT_ANISO = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/shadowmats.npz"
+INPUT_LC = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/landcover.tif"
+INPUT_HEIGHT = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/wallheight.tif"
+INPUT_ASPECT = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/wallaspect_old.tif"
+INPUT_CDSM = None
+UTC = 0
+OUTPUT_DIR =  "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/original_otherfile"
 # INPUT_MET =  "D:/Geomatics/thesis/heattryout/preprocess/climatedata/UMEPclimate_oneday.txt"
-#
-# test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,
-#                         INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO)
+INPUT_MET =  "D:/Geomatics/thesis/_amsterdamset/23aug/test.txt"
+
+test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,
+                        INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO)
 # # with cProfile.Profile() as profiler:
-# test.processAlgorithm()
+test.processAlgorithm()
 #
 # INPUT_ASPECT = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/wallaspect.tif"
 # OUTPUT_DIR =  "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/new"
