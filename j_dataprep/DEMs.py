@@ -20,7 +20,9 @@ from scipy.spatial import cKDTree
 from scipy.ndimage import median_filter, label
 import uuid
 from rtree import index
-
+import ezdxf
+import json
+from shapely.affinity import translate
 
 def write_output(dataset, crs, output, transform, name, change_nodata=False):
     """
@@ -202,9 +204,10 @@ class Buildings:
 
 
 class DEMS:
-    def __init__(self, bbox, building_data, bridge=False):
+    def __init__(self, bbox, building_data, resolution=0.5, bridge=False):
         self.bbox = bbox
         self.building_data = building_data
+        self.resolution = resolution
         self.user_building_data = []
         self.bridge = bridge
         self.crs = (CRS.from_epsg(28992))
@@ -522,11 +525,77 @@ class DEMS:
 
                                 dsm[i][new_mask] = user_array[i][new_mask] + min_value
 
+    def export_context(self, file_name, export_format="dxf"):
+        """
+        Export the buildings and DSM bounding box in a format that can be used in CAD software.
 
+        :param file_name: Output file path.
+        :param export_format: File format (json, csv, dxf). Default is json.
+        """
 
+        bbox = np.array(self.bbox) + np.array([self.resolution, self.resolution, -self.resolution, -self.resolution])
+        xmin, ymin, xmax, ymax = bbox
 
+        # Normalize bounding box where (0,0) is at lower-left
+        normalized_bbox = {
+            "xmin": 0,
+            "ymin": 0,
+            "xmax": xmax - xmin,
+            "ymax": ymax - ymin
+        }
 
+        # Normalize building geometries
+        transformed_buildings = []
+        for building in self.building_data:
+            if "geometry" in building:
+                geom = shape(building["geometry"])
+                shifted_geom = translate(geom, xoff=-xmin, yoff=-ymin)
 
+                transformed_buildings.append({
+                    "geometry": mapping(shifted_geom),
+                    "parcel_id": building["parcel_id"]
+                })
+
+        data = {
+            "dsm_bbox": normalized_bbox,
+            "buildings": transformed_buildings
+        }
+
+        if export_format == "json":
+            with open(file_name, "w") as f:
+                json.dump(data, f, indent=4)
+            print(f"Exported data to {file_name}")
+
+        elif export_format == "csv":
+            import csv
+            with open(file_name, "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(["parcel_id", "geometry"])
+                for building in transformed_buildings:
+                    writer.writerow([building["parcel_id"], json.dumps(building["geometry"])])
+            print(f"Exported data to {file_name}")
+
+        elif export_format == "dxf":
+            doc = ezdxf.new()
+            msp = doc.modelspace()
+
+            # Add bounding box as a rectangle
+            msp.add_lwpolyline([(0, 0), (normalized_bbox["xmax"], 0),
+                                (normalized_bbox["xmax"], normalized_bbox["ymax"]), (0, normalized_bbox["ymax"])],
+                               close=True)
+
+            # Add buildings as polylines
+            for building in transformed_buildings:
+                poly = shape(building["geometry"])
+                if poly.geom_type == "Polygon":
+                    coords = list(poly.exterior.coords)
+                    msp.add_lwpolyline(coords, close=True)
+
+            doc.saveas(file_name)
+            print(f"Exported data to {file_name}")
+
+        else:
+            print("Unsupported export format. Use 'json', 'csv', or 'dxf'.")
 
 
 class CHM:
@@ -535,9 +604,9 @@ class CHM:
         self.crs = (CRS.from_epsg(28992))
         self.dtm = dtm
         self.gdf = gpd.read_file("geotiles/AHN_lookup.geojson")
-        self.chm, self.polygons, self.transform = self.init_chm(bbox, output_folder=output_folder, input_folder=input_folder)
+        self.chm, self.tree_polygons, self.transform = self.init_chm(bbox, output_folder=output_folder, input_folder=input_folder)
         self.trunk_array = self.chm * trunk_height
-        self.original_chm, self.og_polygons, self.original_trunk = self.chm, self.polygons, self.trunk_array
+        self.original_chm, self.og_polygons, self.original_trunk = self.chm, self.tree_polygons, self.trunk_array
 
 
 
@@ -875,8 +944,8 @@ class CHM:
             for geom, value in shapes_gen if value > 0
         ]
 
-        gdf = gpd.GeoDataFrame(geometry=polygons, crs=CRS.from_epsg(28992))
-        gdf.to_file("output/tree_clusters.geojson", driver="GeoJSON")
+        # gdf = gpd.GeoDataFrame(geometry=polygons, crs=CRS.from_epsg(28992))
+        # gdf.to_file("output/tree_clusters.geojson", driver="GeoJSON")
 
         return veg_raster, polygons, new_transform
 
@@ -978,7 +1047,6 @@ class CHM:
         # Create canopy shape
         if type == 'gaussian':
             canopy = (height - trunk_height) * np.exp(-distance**2 / (2 * (crown_radius_px / 2)**2)) + trunk_height
-            print(canopy)
         elif type == 'cone':
             canopy = np.clip((height - trunk_height) * (1 - distance / crown_radius_px), 0, height - trunk_height) + trunk_height
         elif type == 'parabolic':
@@ -1055,14 +1123,15 @@ def load_buildings(buildings_path, layer):
 
 
 if __name__ == "__main__":
-    # bbox = (94500, 469500, 95000, 470000)
-    bbox = (122630, 487150, 123030, 487550)
+    bbox = (120570, 487570, 120970, 487870)
+    # bbox = (122630, 487150, 123030, 487550)
 
 
     buildings = Buildings(bbox).building_geometries
     DEMS = DEMS(bbox, buildings, bridge=True)
     dtm = DEMS.dtm
-    # chm = CHM(bbox, dtm, 0.25, "output", "temp")
+    DEMS.export_context("export_test.dxf",'dxf')
+
 
     # buildings = Buildings(bbox).data
     # # buildings_data = load_buildings("temp/buildings_test.gpkg", "buildings")

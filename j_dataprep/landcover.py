@@ -232,10 +232,10 @@ class LandCover:
 
 
 if __name__ == "__main__":
-    bbox = "123150,487590,123550,487940"  # xmin, ymin, xmax, ymax
+    bbox = "120570,487570,120970,487870"  # xmin, ymin, xmax, ymax
     crs = "http://www.opengis.net/def/crs/EPSG/0/28992"
-    dataset_path = "D:/Geomatics/thesis/_amsterdamset/location_1/original/final_dsm.tif"
-    buildings_path = "D:/Geomatics/thesis/_amsterdamset/location_1/original/buildings.gpkg"
-    output = "D:/Geomatics/thesis/_amsterdamset/location_1/original/landcover.tif"
-    landcover = LandCover(bbox, crs, dataset_path, buildings_path, "buildings")
+    dataset_path = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dsm.tif"
+    buildings_path = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/buildings.gpkg"
+    output = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/landcover.tif"
+    landcover = LandCover(bbox, crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
     landcover.save_raster(output, 0)

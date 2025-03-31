@@ -440,18 +440,26 @@ class ProcessingSkyViewFactorAlgorithm():
 # INPUT_DTM = "E:/Geomatics/thesis/_amsterdamset/location_6/original/final_dtm.tif"
 
 
-#  3d
-INPUT_DSM = "E:/Geomatics/thesis/_amsterdamset/location_3/original/final_dsm.tif"
-INPUT_CDSM = "E:/Geomatics/thesis/_amsterdamset/location_3/original/CHM.tif"
-OUTPUT_DIR = "E:/Geomatics/thesis/_amsterdamset/location_3/3d/svf"
+INPUT_DSM = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dsm.tif"
+
+INPUT_CDSM = None
+OUTPUT_DIR = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2"
 OUTPUT_FILE = "profiling/wcstest"
-INPUT_DTM = "E:/Geomatics/thesis/_amsterdamset/location_3/original/final_dtm.tif"
-INPUT_DSMS =  "E:/Geomatics/thesis/_amsterdamset/location_3/3d/dsms.tif"
+INPUT_DTM = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dtm.tif"
+
+
+#  3d
+# INPUT_DSM = "E:/Geomatics/thesis/_amsterdamset/location_3/original/final_dsm.tif"
+# INPUT_CDSM = "E:/Geomatics/thesis/_amsterdamset/location_3/original/CHM.tif"
+# OUTPUT_DIR = "E:/Geomatics/thesis/_amsterdamset/location_3/3d/svf"
+# OUTPUT_FILE = "profiling/wcstest"
+# INPUT_DTM = "E:/Geomatics/thesis/_amsterdamset/location_3/original/final_dtm.tif"
+# INPUT_DSMS =  "E:/Geomatics/thesis/_amsterdamset/location_3/3d/dsms.tif"
 
 
 with cProfile.Profile() as profiler2:
-    # ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_DTM=INPUT_DTM ).processAlgorithm()
-    ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_MULT_DSMS=INPUT_DSMS, INPUT_DTM=INPUT_DTM).processAlgorithm_3d()
+    ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_DTM=INPUT_DTM ).processAlgorithm()
+    # ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_MULT_DSMS=INPUT_DSMS, INPUT_DTM=INPUT_DTM).processAlgorithm_3d()
 
     # ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, dsm2=DSM2, dsm3=DSM3).processAlgorithm()
 
