@@ -1606,37 +1606,43 @@ class SOLWEIGAlgorithm():
         return {self.OUTPUT_DIR: outputDir}
 #
 list = [1, 2, 6]
-# # # list = [3, 4, 5]
+d = "E"
+# list = [3, 4, 5]
+
+schiphol_file = f"{d}:/Geomatics/thesis/_amsterdamset/12sep/sep12_schip_qgis.txt"
+met_file =  f"{d}:/Geomatics/thesis/_amsterdamset/12sep/sep12_qgis.txt"
+# f"{d}:/Geomatics/thesis/_amsterdamset/23aug/aug23_qgis.txt"
+# f"{d}:/Geomatics/thesis/_amsterdamset/12sep/sep12_schip_qgis.txt"
 for i in list:
     loc = i
-    d = "E"
+
 
     # new gap
-    INPUT_DSM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/dsm_0.tif"
-    INPUT_CDSM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
-    INPUT_DTM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
-    INPUT_SVF = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_hole/svfs"
-    INPUT_ANISO = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_hole/shadowmats.npz"
-    INPUT_LC = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/landcover.tif"
-    INPUT_HEIGHT = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/wallheight.tif"
-    INPUT_ASPECT = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/wallaspect.tif"
-    UTC = 0
-
-    OUTPUT_DIR = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/solweig_gap_schip"
-    INPUT_MET = f"{d}:/Geomatics/thesis/_amsterdamset/12sep/sep12_schip_qgis.txt"
-
-    test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,
-                            INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO)
-
-    test.processAlgorithm()
-
-    OUTPUT_DIR = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/solweig_gap"
-    INPUT_MET = f"{d}:/Geomatics/thesis/_amsterdamset/12sep/sep12_qgis.txt"
-
-    test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,
-                            INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO)
-
-    test.processAlgorithm()
+    # INPUT_DSM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/dsm_0.tif"
+    # INPUT_CDSM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
+    # INPUT_DTM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
+    # INPUT_SVF = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_hole/svfs"
+    # INPUT_ANISO = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_hole/shadowmats.npz"
+    # INPUT_LC = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/landcover.tif"
+    # INPUT_HEIGHT = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/wallheight.tif"
+    # INPUT_ASPECT = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/wallaspect.tif"
+    # UTC = 0
+    #
+    # OUTPUT_DIR = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/solweig_gap_schip"
+    # INPUT_MET = schiphol_file
+    #
+    # test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,
+    #                         INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO)
+    #
+    # test.processAlgorithm()
+    #
+    # OUTPUT_DIR = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/solweig_gap"
+    # INPUT_MET = met_file
+    #
+    # test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,
+    #                         INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO)
+    #
+    # test.processAlgorithm()
 
 #     # bridging files
     INPUT_DSM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dsm_over.tif"
@@ -1649,7 +1655,7 @@ for i in list:
     INPUT_ASPECT = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/wallaspect_over.tif"
     UTC = 0
     OUTPUT_DIR = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/solweig_over"
-    INPUT_MET = f"{d}:/Geomatics/thesis/_amsterdamset/12sep/sep12_qgis.txt"
+    INPUT_MET = met_file
 
     test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,
                             INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO)
@@ -1657,7 +1663,7 @@ for i in list:
     test.processAlgorithm()
 
     OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/solweig_over_schiphol"
-    INPUT_MET = "E:/Geomatics/thesis/_amsterdamset/12sep/sep12_schip_qgis.txt"
+    INPUT_MET = schiphol_file
 
     test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,
                             INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO)
@@ -1676,14 +1682,8 @@ for i in list:
     INPUT_ASPECT = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/wallaspect.tif"
     UTC = 0
 
-    test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,
-                            INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO)
-
-    test.processAlgorithm()
-
-
     OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/solweig_og"
-    INPUT_MET = f"{d}:/Geomatics/thesis/_amsterdamset/12sep/sep12_qgis.txt"
+    INPUT_MET = met_file
 
     test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,
                             INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO)
@@ -1692,31 +1692,35 @@ for i in list:
 
 
     OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/solweig_og_schiphol"
-    INPUT_MET = "E:/Geomatics/thesis/_amsterdamset/12sep/sep12_schip_qgis.txt"
+    INPUT_MET = schiphol_file
 
+    test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,
+                            INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO)
 
-    # 3d files
-    INPUT_DSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dsm.tif"
-    INPUT_CDSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
-    INPUT_DTM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
-    MULT_DSMS =  f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/dsms.tif"
-    INPUT_SVF = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/svf/svfs"
-    INPUT_ANISO = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/svf/shadowmats.npz"
-    INPUT_LC = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/landcover.tif"
-    INPUT_HEIGHT = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/wallheight.tif"
-    INPUT_ASPECT = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/wallaspect.tif"
-    UTC = 0
-    OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/solweig_og"
-    INPUT_MET = "E:/Geomatics/thesis/_amsterdamset/12sep/sep12_qgis.txt"
-
-    test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,  INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO, INPUT_MULT_DSMS=MULT_DSMS)
-    test.processAlgorithm_3d()
-
-    OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/solweig_og_schiphol"
-    INPUT_MET = "E:/Geomatics/thesis/_amsterdamset/12sep/sep12_schip_qgis.txt"
-
-    test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,  INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO, INPUT_MULT_DSMS=MULT_DSMS)
-    test.processAlgorithm_3d()
+    test.processAlgorithm()
+    #
+    # # 3d files
+    # INPUT_DSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dsm.tif"
+    # INPUT_CDSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
+    # INPUT_DTM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
+    # MULT_DSMS =  f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/dsms.tif"
+    # INPUT_SVF = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/svf/svfs"
+    # INPUT_ANISO = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/svf/shadowmats.npz"
+    # INPUT_LC = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/landcover.tif"
+    # INPUT_HEIGHT = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/wallheight.tif"
+    # INPUT_ASPECT = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/wallaspect.tif"
+    # UTC = 0
+    # OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/solweig_og"
+    # INPUT_MET = met_file
+    #
+    # test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,  INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO, INPUT_MULT_DSMS=MULT_DSMS)
+    # test.processAlgorithm_3d()
+    #
+    # OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/solweig_og_schiphol"
+    # INPUT_MET = schiphol_file
+    #
+    # test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,  INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM, INPUT_ANISO=INPUT_ANISO, INPUT_MULT_DSMS=MULT_DSMS)
+    # test.processAlgorithm_3d()
 
 
 
