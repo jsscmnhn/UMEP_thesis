@@ -95,6 +95,7 @@ class Buildings:
                 "SRSNAME": "urn:ogc:def:crs:EPSG::28992",
                 "BBOX": f"{self.bbox[0]},{self.bbox[1]},{self.bbox[2]},{self.bbox[3]},urn:ogc:def:crs:EPSG::28992",
                 "COUNT": count,
+                "COUNT": count,
                 "STARTINDEX": start_index
             }
             headers = {"User-Agent": "Mozilla/5.0 QGIS/33411/Windows 11 Version 2009"}
@@ -192,8 +193,6 @@ class Buildings:
             self.user_buildings_higher = highest_buildings
         else:
             self.user_buildings = highest_buildings
-
-
 
     def remove_user_buildings(self, identification):
         self.removed_user_buildings.append(identification)
@@ -430,6 +429,7 @@ class DEMS:
         # Apply the mask
         final_dsm = np.where(building_mask, filled_dtm, dsm_buildings)
 
+
         return final_dsm
 
     def create_dem(self, bbox):
@@ -448,28 +448,30 @@ class DEMS:
         else:
             write_output(dtm_dst, self.crs, filled_dtm, new_transform, "output/final_dsm_over.tif")
 
-        return filled_dtm, final_dsm, transform
+        return filled_dtm, final_dsm, new_transform
 
-    def remove_buildings(self, remove_list, remove_user_list, user_buildings_higher=None):
-        buffer_distance = self.resolution * 1.5
+    def remove_buildings(self, remove_list, remove_user_list, building_data, user_building_data, user_buildings_higher=None):
         remove_set = set(remove_list)
         remove_user_set = set(remove_user_list)
-
         # Find buildings to remove from both datasets
-        to_remove = [building for building in self.building_data if building['parcel_id'] in remove_set]
-        to_remove_user = [building for building in self.user_building_data if
-                          building['parcel_id'] in remove_user_set]
+        to_remove = [building for building in building_data if building['parcel_id'] in remove_set]
+        print("Parcel IDs being checked (to_remove):",
+              [building['parcel_id'] for building in building_data])
+
+        to_remove_user = [building for building in user_building_data if building['parcel_id'] in remove_user_set]
+        print("Parcel IDs being checked (to_remove_user):",
+              [building['parcel_id'] for building in user_building_data])
 
         remove_all = to_remove + to_remove_user
+        print(remove_all)
 
         # Extract geometries for mask creation
-        geometries = [shape(building['geometry']).buffer(buffer_distance) for building in remove_all if 'geometry' in building]
+        geometries = [shape(building['geometry']) for building in remove_all if 'geometry' in building]
 
         # Create the removal mask if there are geometries
         if geometries:
             remove_building_mask = geometry_mask(geometries, transform=self.transform, invert=False,
                                                  out_shape=self.dtm.shape)
-
             if not self.is3D:
                 self.dsm[...] = np.where(remove_building_mask, self.dsm, self.dtm)
             else:
@@ -478,7 +480,7 @@ class DEMS:
                 if user_buildings_higher:
                     remove_other_layers = [building for building in user_buildings_higher if
                                            building['parcel_id'] in remove_user_set]
-                    other_geometries = [shape(building['geometry']).buffer(buffer_distance) for building in remove_other_layers if
+                    other_geometries = [shape(building['geometry']) for building in remove_other_layers if
                                         'geometry' in building]
 
                     if other_geometries:
@@ -489,12 +491,12 @@ class DEMS:
                             self.dsm[i][...] = np.where(remove_others_mask, self.dsm[i], np.nan)
 
     def update_dsm(self, user_buildings, user_array=None, user_arrays=None, higher_buildings=None):
-        dsm = self.dsm
         self.is3D = user_arrays is not None
 
-        if self.is3D:
-            if isinstance(self.dsm, np.ndarray):
-                self.dsm = [self.dsm]
+        if isinstance(self.dsm, np.ndarray):
+            self.dsm = [self.dsm]
+
+        self.dsm = self.dsm + [np.full_like(self.dtm, np.nan) for _ in range(len(self.dsm), len(user_arrays))]
 
         for building in user_buildings:
             if 'geometry' in building:
@@ -502,12 +504,12 @@ class DEMS:
 
                 mask = geometry_mask([geom], transform=self.transform, invert=True, out_shape=self.dtm.shape)
                 # Find the minimum value within the mask
-                min_value = np.fmin(self.dtm[mask])
+                min_value = np.min(self.dtm[mask])
 
                 if not self.is3D:
-                    dsm[mask] = user_array[mask] + min_value
+                    self.dsm[mask] = user_array[mask] + min_value
                 else:
-                    dsm[0][mask] = user_array[mask] + min_value
+                    self.dsm[0][mask] = user_arrays[0][mask] + min_value
 
                     if higher_buildings:
                         new_build = next(
@@ -520,18 +522,12 @@ class DEMS:
                             new_mask = geometry_mask([new_geom], transform=self.transform, invert=True,
                                                      out_shape=self.dtm.shape)
 
-                            for i in range(1, len(user_array)):
-                                while len(self.dsm) <= i:
-                                    self.dsm.append(np.full_like(self.dtm, np.nan))
-
-                                dsm[i][new_mask] = user_array[i][new_mask] + min_value
+                            for i in range(1, len(user_arrays)):
+                                self.dsm[i][new_mask] = user_arrays[i][new_mask] + min_value
 
     def export_context(self, file_name, export_format="dxf"):
         """
         Export the buildings and DSM bounding box in a format that can be used in CAD software.
-
-        :param file_name: Output file path.
-        :param export_format: File format (json, csv, dxf). Default is json.
         """
 
         bbox = np.array(self.bbox) + np.array([self.resolution, self.resolution, -self.resolution, -self.resolution])
@@ -1014,7 +1010,7 @@ class CHM:
         self.trunk_array = np.where(tree_mask, 0, self.trunk_array)
         write_output(None, self.crs, self.chm, self.transform, "output/updated_chm.tif")
 
-    def insert_tree(self, position, height, crown_radius, resolution=0.5, trunk_height=0.0, type='parabolic', randomness=0.8):
+    def insert_tree(self, position, height, crown_radius, resolution=0.5, trunk_height=0.0, type='parabolic', randomness=0.8, canopy_base_height=0.0):
         '''
         Function
 
@@ -1028,6 +1024,7 @@ class CHM:
         type (str):                     Canopy shape type ('gaussian', 'cone', etc.).
         randomness (float):             Randomness/noise factor.
         resolution (float)              Real-world units per pixel (default = 1.0).
+        canopy_base_height (float):    Height of the bottom of the canopy, relative to trunk_height. Default is None.
 
         Output:
         new_array (2d-numpy array):         Modified CHM array.
@@ -1045,20 +1042,25 @@ class CHM:
         X, Y = np.meshgrid(x, y)
         distance = np.sqrt(X**2 + Y**2)
 
+        canopy_start_height = trunk_height + canopy_base_height
+
         # Create canopy shape
         if type == 'gaussian':
-            canopy = (height - trunk_height) * np.exp(-distance**2 / (2 * (crown_radius_px / 2)**2)) + trunk_height
+            canopy = (height - canopy_start_height) * np.exp(
+                -distance ** 2 / (2 * (crown_radius_px / 2) ** 2)) + canopy_start_height
         elif type == 'cone':
-            canopy = np.clip((height - trunk_height) * (1 - distance / crown_radius_px), 0, height - trunk_height) + trunk_height
+            canopy = np.clip((height - canopy_start_height) * (1 - distance / crown_radius_px), 0,
+                             height - canopy_start_height) + canopy_start_height
         elif type == 'parabolic':
-            canopy = (height - trunk_height) * (1 - (distance / crown_radius_px)**2)
-            canopy = np.clip(canopy, 0, height - trunk_height) + trunk_height
+            canopy = (height - canopy_start_height) * (1 - (distance / crown_radius_px) ** 2)
+            canopy = np.clip(canopy, 0, height - canopy_start_height) + canopy_start_height
         elif type == 'hemisphere':
-            canopy = np.sqrt(np.clip(crown_radius_px**2 - distance**2, 0, None)) / crown_radius_px * (height - trunk_height) + trunk_height
+            canopy = np.sqrt(np.clip(crown_radius_px ** 2 - distance ** 2, 0, None)) / crown_radius_px * (
+                        height - canopy_start_height) + canopy_start_height
         else:
             raise ValueError("Unsupported tree type.")
 
-        mask = (distance <= crown_radius_px) & (canopy >= trunk_height)
+        mask = (distance <= crown_radius_px) & (canopy >= canopy_start_height)
 
         noise = np.random.normal(0, randomness, canopy.shape)
         canopy[mask] += noise[mask]
@@ -1086,9 +1088,12 @@ class CHM:
             canopy[canopy_r_start:canopy_r_end, canopy_c_start:canopy_c_end]
         )
 
-        new_trunk_array[r_start:r_end, c_start:c_end] = np.minimum(
-        self.trunk_array[r_start:r_end, c_start:c_end],
-        trunk_height
+        existing = self.trunk_array[r_start:r_end, c_start:c_end]
+
+        new_trunk_array[r_start:r_end, c_start:c_end] = np.where(
+            mask[canopy_r_start:canopy_r_end, canopy_c_start:canopy_c_end] & (trunk_height != 0),
+            trunk_height,
+            existing
         )
 
         tree_mask = (new_array > self.chm)
