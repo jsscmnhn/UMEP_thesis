@@ -242,6 +242,10 @@ class LandCover:
                                           out_shape=self.array.shape)
             self.array = np.where(building_mask, self.array, 2)
 
+    def update_landcover(self, type, input_array):
+        to_update = input_array > -1
+        self.array[to_update] = type
+
 
     def export_context(self, file_name, export_format="dxf"):
 
@@ -351,3 +355,7 @@ if __name__ == "__main__":
     landcover = LandCover(bbox, crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
     landcover.save_raster(output, 0)
     landcover.export_context("output/export_test2.dxf")
+
+from rusterizer_3d import rasterize_from_python
+
+surface = rasterize_from_python("D:/Geomatics/thesis/objtryouts/flatpoly.obj", 798, 598, 0.5, [0,0], -9999)

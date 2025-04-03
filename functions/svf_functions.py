@@ -77,7 +77,6 @@ def svfForProcessing153(dsm, dtm, vegdem, vegdem2, scale, usevegdem):
     amaxvalue = dsm.max()
     amaxvalue = cp.nanmax(cp.array([amaxvalue, vegmax]))
     amaxvalueinput = amaxvalue.get()
-    aminvalue = dsm.min()
 
     if dtm is not None:
         vegdem = vegdem + dtm
@@ -400,28 +399,35 @@ def svfForProcessing153_3d(dsms, dtm, vegdem, vegdem2, scale, usevegdem):
 
 def svfForProcessing655(dsm, dtm, vegdem, vegdem2, scale, usevegdem):
     """main processing function calculatting SVF using 655 patch divisions."""
+    dsm = cp.array(dsm, dtype=cp.float32)
+    vegdem = cp.array(vegdem, dtype=cp.float32)
+    vegdem2 = cp.array(vegdem2, dtype=cp.float32)
+
     rows = dsm.shape[0]
     cols = dsm.shape[1]
-    svf = np.zeros([rows, cols])
-    svfE = np.zeros([rows, cols])
-    svfS = np.zeros([rows, cols])
-    svfW = np.zeros([rows, cols])
-    svfN = np.zeros([rows, cols])
-    svfveg = np.zeros((rows, cols))
-    svfEveg = np.zeros((rows, cols))
-    svfSveg = np.zeros((rows, cols))
-    svfWveg = np.zeros((rows, cols))
-    svfNveg = np.zeros((rows, cols))
-    svfaveg = np.zeros((rows, cols))
-    svfEaveg = np.zeros((rows, cols))
-    svfSaveg = np.zeros((rows, cols))
-    svfWaveg = np.zeros((rows, cols))
-    svfNaveg = np.zeros((rows, cols))
+
+    svf = cp.zeros([rows, cols])
+    svfE = cp.zeros([rows, cols])
+    svfS = cp.zeros([rows, cols])
+    svfW = cp.zeros([rows, cols])
+    svfN = cp.zeros([rows, cols])
+    svfveg = cp.zeros((rows, cols))
+    svfEveg = cp.zeros((rows, cols))
+    svfSveg = cp.zeros((rows, cols))
+    svfWveg = cp.zeros((rows, cols))
+    svfNveg = cp.zeros((rows, cols))
+    svfaveg = cp.zeros((rows, cols))
+    svfEaveg = cp.zeros((rows, cols))
+    svfSaveg = cp.zeros((rows, cols))
+    svfWaveg = cp.zeros((rows, cols))
+    svfNaveg = cp.zeros((rows, cols))
 
     # % amaxvalue
     vegmax = vegdem.max()
     amaxvalue = dsm.max()
     amaxvalue = cp.nanmax(cp.array([amaxvalue, vegmax]))
+    amaxvalueinput = amaxvalue.get()
+
 
     if dtm is not None:
         vegdem = vegdem + dtm
@@ -436,7 +442,6 @@ def svfForProcessing655(dsm, dtm, vegdem, vegdem2, scale, usevegdem):
         vegdem2 = vegdem2 + dsm
         vegdem2[vegdem2 == dsm] = 0
     # % Bush separation
-    bush = cp.logical_not((vegdem2 * vegdem)) * vegdem
     bush = np.logical_not((vegdem2 * vegdem)) * vegdem
 
     # shmat = np.zeros((rows, cols, 145))
@@ -460,13 +465,22 @@ def svfForProcessing655(dsm, dtm, vegdem, vegdem2, scale, usevegdem):
 
             # Casting shadow
             if usevegdem == 1:
-                shadowresult = shadow.shadowingfunction_20(dsm, vegdem, vegdem2, azimuth, altitude,
-                                                            scale, amaxvalue, bush, 1)
-                vegsh = shadowresult["vegsh"]
-                vbshvegsh = shadowresult["vbshvegsh"]
-                sh = shadowresult["sh"]
+                if altitude == 90:
+                    vegsh = cp.where(cp.logical_and(~cp.isnan(vegdem), ~cp.isnan(vegdem2)), 0.0, 1.0)
+                    vbshvegsh = cp.full((rows, cols), 1.0, dtype=cp.float32)
+                    sh = cp.full((rows, cols), 1.0, dtype=cp.float32)
+                else:
+                    shadowresult = shadow.shadowingfunction_20_cupy(dsm, vegdem, vegdem2, azimuth, altitude,
+                                                                    scale, amaxvalueinput, bush)
+                    vegsh = shadowresult["vegsh"]
+                    vbshvegsh = shadowresult["vbshvegsh"]
+                    sh = shadowresult["sh"]
             else:
-                sh = shadow.shadowingfunctionglobalradiation(dsm, azimuth, altitude, scale,1)
+                if altitude == 90:
+                    sh = cp.full((rows, cols), 1.0, dtype=cp.float32)
+                else:
+                    sh = shadow.shadowingfunctionglobalradiation_cupy(dsm, amaxvalueinput, azimuth, altitude, scale, 1)
+
 
             # Calculate svfs
             for k in np.arange(annulino[int(i)]+1, (annulino[int(i+1.)])+1):
@@ -516,7 +530,7 @@ def svfForProcessing655(dsm, dtm, vegdem, vegdem2, scale, usevegdem):
     svfN[(svfN > 1.)] = 1.
 
     if usevegdem == 1:
-        last = np.zeros((rows, cols))
+        last = cp.zeros((rows, cols))
         last[(vegdem2 == 0.)] = 3.0459e-004
         svfSveg = svfSveg + last
         svfWveg = svfWveg + last
@@ -538,5 +552,156 @@ def svfForProcessing655(dsm, dtm, vegdem, vegdem2, scale, usevegdem):
                     'svfveg': svfveg, 'svfEveg': svfEveg, 'svfSveg': svfSveg, 'svfWveg': svfWveg,
                     'svfNveg': svfNveg, 'svfaveg': svfaveg, 'svfEaveg': svfEaveg, 'svfSaveg': svfSaveg,
                     'svfWaveg': svfWaveg, 'svfNaveg': svfNaveg}
+
+    return svfresult
+
+
+def svfForProcessing655(dsms, dtm, vegdem, vegdem2, scale, usevegdem):
+    """main processing function calculatting SVF using 655 patch divisions."""
+    rows = dsms[0].shape[0]
+    cols = dsms[0].shape[1]
+
+    svf = cp.zeros([rows, cols])
+    svfE = cp.zeros([rows, cols])
+    svfS = cp.zeros([rows, cols])
+    svfW = cp.zeros([rows, cols])
+    svfN = cp.zeros([rows, cols])
+    svfveg = cp.zeros((rows, cols))
+    svfEveg = cp.zeros((rows, cols))
+    svfSveg = cp.zeros((rows, cols))
+    svfWveg = cp.zeros((rows, cols))
+    svfNveg = cp.zeros((rows, cols))
+    svfaveg = cp.zeros((rows, cols))
+    svfEaveg = cp.zeros((rows, cols))
+    svfSaveg = cp.zeros((rows, cols))
+    svfWaveg = cp.zeros((rows, cols))
+    svfNaveg = cp.zeros((rows, cols))
+
+    # % amaxvalue
+    vegmax = vegdem.max()
+    amaxvalue = dsms[0].max()
+    amaxvalue = cp.nanmax(cp.array([amaxvalue, vegmax]))
+
+    if dtm is not None:
+        vegdem = vegdem + dtm
+        vegdem[vegdem == dtm] = 0
+        vegdem2 = vegdem2 + dtm
+        vegdem2[vegdem2 == dtm] = 0
+
+    else:
+        # % Elevation vegdems if no DTM
+        vegdem = vegdem + dsms[0]
+        vegdem[vegdem == dsms[0]] = 0
+        vegdem2 = vegdem2 + dsms[0]
+        vegdem2[vegdem2 == dsms[0]] = 0
+    # % Bush separation
+    bush = np.logical_not((vegdem2 * vegdem)) * vegdem
+
+    # shmat = np.zeros((rows, cols, 145))
+    # vegshmat = np.zeros((rows, cols, 145))
+
+    noa = 19.
+    # % No. of anglesteps minus 1
+    step = 89. / noa
+    iangle = np.array(np.hstack((np.arange(step / 2., 89., step), 90.)))
+    annulino = np.array(np.hstack((np.round(np.arange(0., 89., step)), 90.)))
+    angleresult = svf_angles_100121()
+    aziinterval = angleresult["aziinterval"]
+    iazimuth = angleresult["iazimuth"]
+    aziintervalaniso = np.ceil((aziinterval / 2.))
+    index = 1.
+
+    for i in np.arange(0, iangle.shape[0] - 1):
+        for j in np.arange(0, (aziinterval[int(i)])):
+            altitude = iangle[int(i)]
+            azimuth = iazimuth[int(index)-1]
+            # Casting shadow
+            if usevegdem == 1:
+                if altitude == 90:
+                    shadowresult = shadow.shadowingfunction_20_3d_90(dsms, vegdem, vegdem2)
+
+                else:
+                    shadowresult = shadow.shadowingfunction_20_3d(dsms, vegdem, vegdem2, azimuth, altitude,
+                                                                  scale, amaxvalue, bush, 1)
+
+                vegsh = shadowresult["vegsh"]
+                vbshvegsh = shadowresult["vbshvegsh"]
+                sh = shadowresult["sh"]
+            else:
+                if altitude == 90:
+                    sh = shadow.shadowingfunctionglobalradiation_3d_90(dsms)
+                else:
+                    sh = shadow.shadowingfunctionglobalradiation_3d(dsms, amaxvalue, azimuth, altitude, scale, 1)
+
+            # Calculate svfs
+            for k in np.arange(annulino[int(i)] + 1, (annulino[int(i + 1.)]) + 1):
+                weight = annulus_weight(k, aziinterval[i]) * sh
+                svf = svf + weight
+                weight = annulus_weight(k, aziintervalaniso[i]) * sh
+                if (azimuth >= 0) and (azimuth < 180):
+                    svfE = svfE + weight
+                if (azimuth >= 90) and (azimuth < 270):
+                    svfS = svfS + weight
+                if (azimuth >= 180) and (azimuth < 360):
+                    svfW = svfW + weight
+                if (azimuth >= 270) or (azimuth < 90):
+                    svfN = svfN + weight
+
+            if usevegdem == 1:
+                for k in np.arange(annulino[int(i)] + 1, (annulino[int(i + 1.)]) + 1):
+                    # % changed to include 90
+                    weight = annulus_weight(k, aziinterval[i])
+                    svfveg = svfveg + weight * vegsh
+                    svfaveg = svfaveg + weight * vbshvegsh
+                    weight = annulus_weight(k, aziintervalaniso[i])
+                    if (azimuth >= 0) and (azimuth < 180):
+                        svfEveg = svfEveg + weight * vegsh
+                        svfEaveg = svfEaveg + weight * vbshvegsh
+                    if (azimuth >= 90) and (azimuth < 270):
+                        svfSveg = svfSveg + weight * vegsh
+                        svfSaveg = svfSaveg + weight * vbshvegsh
+                    if (azimuth >= 180) and (azimuth < 360):
+                        svfWveg = svfWveg + weight * vegsh
+                        svfWaveg = svfWaveg + weight * vbshvegsh
+                    if (azimuth >= 270) or (azimuth < 90):
+                        svfNveg = svfNveg + weight * vegsh
+                        svfNaveg = svfNaveg + weight * vbshvegsh
+
+            index += 1
+            print(int(index * (100. / 655.)))
+
+    svfS = svfS + 3.0459e-004
+    svfW = svfW + 3.0459e-004
+    # % Last azimuth is 90. Hence, manual add of last annuli for svfS and SVFW
+    # %Forcing svf not be greater than 1 (some MATLAB crazyness)
+    svf[(svf > 1.)] = 1.
+    svfE[(svfE > 1.)] = 1.
+    svfS[(svfS > 1.)] = 1.
+    svfW[(svfW > 1.)] = 1.
+    svfN[(svfN > 1.)] = 1.
+
+    if usevegdem == 1:
+        last = cp.zeros((rows, cols))
+        last[(vegdem2 == 0.)] = 3.0459e-004
+        svfSveg = svfSveg + last
+        svfWveg = svfWveg + last
+        svfSaveg = svfSaveg + last
+        svfWaveg = svfWaveg + last
+        # %Forcing svf not be greater than 1 (some MATLAB crazyness)
+        svfveg[(svfveg > 1.)] = 1.
+        svfEveg[(svfEveg > 1.)] = 1.
+        svfSveg[(svfSveg > 1.)] = 1.
+        svfWveg[(svfWveg > 1.)] = 1.
+        svfNveg[(svfNveg > 1.)] = 1.
+        svfaveg[(svfaveg > 1.)] = 1.
+        svfEaveg[(svfEaveg > 1.)] = 1.
+        svfSaveg[(svfSaveg > 1.)] = 1.
+        svfWaveg[(svfWaveg > 1.)] = 1.
+        svfNaveg[(svfNaveg > 1.)] = 1.
+
+    svfresult = {'svf': svf, 'svfE': svfE, 'svfS': svfS, 'svfW': svfW, 'svfN': svfN,
+                 'svfveg': svfveg, 'svfEveg': svfEveg, 'svfSveg': svfSveg, 'svfWveg': svfWveg,
+                 'svfNveg': svfNveg, 'svfaveg': svfaveg, 'svfEaveg': svfEaveg, 'svfSaveg': svfSaveg,
+                 'svfWaveg': svfWaveg, 'svfNaveg': svfNaveg}
 
     return svfresult

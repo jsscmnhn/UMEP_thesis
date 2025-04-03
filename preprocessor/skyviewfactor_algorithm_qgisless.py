@@ -348,7 +348,7 @@ class ProcessingSkyViewFactorAlgorithm():
 
         else:
             print('Calculating SVF using 655 iterations')
-            ret = svf.svfForProcessing655(dsms, dtm, vegdsm, vegdsm2, scale, usevegdem)
+            ret = svf.svfForProcessing655_3d(dsms, dtm, vegdsm, vegdsm2, scale, usevegdem)
 
         filename = outputFile
 
