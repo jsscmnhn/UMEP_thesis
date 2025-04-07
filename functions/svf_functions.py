@@ -556,7 +556,7 @@ def svfForProcessing655(dsm, dtm, vegdem, vegdem2, scale, usevegdem):
     return svfresult
 
 
-def svfForProcessing655(dsms, dtm, vegdem, vegdem2, scale, usevegdem):
+def svfForProcessing655_3d(dsms, dtm, vegdem, vegdem2, scale, usevegdem):
     """main processing function calculatting SVF using 655 patch divisions."""
     rows = dsms[0].shape[0]
     cols = dsms[0].shape[1]

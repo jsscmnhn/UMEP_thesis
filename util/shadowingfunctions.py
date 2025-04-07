@@ -138,8 +138,8 @@ def shadowingfunctionglobalradiation_3d(a, amaxvalue, azimuth, altitude, scale, 
     azimuth *= degrees
     altitude *= degrees
     #% measure the size of the image
-    sizex = a.shape[0]
-    sizey = a.shape[1]
+    sizex = a[0].shape[0]
+    sizey = a[0].shape[1]
     if forsvf == 0:
         barstep = np.max([sizex, sizey])
         total = 100. / barstep #dlg.progressBar.setRange(0, barstep)
@@ -239,7 +239,7 @@ def shadowingfunctionglobalradiation_3d(a, amaxvalue, azimuth, altitude, scale, 
     sh_combined = sh_stack[0]
     for i in range(1, num_combinations):
         sh_combined = cp.fmax(sh_combined, sh_stack[i])
-    sh = cp.fmax(cp.fmax(sh, sh_combined))
+    sh = cp.fmax(sh, sh_combined)
     sh = 1.0 - sh
 
     return sh

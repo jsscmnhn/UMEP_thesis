@@ -298,7 +298,7 @@ class ProcessingSkyViewFactorAlgorithm():
 
         trans = transVeg / 100.0
 
-        if vegdsm_path:
+        if vegdsm_path is not None:
             usevegdem = 1
             print('Vegetation scheme activated')
             # vegdsm = self.parameterAsRasterLayer(parameters, self.INPUT_CDSM, context)
@@ -420,52 +420,58 @@ class ProcessingSkyViewFactorAlgorithm():
 
 # ===================== normal test case ==============================
 
-locations = [1, 2, 3, 4, 5, 6]
+locations = [1] #[1, 2, 3, 4, 5, 6]
+d = "G"
 for loc in locations:
     #  og
-    INPUT_DSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dsm.tif"
-    INPUT_CDSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
-    OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_og"
-    OUTPUT_FILE = "profiling/wcstest"
-    INPUT_DTM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
-
-    with cProfile.Profile() as profiler2:
-        ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
-                                         INPUT_DTM=INPUT_DTM).processAlgorithm()
-
-    # gap
-    INPUT_DSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/dsm_0.tif"
-    INPUT_CDSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
-    OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_hole"
-    OUTPUT_FILE = "profiling/wcstest"
-    INPUT_DTM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
-
-    with cProfile.Profile() as profiler2:
-        ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
-                                         INPUT_DTM=INPUT_DTM).processAlgorithm()
-
-    # og over
-    INPUT_DSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dsm_over.tif"
-    INPUT_CDSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
-    OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_over"
-    OUTPUT_FILE = "profiling/wcstest"
-    INPUT_DTM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
-
-    with cProfile.Profile() as profiler2:
-        ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
-                                         INPUT_DTM=INPUT_DTM).processAlgorithm()
-
+    # INPUT_DSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dsm.tif"
+    # INPUT_CDSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
+    # OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_og"
+    # OUTPUT_FILE = "profiling/wcstest"
+    # INPUT_DTM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
+    #
+    # with cProfile.Profile() as profiler2:
+    #     ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
+    #                                      INPUT_DTM=INPUT_DTM).processAlgorithm()
+    #
+    # # gap
+    # INPUT_DSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/dsm_0.tif"
+    # INPUT_CDSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
+    # OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_hole"
+    # OUTPUT_FILE = "profiling/wcstest"
+    # INPUT_DTM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
+    #
+    # with cProfile.Profile() as profiler2:
+    #     ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
+    #                                      INPUT_DTM=INPUT_DTM).processAlgorithm()
+    #
+    # # og over
+    # INPUT_DSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dsm_over.tif"
+    # INPUT_CDSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
+    # OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_over"
+    # OUTPUT_FILE = "profiling/wcstest"
+    # INPUT_DTM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
+    #
+    # with cProfile.Profile() as profiler2:
+    #     ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
+    #                                      INPUT_DTM=INPUT_DTM).processAlgorithm()
 
     #  3d
-    INPUT_DSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dsm.tif"
-    INPUT_CDSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
-    OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/svf"
+    # INPUT_DSM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dsm.tif"
+    # INPUT_CDSM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
+    # OUTPUT_DIR = f"{d}:/Geomatics/thesis/_svfcheck/ams/location_{loc}/svf"
+    # OUTPUT_FILE = f"profiling/wcstest"
+    # INPUT_DTM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
+    # INPUT_DSMS =  f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/dsms.tif"
+    INPUT_DSM = f"{d}:/Geomatics/thesis/gaptesting_database/case2/case2_0.tif"
+    INPUT_CDSM = None
+    OUTPUT_DIR = f"{d}:/Geomatics/thesis/_svfcheck/ams/generic/svf153"
     OUTPUT_FILE = f"profiling/wcstest"
-    INPUT_DTM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
-    INPUT_DSMS =  f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/dsms.tif"
+    # INPUT_DTM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
+    INPUT_DSMS =  f"{d}:/Geomatics/thesis/gaptesting_database/case2/case2_5layers.tif"
 
     with cProfile.Profile() as profiler2:
-        ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_MULT_DSMS=INPUT_DSMS, INPUT_DTM=INPUT_DTM).processAlgorithm_3d()
+        ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_MULT_DSMS=INPUT_DSMS, INPUT_DTM=None, ANISO=True).processAlgorithm_3d()
 
 #
 # with cProfile.Profile() as profiler2:
