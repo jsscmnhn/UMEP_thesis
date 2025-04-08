@@ -9,7 +9,7 @@ import rasterio
 from shapely.geometry import mapping
 from rasterio.features import geometry_mask, shapes
 from scipy.interpolate import NearestNDInterpolator
-import matplotlib.pyplot as plt
+import random
 import startinpy
 from rasterio import Affine
 from shapely.geometry import shape,box
@@ -524,6 +524,72 @@ class DEMS:
 
                             for i in range(1, len(user_arrays)):
                                 self.dsm[i][new_mask] = user_arrays[i][new_mask] + min_value
+
+    def remove_buildings(self, remove_list, remove_user_list, building_data, user_building_data, user_buildings_higher=None):
+        remove_set = set(remove_list)
+        remove_user_set = set(remove_user_list)
+        # Find buildings to remove from both datasets
+        to_remove = [building for building in building_data if building['parcel_id'] in remove_set]
+        print("Parcel IDs being checked (to_remove):",
+              [building['parcel_id'] for building in building_data])
+
+        to_remove_user = [building for building in user_building_data if building['parcel_id'] in remove_user_set]
+        print("Parcel IDs being checked (to_remove_user):",
+              [building['parcel_id'] for building in user_building_data])
+
+        remove_all = to_remove + to_remove_user
+        print(remove_all)
+
+        # Extract geometries for mask creation
+        geometries = [shape(building['geometry']) for building in remove_all if 'geometry' in building]
+
+        # Create the removal mask if there are geometries
+        if geometries:
+            remove_building_mask = geometry_mask(geometries, transform=self.transform, invert=False,
+                                                 out_shape=self.dtm.shape)
+            if not self.is3D:
+                self.dsm[...] = np.where(remove_building_mask, self.dsm, self.dtm)
+            else:
+                self.dsm[0][...] = np.where(remove_building_mask, self.dsm[0], self.dtm)
+
+                if user_buildings_higher:
+                    remove_other_layers = [building for building in user_buildings_higher if
+                                           building['parcel_id'] in remove_user_set]
+                    other_geometries = [shape(building['geometry']) for building in remove_other_layers if
+                                        'geometry' in building]
+
+                    if other_geometries:
+                        remove_others_mask = geometry_mask(other_geometries, transform=self.transform, invert=False,
+                                                           out_shape=self.dtm.shape)
+
+                        for i in range(1, len(self.dsm)):
+                            self.dsm[i][...] = np.where(remove_others_mask, self.dsm[i], np.nan)
+
+    def update_building_height(self, raise_height, user_buildings, building_id=None, raise_all=None, user_array=None, user_arrays=None, higher_buildings=None):
+        if building_id is not None:
+            matching_buildings = [building for building in user_buildings if building['id'] == building_id]
+            for building in matching_buildings:
+                if 'geometry' in building:
+                    geom = shape(building['geometry'])
+
+                    mask = geometry_mask([geom], transform=self.transform, invert=True, out_shape=self.dtm.shape)
+                if not self.is3D:
+                    self.dsm[mask] += raise_height
+                else:
+                    self.dsm[0][mask] += raise_height
+                    if higher_buildings:
+                        new_build = next(
+                            (b for b in higher_buildings if b['parcel_id'] == building['parcel_id']),
+                            None
+                        )
+
+                        if new_build and 'geometry' in new_build:
+                            new_geom = shape(new_build["geometry"])
+                            new_mask = geometry_mask([new_geom], transform=self.transform, invert=True,
+                                                     out_shape=self.dtm.shape)
+
+                            for i in range(2, len(user_arrays), 2):
+                                self.dsm[i][new_mask] += raise_height
 
     def export_context(self, file_name, export_format="dxf"):
         """
@@ -1105,6 +1171,49 @@ class CHM:
 
         self.tree_polygons.extend(tree_polygons)
         self.chm, self.trunk_array = new_array, new_trunk_array
+
+    def insert_random_tree(self, position,
+                           height_range=(12.0, 18.0),
+                           crown_radius_range=(2.0, 5.0),
+                           trunk_height_range=(4.0, 12.0),
+                           canopy_base_range=(0.0, 0.8),
+                           resolution=0.5,
+                           min_canopy_height = 3.0,
+                           type='parabolic',
+                           randomness=0.8):
+        """
+        Wrapper around insert_tree to insert a tree with randomized parameters.
+
+        Inputs:
+        - position (tuple):               (row, col)
+        - height_range (tuple):          Min and max tree height
+        - crown_radius_range (tuple):    Min and max crown radius
+        - trunk_height_range (tuple):    Min and max trunk height
+        - canopy_base_range (tuple):     Min and max canopy base height
+        - resolution (float):            Map resolution
+        - min_canopy_height (float):     Minimal height of the tree canopy (tree height - tree trunk height)
+        - type (str):                    Canopy type
+        - randomness (float):            Noise level
+        """
+
+        tree_height =  random.uniform(*height_range)
+        crown_radius = random.uniform(*crown_radius_range)
+
+        trunk_height = random.uniform(*trunk_height_range)
+        trunk_height = min(trunk_height, tree_height - min_canopy_height)
+
+        canopy_base_height = random.uniform(*canopy_base_range)
+
+        self.insert_tree(
+            position=position,
+            height=tree_height,
+            crown_radius=crown_radius,
+            trunk_height=trunk_height,
+            canopy_base_height=canopy_base_height,
+            resolution=resolution,
+            type=type,
+            randomness=randomness
+        )
 
 
 def load_buildings(buildings_path, layer):
