@@ -17,12 +17,14 @@ from rasterio.crs import CRS
 from pathlib import Path
 import laspy
 from scipy.spatial import cKDTree
-from scipy.ndimage import median_filter, label, binary_dilation
+from scipy.ndimage import median_filter, label
 import uuid
 from rtree import index
 import ezdxf
 import json
 from shapely.affinity import translate
+from rasterio.enums import Resampling
+from rasterio.warp import calculate_default_transform, reproject
 
 def write_output(dataset, crs, output, transform, name, change_nodata=False):
     """
@@ -203,22 +205,24 @@ class Buildings:
 
 
 class DEMS:
-    def __init__(self, bbox, building_data, resolution=0.5, bridge=False):
+    def __init__(self, bbox, building_data, resolution=0.5, bridge=False, resampling='cubic_spline', output_dir="output"):
         self.bbox = bbox
         self.building_data = building_data
         self.resolution = resolution
         self.user_building_data = []
+        self.output_dir = output_dir
         self.bridge = bridge
+        self.resampling = resampling
         self.crs = (CRS.from_epsg(28992))
         self.dtm, self.dsm, self.transform = self.create_dem(bbox)
         self.og_dtm, self.og_dsm = self.dtm, self.dsm
         self.is3D = False
 
     @staticmethod
-    def fetch_ahn_wcs(bbox, output_file="output/dtm.tif", coverage="dtm_05m", resolution=0.5):
+    def fetch_ahn_wcs(bbox, output_file="output/dtm.tif", coverage="dtm_05m", wcs_resolution=0.5):
         # Calculate width and height from bbox and resolution
-        width = int((bbox[2] - bbox[0]) / resolution)
-        height = int((bbox[3] - bbox[1]) / resolution)
+        width = int((bbox[2] - bbox[0]) / wcs_resolution)
+        height = int((bbox[3] - bbox[1]) / wcs_resolution)
 
         # WCS Service URL
         WCS_URL = "https://service.pdok.nl/rws/ahn/wcs/v1_0"
@@ -331,6 +335,30 @@ class DEMS:
 
         return xyz_filled
 
+
+    def resample_raster(self, input_array, input_transform, input_crs, output_resolution):
+        height, width = input_array.shape
+        new_width = int((width * input_transform.a) / output_resolution)
+        new_height = int((height * -input_transform.e) / output_resolution)
+
+        new_transform = rasterio.transform.from_origin(
+            input_transform.c, input_transform.f, output_resolution, output_resolution
+        )
+
+        resampled_array = np.empty((new_height, new_width), dtype=input_array.dtype)
+
+        reproject(
+            source=input_array,
+            destination=resampled_array,
+            src_transform=input_transform,
+            src_crs=input_crs,
+            dst_transform=new_transform,
+            dst_crs=input_crs,
+            resampling=self.resampling
+        )
+
+        return resampled_array, new_transform
+
     def fill_raster(self, geo_array, nodata_value, transform):
         """
         Fill the no data values of a given raster using Laplace interpolation.
@@ -433,20 +461,41 @@ class DEMS:
         return final_dsm
 
     def create_dem(self, bbox):
-        dtm_dst, dtm_array = self.fetch_ahn_wcs(bbox, output_file="archive/outputs/outputs2/dtm.tif", coverage="dtm_05m", resolution=0.5)
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
+
+        # --- Fetch DTM ---
+        dtm_dst, dtm_array = self.fetch_ahn_wcs(
+            bbox, output_file="archive/outputs/outputs2/dtm.tif", coverage="dtm_05m", wcs_resolution=0.5
+        )
         transform = dtm_dst.transform
-
         filled_dtm, new_transform = self.fill_raster(dtm_array, dtm_dst.nodata, transform)
-        write_output(dtm_dst, self.crs, filled_dtm, new_transform, "output/final_dtm.tif")
 
+        # --- Fetch DSM if buildings are used ---
         if self.building_data:
-            dsm_dst, dsm_array = self.fetch_ahn_wcs(bbox, output_file="archive/outputs/outputs2/dsm.tif",
-                                                    coverage="dsm_05m", resolution=0.5)
+            dsm_dst, dsm_array = self.fetch_ahn_wcs(
+                bbox, output_file="archive/outputs/outputs2/dsm.tif", coverage="dsm_05m", wcs_resolution=0.5
+            )
             filled_dsm, _ = self.fill_raster(dsm_array, dsm_dst.nodata, transform)
-            final_dsm = self.replace_buildings(filled_dtm, filled_dsm, self.building_data, new_transform, self.bridge)
-            write_output(dsm_dst, self.crs, final_dsm, new_transform, "output/final_dsm_over.tif")
+            final_dsm = self.replace_buildings(
+                filled_dtm, filled_dsm, self.building_data, new_transform, self.bridge
+            )
         else:
-            write_output(dtm_dst, self.crs, filled_dtm, new_transform, "output/final_dsm_over.tif")
+            final_dsm = filled_dtm
+        # --- Resample if needed ---
+        if self.resolution != 0.5:
+            filled_dtm, new_transform = self.resample_raster(
+                filled_dtm, new_transform, dtm_dst.crs, self.resolution
+            )
+
+            if final_dsm:
+                final_dsm, _ = self.resample_raster(
+                    final_dsm, new_transform, dtm_dst.crs, self.resolution
+                )
+
+        # --- Write outputs ---
+        write_output(dtm_dst, self.crs, filled_dtm, new_transform, f"{self.output_dir}/final_dtm.tif")
+        write_output(dtm_dst, self.crs, final_dsm, new_transform, f"{self.output_dir}/final_dsm_over.tif")
 
         return filled_dtm, final_dsm, new_transform
 
@@ -662,10 +711,11 @@ class DEMS:
 
 
 class CHM:
-    def __init__(self, bbox, dtm, trunk_height, output_folder, input_folder):
+    def __init__(self, bbox, dtm, trunk_height, output_folder, input_folder, output_folder_chm):
         self.bbox = bbox
         self.crs = (CRS.from_epsg(28992))
         self.dtm = dtm
+        self.output_folder_chm = output_folder_chm
         self.gdf = gpd.read_file("geotiles/AHN_lookup.geojson")
         self.chm, self.tree_polygons, self.transform = self.init_chm(bbox, output_folder=output_folder, input_folder=input_folder)
         self.trunk_array = self.chm * trunk_height
@@ -850,37 +900,51 @@ class CHM:
         return interpolated_grid, grid_center_xy
 
     def download_las_tiles(self, matching_tiles, output_folder):
-        base_url = "https://geotiles.citg.tudelft.nl/AHN5_T"
-        os.makedirs(output_folder, exist_ok=True)
 
-        for full_tile_name in matching_tiles:
-            # Extract tile name and sub-tile number
-            if '_' in full_tile_name:
-                tile_name, sub_tile = full_tile_name.split('_')
-            else:
-                print(f"Skipping invalid tile entry: {full_tile_name}")
-                continue
+        def download_las_tiles(self, matching_tiles, output_folder):
+            base_url_ahn5 = "https://geotiles.citg.tudelft.nl/AHN5_T"
+            base_url_ahn4 = "https://geotiles.citg.tudelft.nl/AHN4_T"
+            os.makedirs(output_folder, exist_ok=True)
 
-            # Construct the URL and file path
-            sub_tile_str = f"_{int(sub_tile):02}"
-            url = f"{base_url}/{tile_name}{sub_tile_str}.LAZ"
-            filename = f"{tile_name}{sub_tile_str}.LAZ"
-            file_path = os.path.join(output_folder, filename)
+            for full_tile_name in matching_tiles:
+                # Extract tile name and sub-tile number
+                if '_' in full_tile_name:
+                    tile_name, sub_tile = full_tile_name.split('_')
+                else:
+                    print(f"Skipping invalid tile entry: {full_tile_name}")
+                    continue
 
-            # Check if the file already exists to avoid re-downloading
-            if os.path.exists(file_path):
-                print(f"File {file_path} already exists, skipping download.")
-                continue
+                sub_tile_str = f"_{int(sub_tile):02}"
+                filename = f"{tile_name}{sub_tile_str}.LAZ"
+                file_path = os.path.join(output_folder, filename)
 
-            # Attempt to download the file
-            try:
-                response = requests.get(url)
-                response.raise_for_status()
-                with open(file_path, 'wb') as f:
-                    f.write(response.content)
-                print(f"Downloaded and saved {file_path}")
-            except requests.exceptions.RequestException as e:
-                print(f"Failed to download {url}: {e}")
+                # Skip if already downloaded
+                if os.path.exists(file_path):
+                    print(f"File {file_path} already exists, skipping download.")
+                    continue
+
+                # Try AHN5
+                url = f"{base_url_ahn5}/{filename}"
+                try:
+                    response = requests.get(url)
+                    response.raise_for_status()
+                    with open(file_path, 'wb') as f:
+                        f.write(response.content)
+                    print(f"Downloaded from AHN5 and saved {file_path}")
+                    continue
+                except requests.exceptions.RequestException as e:
+                    print(f"AHN5 download failed for {filename}: {e}")
+
+                # AHN4 fallback
+                url = f"{base_url_ahn4}/{filename}"
+                try:
+                    response = requests.get(url)
+                    response.raise_for_status()
+                    with open(file_path, 'wb') as f:
+                        f.write(response.content)
+                    print(f"Downloaded from AHN4 and saved {file_path}")
+                except requests.exceptions.RequestException as e:
+                    print(f"AHN4 download also failed for {filename}: {e}")
 
     def merge_las_files(self, laz_files, bounds, merged_output):
         merged_output = Path(merged_output)
@@ -1014,6 +1078,7 @@ class CHM:
 
     def init_chm(self, bbox, output_folder="output", input_folder="temp",  merged_output="output/pointcloud.las",  smooth_chm=True, resolution=0.5, ndvi_threshold=0.05, filter_size=3):
 
+
         matching_tiles = self.find_tiles(*bbox)
         print("Tiles covering the area:", matching_tiles)
 
@@ -1044,13 +1109,13 @@ class CHM:
 
         if las_data is None:
             print("No valid points found in the given boundary.")
-            return
+            return None, None, None
 
         # Extract vegetation points
         veg_points = self.extract_vegetation_points(las_data, ndvi_threshold=ndvi_threshold, pre_filter=False)
 
         vegetation_data = self.interpolation_vegetation(las_data, veg_points, 0.5)
-        output_filename = os.path.join(output_folder, f"CHM.TIF")
+        output_filename = os.path.join(self.output_folder_chm, f"CHM.TIF")
 
         # Create the CHM and save it
         chm, polygons, transform = self.chm_creation(las_data, vegetation_data, output_filename, resolution=resolution, smooth=smooth_chm, nodata_value=-9999,
@@ -1238,15 +1303,58 @@ def load_buildings(buildings_path, layer):
 
 
 if __name__ == "__main__":
-    pass
-    # bbox = (120570, 487570, 120970, 487870)
-    # # bbox = (122630, 487150, 123030, 487550)
-    #
-    #
-    # buildings = Buildings(bbox).building_geometries
-    # DEMS = DEMS(bbox, buildings, bridge=True)
-    # dtm = DEMS.dtm
-    # DEMS.export_context("export_test.dxf",'dxf')
+
+    bbox_list = [(175905, 317210, 176505, 317810), (84050, 447180, 84650, 447780),(80780, 454550, 81380, 455150),(233400, 581500, 234000, 582100),(136600, 455850, 137200, 456450),(121500, 487000, 122100, 487600)]
+    for i in [2, 3, 4, 5]:
+        output_dir=f"D:/Geomatics/thesis/_analysisfinal/historisch/loc_{i}"
+        buildings = Buildings(bbox_list[i]).building_geometries
+        dems = DEMS(bbox_list[i], buildings, bridge=True, output_dir=output_dir)
+        dtm = dems.dtm
+        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir).chm
+
+    bbox_list = [(146100, 486500, 147000, 487400),(153750, 467550, 154650, 468450),(115300, 517400, 116100, 518250),(102000, 475900, 103100, 476800),(160750, 388450, 161650, 389350),(84350, 449800, 85250, 450700)]
+    for i in [0, 1, 2, 3, 4, 5]:
+        output_dir = f"D:/Geomatics/thesis/_analysisfinal/vinex/loc_{i}"
+        buildings = Buildings(bbox_list[i]).building_geometries
+        dems = DEMS(bbox_list[i], buildings, bridge=True, output_dir=output_dir)
+        dtm = dems.dtm
+        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir).chm
+
+    bbox_list = [(90300, 436900, 91300, 437600),(91200, 438500, 92100, 439300),(121350, 483750, 122250, 484650),(118400, 486400, 119340, 487100)]
+    for i in [0, 1, 2, 3]:
+        output_dir = f"D:/Geomatics/thesis/_analysisfinal/stedelijk/loc_{i}"
+        buildings = Buildings(bbox_list[i]).building_geometries
+        dems = DEMS(bbox_list[i], buildings, bridge=True, output_dir=output_dir)
+        dtm = dems.dtm
+        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir).chm
+
+    bbox_list = [(81700, 427490, 82700, 428200),(84050, 444000, 84950, 444900),(116650, 518700, 117550, 519600),(235050, 584950, 235950, 585850),(210500, 473900, 211400, 474800),(154700, 381450, 155700, 382150)]
+    for i in [0, 1, 2, 3, 4, 5]:
+        output_dir = f"D:/Geomatics/thesis/_analysisfinal/bloemkool/loc_{i}"
+        buildings = Buildings(bbox_list[i]).building_geometries
+        dems = DEMS(bbox_list[i], buildings, bridge=True, output_dir=output_dir)
+        dtm = dems.dtm
+        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir).chm
+
+    bbox_list = [(76800, 455000, 78200, 455700),(152600, 463250, 153900, 463800),(139140, 469570, 139860, 470400),(190850, 441790, 191750, 442540),(113100, 551600, 113650, 552000),(32050, 391900, 32850, 392500)]
+    for i in [0, 1, 2, 3, 4, 5]:
+        output_dir = f"D:/Geomatics/thesis/_analysisfinal/tuindorp/loc_{i}"
+        buildings = Buildings(bbox_list[i]).building_geometries
+        dems = DEMS(bbox_list[i], buildings, bridge=True, output_dir=output_dir)
+        dtm = dems.dtm
+        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir).chm
+
+    bbox_list = [(76800, 455000, 78200, 455700), (152600, 463250, 153900, 463800), (139140, 469570, 139860, 470400),
+                 (190850, 441790, 191750, 442540), (113100, 551600, 113650, 552000),
+                 (233400, 582800, 234300, 583700)]
+
+    for i in [0, 1, 2, 3, 4, 5]:
+        output_dir = f"D:/Geomatics/thesis/_analysisfinal/volkswijk/loc_{i}"
+        buildings = Buildings(bbox_list[i]).building_geometries
+        dems = DEMS(bbox_list[i], buildings, bridge=True, output_dir=output_dir)
+        dtm = dems.dtm
+        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir).chm
+
 
 
     # buildings = Buildings(bbox).data

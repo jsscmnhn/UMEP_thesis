@@ -3,7 +3,7 @@ from rusterizer_3d import rasterize_from_python
 from osgeo import gdal
 # gdal_dsm = gdal.Open("D:/Geomatics/thesis/_3drust/testing.tif")
 
-def create_rasters(obj_file, cols, rows, resolution, num_gaps, rigin=[0,0], nodata=-9999):
+def create_rasters(obj_file, cols, rows, resolution, num_gaps, origin=[0,0], nodata=-9999):
     arrays = rasterize_from_python(obj_file, cols, rows, resolution, origin=origin, nodata=nodata)
     return buildings_input(arrays, num_gaps)
 

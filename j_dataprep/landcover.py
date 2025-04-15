@@ -12,10 +12,11 @@ import json
 from shapely.affinity import translate
 
 class LandCover:
-    def __init__(self, bbox, crs, resolution=0.5,building_data=None, dataset_path=None, buildings_path=None, layer=None, landcover_path="landcover.json"):
+    def __init__(self, bbox, crs, main_roadtype=1, resolution=0.5,building_data=None, dataset_path=None, buildings_path=None, layer=None, landcover_path="landcover.json"):
         self.bbox = bbox
         self.crs = crs
         self.resolution = resolution
+        self.main_road = main_roadtype
         # TO DO: change dataset path to dataset instance itself
         self.dtm_dataset = dataset_path
         self.base_url = "https://api.pdok.nl/brt/top10nl/ogc/v1"
@@ -115,7 +116,12 @@ class LandCover:
             properties = road.get("properties", {})
 
             verhardingstype = properties.get("verhardingstype", "").lower()
-            landuse_value = landuse_road_mapping.get(verhardingstype, -1)
+
+            if verhardingstype == "verhard":
+                # Use the landuse value mapped from self.roadtype
+                landuse_value = self.main_road
+            else:
+                landuse_value = landuse_road_mapping.get(verhardingstype, -1)
 
             new_properties = {"landuse": landuse_value} if landuse_value != -1 else {}
 

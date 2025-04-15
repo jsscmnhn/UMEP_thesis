@@ -18,7 +18,7 @@ def calculate_PET_index(Ta, Pa, Tmrt, va, pet):
         for x in range(pet_index.shape[1]):
             pet_index[y,y]=_PET(Ta[x],Pa[x],Tmrt[x][y],va[x][y],mbody,age,height,activity,clo,sex)
 
-def calculate_PET_grid(Ta, RH, Tmrt, va, pet, feedback):
+def calculate_PET_grid(Ta, RH, Tmrt, va, pet):
     mbody=pet.mbody
     age=pet.age
     height=pet.height
@@ -31,13 +31,9 @@ def calculate_PET_grid(Ta, RH, Tmrt, va, pet, feedback):
     # print(Tmrt.shape)
     # print(va.shape)
     for y in range(pet_index.shape[0]):
-        if feedback.isCanceled():
-            feedback.setProgressText("Calculation cancelled")
-            break
         for x in range(pet_index.shape[1]):
             if va[y, x] > 0:
                 index = index + 1
-                feedback.setProgress(int(index * total))
                 pet_index[y,x]=_PET(Ta,RH,Tmrt[y,x],va[y,x],mbody,age,height,activity,clo,sex)
             else:
                 pet_index[y, x] = -9999
@@ -368,3 +364,6 @@ def _PET(ta,RH,tmrt,v,mbody,age,ht,work,icl,sex):
         enbal2 = 0
 
     return tx
+
+
+import numpy as np
