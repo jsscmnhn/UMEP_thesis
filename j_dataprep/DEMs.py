@@ -711,13 +711,13 @@ class DEMS:
 
 
 class CHM:
-    def __init__(self, bbox, dtm, trunk_height, output_folder, input_folder, output_folder_chm):
+    def __init__(self, bbox, dtm, trunk_height, output_folder, input_folder, output_folder_chm, merged_output='pointcloud.las'):
         self.bbox = bbox
         self.crs = (CRS.from_epsg(28992))
         self.dtm = dtm
         self.output_folder_chm = output_folder_chm
         self.gdf = gpd.read_file("geotiles/AHN_lookup.geojson")
-        self.chm, self.tree_polygons, self.transform = self.init_chm(bbox, output_folder=output_folder, input_folder=input_folder)
+        self.chm, self.tree_polygons, self.transform = self.init_chm(bbox, output_folder=output_folder, input_folder=input_folder, merged_output=merged_output)
         self.trunk_array = self.chm * trunk_height
         self.original_chm, self.og_polygons, self.original_trunk = self.chm, self.tree_polygons, self.trunk_array
 
@@ -900,51 +900,49 @@ class CHM:
         return interpolated_grid, grid_center_xy
 
     def download_las_tiles(self, matching_tiles, output_folder):
+        base_url_ahn5 = "https://geotiles.citg.tudelft.nl/AHN5_T"
+        base_url_ahn4 = "https://geotiles.citg.tudelft.nl/AHN4_T"
+        os.makedirs(output_folder, exist_ok=True)
 
-        def download_las_tiles(self, matching_tiles, output_folder):
-            base_url_ahn5 = "https://geotiles.citg.tudelft.nl/AHN5_T"
-            base_url_ahn4 = "https://geotiles.citg.tudelft.nl/AHN4_T"
-            os.makedirs(output_folder, exist_ok=True)
+        for full_tile_name in matching_tiles:
+            # Extract tile name and sub-tile number
+            if '_' in full_tile_name:
+                tile_name, sub_tile = full_tile_name.split('_')
+            else:
+                print(f"Skipping invalid tile entry: {full_tile_name}")
+                continue
 
-            for full_tile_name in matching_tiles:
-                # Extract tile name and sub-tile number
-                if '_' in full_tile_name:
-                    tile_name, sub_tile = full_tile_name.split('_')
-                else:
-                    print(f"Skipping invalid tile entry: {full_tile_name}")
-                    continue
+            sub_tile_str = f"_{int(sub_tile):02}"
+            filename = f"{tile_name}{sub_tile_str}.LAZ"
+            file_path = os.path.join(output_folder, filename)
 
-                sub_tile_str = f"_{int(sub_tile):02}"
-                filename = f"{tile_name}{sub_tile_str}.LAZ"
-                file_path = os.path.join(output_folder, filename)
+            # Skip if already downloaded
+            if os.path.exists(file_path):
+                print(f"File {file_path} already exists, skipping download.")
+                continue
 
-                # Skip if already downloaded
-                if os.path.exists(file_path):
-                    print(f"File {file_path} already exists, skipping download.")
-                    continue
+            # Try AHN5
+            url = f"{base_url_ahn5}/{filename}"
+            try:
+                response = requests.get(url)
+                response.raise_for_status()
+                with open(file_path, 'wb') as f:
+                    f.write(response.content)
+                print(f"Downloaded from AHN5 and saved {file_path}")
+                continue
+            except requests.exceptions.RequestException as e:
+                print(f"AHN5 download failed for {filename}: {e}")
 
-                # Try AHN5
-                url = f"{base_url_ahn5}/{filename}"
-                try:
-                    response = requests.get(url)
-                    response.raise_for_status()
-                    with open(file_path, 'wb') as f:
-                        f.write(response.content)
-                    print(f"Downloaded from AHN5 and saved {file_path}")
-                    continue
-                except requests.exceptions.RequestException as e:
-                    print(f"AHN5 download failed for {filename}: {e}")
-
-                # AHN4 fallback
-                url = f"{base_url_ahn4}/{filename}"
-                try:
-                    response = requests.get(url)
-                    response.raise_for_status()
-                    with open(file_path, 'wb') as f:
-                        f.write(response.content)
-                    print(f"Downloaded from AHN4 and saved {file_path}")
-                except requests.exceptions.RequestException as e:
-                    print(f"AHN4 download also failed for {filename}: {e}")
+            # AHN4 fallback
+            url = f"{base_url_ahn4}/{filename}"
+            try:
+                response = requests.get(url)
+                response.raise_for_status()
+                with open(file_path, 'wb') as f:
+                    f.write(response.content)
+                print(f"Downloaded from AHN4 and saved {file_path}")
+            except requests.exceptions.RequestException as e:
+                print(f"AHN4 download also failed for {filename}: {e}")
 
     def merge_las_files(self, laz_files, bounds, merged_output):
         merged_output = Path(merged_output)
@@ -1103,8 +1101,7 @@ class CHM:
 
         if not laz_files:
             print("No relevant LAZ files found in the input folder or its subfolders.")
-            return
-
+            return None, None, None
         las_data = self.merge_las_files(laz_files, bbox, merged_output)
 
         if las_data is None:
@@ -1305,12 +1302,13 @@ def load_buildings(buildings_path, layer):
 if __name__ == "__main__":
 
     bbox_list = [(175905, 317210, 176505, 317810), (84050, 447180, 84650, 447780),(80780, 454550, 81380, 455150),(233400, 581500, 234000, 582100),(136600, 455850, 137200, 456450),(121500, 487000, 122100, 487600)]
-    for i in [2, 3, 4, 5]:
+    for i in [1, 2, 3, 4, 5]:
         output_dir=f"D:/Geomatics/thesis/_analysisfinal/historisch/loc_{i}"
         buildings = Buildings(bbox_list[i]).building_geometries
         dems = DEMS(bbox_list[i], buildings, bridge=True, output_dir=output_dir)
         dtm = dems.dtm
-        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir).chm
+        merged_output= f'his_{i}_pointcloud.las'
+        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir, merged_output=merged_output).chm
 
     bbox_list = [(146100, 486500, 147000, 487400),(153750, 467550, 154650, 468450),(115300, 517400, 116100, 518250),(102000, 475900, 103100, 476800),(160750, 388450, 161650, 389350),(84350, 449800, 85250, 450700)]
     for i in [0, 1, 2, 3, 4, 5]:
@@ -1318,7 +1316,8 @@ if __name__ == "__main__":
         buildings = Buildings(bbox_list[i]).building_geometries
         dems = DEMS(bbox_list[i], buildings, bridge=True, output_dir=output_dir)
         dtm = dems.dtm
-        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir).chm
+        merged_output = f'vinex_{i}_pointcloud.las'
+        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir, merged_output=merged_output).chm
 
     bbox_list = [(90300, 436900, 91300, 437600),(91200, 438500, 92100, 439300),(121350, 483750, 122250, 484650),(118400, 486400, 119340, 487100)]
     for i in [0, 1, 2, 3]:
@@ -1326,7 +1325,8 @@ if __name__ == "__main__":
         buildings = Buildings(bbox_list[i]).building_geometries
         dems = DEMS(bbox_list[i], buildings, bridge=True, output_dir=output_dir)
         dtm = dems.dtm
-        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir).chm
+        merged_output = f'sted_{i}_pointcloud.las'
+        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir, merged_output=merged_output).chm
 
     bbox_list = [(81700, 427490, 82700, 428200),(84050, 444000, 84950, 444900),(116650, 518700, 117550, 519600),(235050, 584950, 235950, 585850),(210500, 473900, 211400, 474800),(154700, 381450, 155700, 382150)]
     for i in [0, 1, 2, 3, 4, 5]:
@@ -1334,7 +1334,8 @@ if __name__ == "__main__":
         buildings = Buildings(bbox_list[i]).building_geometries
         dems = DEMS(bbox_list[i], buildings, bridge=True, output_dir=output_dir)
         dtm = dems.dtm
-        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir).chm
+        merged_output = f'bloem_{i}_pointcloud.las'
+        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir, merged_output=merged_output).chm
 
     bbox_list = [(76800, 455000, 78200, 455700),(152600, 463250, 153900, 463800),(139140, 469570, 139860, 470400),(190850, 441790, 191750, 442540),(113100, 551600, 113650, 552000),(32050, 391900, 32850, 392500)]
     for i in [0, 1, 2, 3, 4, 5]:
@@ -1342,7 +1343,8 @@ if __name__ == "__main__":
         buildings = Buildings(bbox_list[i]).building_geometries
         dems = DEMS(bbox_list[i], buildings, bridge=True, output_dir=output_dir)
         dtm = dems.dtm
-        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir).chm
+        merged_output = f'tuin_{i}_pointcloud.las'
+        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir, merged_output=merged_output).chm
 
     bbox_list = [(76800, 455000, 78200, 455700), (152600, 463250, 153900, 463800), (139140, 469570, 139860, 470400),
                  (190850, 441790, 191750, 442540), (113100, 551600, 113650, 552000),
@@ -1353,9 +1355,8 @@ if __name__ == "__main__":
         buildings = Buildings(bbox_list[i]).building_geometries
         dems = DEMS(bbox_list[i], buildings, bridge=True, output_dir=output_dir)
         dtm = dems.dtm
-        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir).chm
-
-
+        merged_output = f'volk_{i}_pointcloud.las'
+        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir, merged_output=merged_output).chm
 
     # buildings = Buildings(bbox).data
     # # buildings_data = load_buildings("temp/buildings_test.gpkg", "buildings")
