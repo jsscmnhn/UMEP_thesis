@@ -424,16 +424,34 @@ locations = [1] #[1, 2, 3, 4, 5, 6]
 d = "G"
 for loc in locations:
     #  og
-    # INPUT_DSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dsm.tif"
-    # INPUT_CDSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
-    # OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_og"
-    # OUTPUT_FILE = "profiling/wcstest"
-    # INPUT_DTM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
-    #
-    # with cProfile.Profile() as profiler2:
-    #     ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
-    #                                      INPUT_DTM=INPUT_DTM).processAlgorithm()
-    #
+
+    for nbh_type in ['stedelijk']:
+        for i in [0, 1, 2, 3]:
+            INPUT_DSM = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dsm_over.tif"
+            INPUT_CDSM =  None # f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/CHM.tif"
+            OUTPUT_DIR = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/svf_build"
+            OUTPUT_FILE = f"profiling/wcstest"
+            INPUT_DTM = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dtm.tif"
+
+            with cProfile.Profile() as profiler2:
+                ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
+                                                 INPUT_DTM=INPUT_DTM).processAlgorithm()
+
+    for nbh_type in ['historisch', 'tuindorp', 'vinex', 'volkswijk', 'bloemkool']:
+        for i in [0, 1, 2, 3, 4, 5]:
+            INPUT_DSM = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dsm_over.tif"
+            INPUT_CDSM = None # f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/CHM.tif"
+            OUTPUT_DIR = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/svf_build"
+            OUTPUT_FILE = f"profiling/wcstest"
+            INPUT_DTM = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dtm.tif"
+
+            with cProfile.Profile() as profiler2:
+                ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
+                                                 INPUT_DTM=INPUT_DTM).processAlgorithm()
+
+
+
+
     # # gap
     # INPUT_DSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/dsm_0.tif"
     # INPUT_CDSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
@@ -463,15 +481,10 @@ for loc in locations:
     # OUTPUT_FILE = f"profiling/wcstest"
     # INPUT_DTM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
     # INPUT_DSMS =  f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/dsms.tif"
-    INPUT_DSM = f"{d}:/Geomatics/thesis/gaptesting_database/case2/case2_0.tif"
-    INPUT_CDSM = None
-    OUTPUT_DIR = f"{d}:/Geomatics/thesis/_svfcheck/ams/generic/svf153"
-    OUTPUT_FILE = f"profiling/wcstest"
-    # INPUT_DTM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
-    INPUT_DSMS =  f"{d}:/Geomatics/thesis/gaptesting_database/case2/case2_5layers.tif"
 
-    with cProfile.Profile() as profiler2:
-        ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_MULT_DSMS=INPUT_DSMS, INPUT_DTM=None, ANISO=True).processAlgorithm_3d()
+
+    # with cProfile.Profile() as profiler2:
+    #     ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_MULT_DSMS=INPUT_DSMS, INPUT_DTM=None, ANISO=True).processAlgorithm_3d()
 
 #
 # with cProfile.Profile() as profiler2:
