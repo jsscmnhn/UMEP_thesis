@@ -11,8 +11,26 @@ import ezdxf
 import json
 from shapely.affinity import translate
 
+
+import requests
+from io import BytesIO
+import gzip
+import os
+import pandas as pd
+import numpy as np
+import rasterio
+from shapely.geometry import mapping
+from rasterio.features import geometry_mask, shapes
+from shapely.geometry import shape,box
+from scipy.ndimage import label
+import uuid
+from rtree import index
+import ezdxf
+import json
+from shapely.affinity import translate
+
 class LandCover:
-    def __init__(self, bbox, crs, main_roadtype=1, resolution=0.5,building_data=None, dataset_path=None, buildings_path=None, layer=None, landcover_path="landcover.json"):
+    def __init__(self, bbox, crs, main_roadtype=0, resolution=0.5,building_data=None, dataset_path=None, buildings_path=None, layer=None, landcover_path="landcover.json"):
         self.bbox = bbox
         self.crs = crs
         self.resolution = resolution
@@ -352,16 +370,194 @@ class LandCover:
 
 
 
+class Buildings:
+    def __init__(self, bbox, wfs_url="https://data.3dbag.nl/api/BAG3D/wfs", layer_name="BAG3D:lod13", gpkg_name="buildings", output_folder = "output", output_layer_name="buildings"):
+        self.bbox = bbox
+        self.wfs_url = wfs_url
+        self.layer_name = layer_name
+        self.data = self.download_wfs_data(gpkg_name, output_folder, output_layer_name)
+        self.building_geometries = self.load_buildings(self.data)
+        self.removed_buildings = []
+        self.user_buildings = []
+        self.user_buildings_higher = []
+        self.removed_user_buildings = []
+        self.is3D = False
+
+
+    def download_wfs_data(self, gpkg_name, output_folder, layer_name):
+        all_features = []
+        start_index = 0
+        count = 10000
+
+        while True:
+            params = {
+                "SERVICE": "WFS",
+                "REQUEST": "GetFeature",
+                "VERSION": "2.0.0",
+                "TYPENAMES": self.layer_name,
+                "SRSNAME": "urn:ogc:def:crs:EPSG::28992",
+                "BBOX": f"{self.bbox[0]},{self.bbox[1]},{self.bbox[2]},{self.bbox[3]},urn:ogc:def:crs:EPSG::28992",
+                "COUNT": count,
+                "COUNT": count,
+                "STARTINDEX": start_index
+            }
+            headers = {"User-Agent": "Mozilla/5.0 QGIS/33411/Windows 11 Version 2009"}
+            response = requests.get(self.wfs_url, params=params, headers=headers)
+
+            if response.status_code == 200:
+                if response.headers.get('Content-Encoding', '').lower() == 'gzip' and response.content[
+                                                                                      :2] == b'\x1f\x8b':
+                    data = gzip.decompress(response.content)
+                else:
+                    data = response.content
+
+                with BytesIO(data) as f:
+                    gdf = gpd.read_file(f)
+                all_features.append(gdf)
+                if len(gdf) < count:
+                    break
+                start_index += count
+            else:
+                print(f"Failed to download WFS data. Status code: {response.status_code}")
+                print(f"Error message: {response.text}")
+                return gpd.GeoDataFrame()
+
+        if all_features:
+            full_gdf = gpd.GeoDataFrame(pd.concat(all_features, ignore_index=True))
+            os.makedirs(output_folder, exist_ok=True)
+            output_gpkg = os.path.join(output_folder, f"{gpkg_name}.gpkg")
+            full_gdf.to_file(output_gpkg, layer=layer_name, driver="GPKG")
+            print("loaded")
+            return full_gdf
+        else:
+            print("No features were downloaded.")
+            return None
+
+    @staticmethod
+    def load_buildings(buildings_gdf, buildings_path=None, layer=None):
+        if buildings_gdf is None:
+            if buildings_path is not None:
+                buildings_gdf = gpd.read_file(buildings_path, layer=layer)
+            else: return None
+
+        return [{"geometry": mapping(geom), "parcel_id": identificatie} for geom, identificatie in
+                zip(buildings_gdf.geometry, buildings_gdf["identificatie"])]
+
+    def remove_buildings(self, identification):
+        self.removed_buildings.append(identification)
+
+    def retrieve_buildings(self, identification):
+        self.removed_buildings.remove(identification)
+
+    def insert_user_buildings(self, highest_array, transform, footprint_array=None):
+        self.is3D = footprint_array is not None
+        self.removed_user_buildings = []
+        self.user_buildings_higher = []
+
+        labeled_array, num_clusters = label(highest_array > 0)
+
+        shapes_highest = shapes(labeled_array.astype(np.uint8), mask=(labeled_array > 0), transform=transform)
+
+        highest_buildings = [
+            {"geometry": mapping(shape(geom)), "parcel_id": str(uuid.uuid4())[:8]}
+            for geom, value in shapes_highest
+        ]
+
+        if footprint_array is not None:
+            rtree_index = index.Index()
+            for idx, building in enumerate(highest_buildings):
+                geom = shape(building['geometry'])
+                rtree_index.insert(idx, geom.bounds)
+
+            labeled_footprint_array, num_clusters_fp = label(footprint_array > 0)
+
+            shapes_fp = shapes(labeled_footprint_array.astype(np.uint8), mask=(labeled_footprint_array > 0),
+                                   transform=transform)
+
+            footprint_buildings = [
+                {"geometry": mapping(shape(geom)), "parcel_id": str(uuid.uuid4())[:8]}
+                for geom, value in shapes_fp
+            ]
+
+            for footprint_building in footprint_buildings:
+                footprint_geom = shape(footprint_building['geometry'])
+
+                possible_matches = list(
+                    rtree_index.intersection(footprint_geom.bounds))
+
+                for match_idx in possible_matches:
+                    highest_building = highest_buildings[match_idx]
+                    highest_geom = shape(highest_building['geometry'])
+
+                    if footprint_geom.intersects(highest_geom) or footprint_geom.within(highest_geom):
+                        footprint_building['parcel_id'] = highest_building['parcel_id']
+                        break
+            self.user_buildings = footprint_buildings
+            self.user_buildings_higher = highest_buildings
+        else:
+            self.user_buildings = highest_buildings
+
+    def remove_user_buildings(self, identification):
+        self.removed_user_buildings.append(identification)
+
+    def retrieve_user_buildings(self, identification):
+        self.removed_user_buildings.remove(identification)
+
+
 if __name__ == "__main__":
-    bbox = (120570,487570,120970,487870)
+    bbox_dict = {
+        'historisch': [(175905, 317210, 176505, 317810), (84050, 447180, 84650, 447780), (80780, 454550, 81380, 455150),
+                       (233400, 581500, 234000, 582100), (136600, 455850, 137200, 456450),
+                       (121500, 487000, 122100, 487600)
+                       ],
+        'tuindorp': [(76800, 455000, 78200, 455700), (152600, 463250, 153900, 463800), (139140, 469570, 139860, 470400),
+                     (190850, 441790, 191750, 442540), (113100, 551600, 113650, 552000), (32050, 391900, 32850, 392500)
+
+                     ],
+        'vinex': [(146100, 486500, 147000, 487400), (153750, 467550, 154650, 468450), (115300, 517400, 116100, 518250),
+                  (102000, 475900, 103100, 476800), (160750, 388450, 161650, 389350), (84350, 449800, 85250, 450700)
+
+                  ],
+        'volkswijk': [(104200, 490550, 105100, 491450), (78200, 453900, 79100, 454800), (83500, 447020, 84050, 447900),
+                      (136200, 456500, 137100, 457300), (182700, 579200, 183800, 579750),
+                      (233400, 582800, 234300, 583700)
+
+                      ],
+        'bloemkool': [(81700, 427490, 82700, 428200), (84050, 444000, 84950, 444900), (116650, 518700, 117550, 519600),
+                      (235050, 584950, 235950, 585850), (210500, 473900, 211400, 474800),
+                      (154700, 381450, 155700, 382150)
+
+                      ],
+
+        'stedelijk': [
+            (90300, 436900, 91300, 437600), (91200, 438500, 92100, 439300), (121350, 483750, 122250, 484650),
+            (118400, 486400, 119340, 487100)
+        ]
+    }
+
+    # bbox = (120570,487570,120970,487870)
+    # crs = "http://www.opengis.net/def/crs/EPSG/0/28992"
+    # dataset_path = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dsm.tif"
+    # buildings_path = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/buildings.gpkg"
+    # output = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/landcover.tif"
+    # landcover = LandCover(bbox, crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
+    # landcover.save_raster(output, False)
+
     crs = "http://www.opengis.net/def/crs/EPSG/0/28992"
-    dataset_path = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dsm.tif"
-    buildings_path = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/buildings.gpkg"
-    output = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/landcover.tif"
-    landcover = LandCover(bbox, crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
-    landcover.save_raster(output, 0)
-    landcover.export_context("output/export_test2.dxf")
+    for nbh_type in ['historisch', 'tuindorp', 'vinex', 'volkswijk', 'bloemkool']:
+        for i in [0, 1, 2, 3, 4, 5]:
+            output =  f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/landcover_stone.tif"
+            bbox = bbox_dict[nbh_type][i]
+            dataset_path = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dsm_over.tif"
+            buildings_path = (f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/buildings.gpkg")
+            landcover = LandCover(bbox, crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
+            landcover.save_raster(output, False)
 
-from rusterizer_3d import rasterize_from_python
-
-surface = rasterize_from_python("D:/Geomatics/thesis/objtryouts/flatpoly.obj", 798, 598, 0.5, [0,0], -9999)
+    for nbh_type in ['stedelijk']:
+        for i in [0, 1, 2, 3]:
+            output =  f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/landcover_stone.tif"
+            bbox = bbox_dict[nbh_type][i]
+            dataset_path = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dsm_over.tif"
+            buildings_path = (f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/buildings.gpkg")
+            landcover = LandCover(bbox, crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
+            landcover.save_raster(output, False)

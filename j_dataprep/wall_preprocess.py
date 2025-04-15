@@ -81,13 +81,42 @@ class WallData:
         return dirwalls
 
 if __name__ == "__main__":
-    file = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dsm.tif"
-    output_aspect = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/wallaspect.tif"
-    output_height = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/wallheight.tif"
-    gdal_dsms = gdal.Open(file)
+    # file = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dsm.tif"
+    # output_aspect = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/wallaspect.tif"
+    # output_height = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/wallheight.tif"
+    # gdal_dsms = gdal.Open(file)
+    #
+    # walldata = WallData(gdal_dsms, 2)
+    # wall_aspect = walldata.wall_aspect
+    #
+    # saveraster(gdal_dsms, output_aspect, wall_aspect.get())
+    # saveraster(gdal_dsms, output_height, walldata.wall_height.get())
 
-    walldata = WallData(gdal_dsms, 2)
-    wall_aspect = walldata.wall_aspect
+    for nbh_type in ['historisch', 'tuindorp', 'vinex', 'volkswijk', 'bloemkool']:
+        for i in [0, 1, 2, 3, 4, 5]:
+            output_aspect =  f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/aspect.tif"
+            output_height =  f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/height.tif"
+            file = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dsm_over.tif"
 
-    saveraster(gdal_dsms, output_aspect, wall_aspect.get())
-    saveraster(gdal_dsms, output_height, walldata.wall_height.get())
+            gdal_dsms = gdal.Open(file)
+
+            walldata = WallData(gdal_dsms, 2)
+            wall_aspect = walldata.wall_aspect
+
+            saveraster(gdal_dsms, output_aspect, wall_aspect.get())
+            saveraster(gdal_dsms, output_height, walldata.wall_height.get())
+
+
+    for nbh_type in ['stedelijk']:
+        for i in [0, 1, 2, 3]:
+            output_aspect =  f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/aspect.tif"
+            output_height =  f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/height.tif"
+            file = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dsm_over.tif"
+
+            gdal_dsms = gdal.Open(file)
+
+            walldata = WallData(gdal_dsms, 2)
+            wall_aspect = walldata.wall_aspect
+
+            saveraster(gdal_dsms, output_aspect, wall_aspect.get())
+            saveraster(gdal_dsms, output_height, walldata.wall_height.get())
