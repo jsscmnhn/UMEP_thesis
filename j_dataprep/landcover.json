@@ -19,7 +19,8 @@
         "heide": 5,
         "overig": 0,
         "populieren": 5,
-        "spoorbaanlichaam": 0
+        "spoorbaanlichaam": 0,
+        "zand" : 6
     },
     "road": {
         "verhard": 1,

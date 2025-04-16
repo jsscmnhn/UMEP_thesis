@@ -543,8 +543,28 @@ if __name__ == "__main__":
     # landcover = LandCover(bbox, crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
     # landcover.save_raster(output, False)
 
+    # crs = "http://www.opengis.net/def/crs/EPSG/0/28992"
+    # for nbh_type in ['historisch', 'tuindorp', 'vinex', 'volkswijk', 'bloemkool']:
+    #     for i in [0, 1, 2, 3, 4, 5]:
+    #         output =  f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/landcover_stone.tif"
+    #         bbox = bbox_dict[nbh_type][i]
+    #         dataset_path = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dsm_over.tif"
+    #         buildings_path = (f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/buildings.gpkg")
+    #         landcover = LandCover(bbox, crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
+    #         landcover.save_raster(output, False)
+    #
+    # for nbh_type in ['stedelijk']:
+    #     for i in [0, 1, 2, 3]:
+    #         output =  f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/landcover_stone.tif"
+    #         bbox = bbox_dict[nbh_type][i]
+    #         dataset_path = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dsm_over.tif"
+    #         buildings_path = (f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/buildings.gpkg")
+    #         landcover = LandCover(bbox, crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
+    #         landcover.save_raster(output, False)
+
+
     crs = "http://www.opengis.net/def/crs/EPSG/0/28992"
-    for nbh_type in ['historisch', 'tuindorp', 'vinex', 'volkswijk', 'bloemkool']:
+    for nbh_type in ['vinex', 'volkswijk', 'bloemkool']:
         for i in [0, 1, 2, 3, 4, 5]:
             output =  f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/landcover_stone.tif"
             bbox = bbox_dict[nbh_type][i]
@@ -552,12 +572,4 @@ if __name__ == "__main__":
             buildings_path = (f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/buildings.gpkg")
             landcover = LandCover(bbox, crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
             landcover.save_raster(output, False)
-
-    for nbh_type in ['stedelijk']:
-        for i in [0, 1, 2, 3]:
-            output =  f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/landcover_stone.tif"
-            bbox = bbox_dict[nbh_type][i]
-            dataset_path = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dsm_over.tif"
-            buildings_path = (f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/buildings.gpkg")
-            landcover = LandCover(bbox, crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
-            landcover.save_raster(output, False)
+    #
