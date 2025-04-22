@@ -1,97 +1,50 @@
 # cython: boundscheck=False, wraparound=False
-
-from cython.parallel import parallel, prange
 import numpy as np
 cimport numpy as np
-from libc.math cimport log
+# from cython.parallel import parallel, prange
 
+def calculate_PET_grid(np.ndarray[np.float64_t, ndim=2] Ta, np.ndarray[np.float64_t, ndim=2] RH,
+                       np.ndarray[np.float64_t, ndim=2] Tmrt, np.ndarray[np.float64_t, ndim=2] va, pet):
+    cdef np.ndarray[np.float64_t, ndim=2] pet_index = np.zeros_like(Tmrt)
+    cdef double mbody = pet.mbody
+    cdef double age = pet.age
+    cdef double height = pet.height
+    cdef double activity = pet.activity
+    cdef int sex = pet.sex
+    cdef double clo = pet.clo
 
-def test_parallel():
-    # Create a 2D array of zeros
-    cdef int rows = 100
-    cdef int cols = 100
+    cdef int index = 0
+    cdef double total = 100.0 / (pet_index.shape[0] * pet_index.shape[1])
 
-    cdef np.ndarray[np.float64_t, ndim=2] grid = np.zeros((rows, cols), dtype=np.float64)
+    for y in range(pet_index.shape[0]):
+        for x in range(pet_index.shape[1]):
+            if Tmrt[y, x] >= - 10:
+                index += 1
+                pet_index[y, x] = _PET(
+                    Ta[y, x], RH[y, x], Tmrt[y, x], va[y, x],
+                    mbody, age, height, activity, clo, sex
+                )
+            else:
+                pet_index[y, x] = -9999
 
-    # Perform parallel operation to fill the grid with values
-    with parallel():
-        for i in prange(rows, nogil=True):  # Parallelize over rows
-            for j in range(cols):  # Iterate over columns serially within each row
-                grid[i, j] = i * j  
+    return pet_index
 
-    print("Test completed successfully!")
-    return grid
+def calculate_PET_index_vec(double Ta, double RH, double Tmrt, double va,pet):
+    mbody=pet.mbody
+    age=pet.age
+    height=pet.height
+    activity=pet.activity
+    sex=pet.sex
+    clo=pet.clo
 
-# Run the test function
-result_grid = test_parallel()
+    pet_index=_PET(Ta, RH,Tmrt,va,mbody,age,height,activity,clo,sex)
+    return pet_index
 
-# def calculate_PET_grid(np.ndarray[np.float64_t, ndim=2] Ta, np.ndarray[np.float64_t, ndim=2] RH,
-#                        np.ndarray[np.float64_t, ndim=2] Tmrt, np.ndarray[np.float64_t, ndim=2] va, pet):
-#     # Create a Cython memoryview to store results
-#     cdef double[:, :] pet_index = np.zeros_like(Tmrt, dtype=np.float64)
-#     cdef double mbody = pet.mbody
-#     cdef double age = pet.age
-#     cdef double height = pet.height
-#     cdef double activity = pet.activity
-#     cdef int sex = pet.sex
-#     cdef double clo = pet.clo
-#
-#     cdef int index = 0
-#     cdef double total = 100.0 / (pet_index.shape[0] * pet_index.shape[1])
-#     cdef int i
-#     cdef int j
-#
-#     cdef int rows = pet_index.shape[0]
-#     cdef int cols = pet_index.shape[1]
-#
-#
-#     cdef double[:, :] Ta_mv = Ta  # Memoryview for Ta (Temperature)
-#     cdef double[:, :] RH_mv = RH  # Memoryview for RH (Relative Humidity)
-#     cdef double[:, :] Tmrt_mv = Tmrt  # Memoryview for Tmrt (Mean Radiant Temperature)
-#     cdef double[:, :] va_mv = va  # Memoryview for va (Wind Speed)
-#     Ta_val = Ta_mv[0, 0]
-#     RH_val = RH_mv[0, 0]
-#     Tmrt_val = Tmrt_mv[0, 0]
-#     va_val = va_mv[0, 0]
-#     # Create a temporary array for storing results in parallel
-#     cdef double[:, :] temp_pet_index = np.zeros_like(Tmrt, dtype=np.float64)
-#
-#     # Parallelize the loop over the grid using prange
-#     with parallel():
-#
-#         # temp_pet_index[i, j] = _PET(
-#         #                     Ta_val, RH_val, Tmrt_val, va_val,
-#         #                     mbody, age, height, activity, clo, sex
-#         #                 )
-#         for i in prange(rows):  # Parallelize over rows
-#             for j in range(cols):  # Iterate over columns serially within each row
-#                 temp_pet_index[i, j] = i
-#                 #         # Access grid values using memoryviews
-#         #         Ta_val = Ta_mv[i, j]
-#         #         RH_val = RH_mv[i, j]
-#         #         Tmrt_val = Tmrt_mv[i, j]
-#         #         va_val = va_mv[i, j]
-#         #
-#         #         # Conditional logic to compute the PET value
-#         #         if Tmrt_val > 0:
-#         #             temp_pet_index[i, j] = _PET(
-#         #                 Ta_val, RH_val, Tmrt_val, va_val,
-#         #                 mbody, age, height, activity, clo, sex
-#         #             )
-#         #         else:
-#         #             temp_pet_index[i, j] = -9999  # Set to -9999 when Tmrt <= 0
-#
-#     # After the parallel block, assign the results back to pet_index
-#     pet_index[:] = temp_pet_index[:]  # Copy the results
-#
-#     return pet_index  # Return the final grid of PET values
-
-
-cdef double _PET(double ta, double RH, double tmrt, double v, double mbody, double age, double ht, double work, double icl, int sex):
+def _PET(double ta, double RH, double tmrt, double v, double mbody, double age, double ht, double work, double icl, int sex):
     cdef double vps, vpa, po, p, rob, cb, food, emsk, emcl, evap, sigma, cair
     cdef double eta, c_1, c_2, c_3, c_4, c_5, c_6, c_7, c_8, c_9, c_10, c_11
     cdef double metbf, metbm, met, h, rtv, tex, eres, vpex, erel, ere, feff, adu, facl, rcl, y
-    cdef double fcl, r2, r1, di, acl, wetsk, hc, he, fec, htcl, aeff
+    cdef double fcl, r2, r1, di, acl, tcore[8], wetsk, hc, he, fec, htcl, aeff
     cdef double rdsk, rdcl, sw, eswphy, eswpot, eswdif, esw, ed, vb1, vb2, vb, enbal, xx, tx
     cdef int count1, count2, count3, j
     # humidity conversion
@@ -175,7 +128,7 @@ cdef double _PET(double ta, double RH, double tmrt, double v, double mbody, doub
     c_1 = h + ere
     he = 0.633 * hc / (p * cair)
     fec = 1 / (1 + 0.92 * hc * rcl)
-    htcl = 6.28 * ht * y * di / (rcl * log(r2 / r1) * acl)
+    htcl = 6.28 * ht * y * di / (rcl * np.log(r2 / r1) * acl)
     aeff = adu * feff
     c_2 = adu * rob * cb
     c_5 = 0.0208 * c_2
