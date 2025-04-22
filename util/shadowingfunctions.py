@@ -246,7 +246,7 @@ def shadowingfunctionglobalradiation_3d(a, amaxvalue, azimuth, altitude, scale, 
 
 # # @jit(nopython=True)
 # # @profile
-def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, aminvalue, trunkcheck, bush, forsvf):
+def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, trunkcheck, bush, forsvf):
 
     # This function casts shadows on buildings and vegetation units.
     # New capability to deal with pergolas 20210827
@@ -382,14 +382,6 @@ def shadowingfunction_20(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue
     vbshvegsh = 1.-vbshvegsh
 
     shadowresult = {'sh': sh, 'vegsh': vegsh, 'vbshvegsh': vbshvegsh}
-
-    # savepath = "D:/Geomatics/thesis/shadetest/cupyoutput/"
-    #
-    # name = savepath + "vgog_" + str(round(azimuth, 2) )+ " " + str(round(altitude, 2)) + ".tif"
-    # write_output(vegsh, name)
-    #
-    # name = savepath + "beog_" + str(round(azimuth, 2) )+ " " + str(round(altitude, 2)) + ".tif"
-    # write_output(sh, name)
 
     return shadowresult
 

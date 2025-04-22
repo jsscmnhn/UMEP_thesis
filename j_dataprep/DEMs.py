@@ -1351,6 +1351,7 @@ if __name__ == "__main__":
         ],
         'tuindorp': [(76800, 455000, 78200, 455700),(152600, 463250, 153900, 463800),(139140, 469570, 139860, 470400),(190850, 441790, 191750, 442540),(113100, 551600, 113650, 552000),(32050, 391900, 32850, 392500)
 
+<<<<<<< Updated upstream
         ],
         'vinex': [(146100, 486500, 147000, 487400),(153750, 467550, 154650, 468450),(115300, 517400, 116100, 518250),(102000, 475900, 103100, 476800),(160750, 388450, 161650, 389350),(84350, 449800, 85250, 450700)
 
@@ -1390,6 +1391,15 @@ if __name__ == "__main__":
         # dtm = dems.dtm
         # merged_output = f'volk_{i}_pointcloud.las'
         # chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir, merged_output=merged_output).chm
+=======
+    for i in [0, 1, 2, 3, 4, 5]:
+        output_dir = f"D:/Geomatics/thesis/_analysisfinal/volkswijk/loc_{i}"
+        buildings = Buildings(bbox_list[i]).building_geometries
+        dems = DEMS(bbox_list[i], buildings, bridge=True, output_dir=output_dir)
+        dtm = dems.dtm
+        merged_output = f'volk_{i}_pointcloud.las'
+        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir, merged_output=merged_output).chm
+>>>>>>> Stashed changes
 
     # buildings = Buildings(bbox).data
     # # buildings_data = load_buildings("temp/buildings_test.gpkg", "buildings")
