@@ -9,13 +9,12 @@ import os
 import re
 
 class TmrtOutput:
-    def __init__(self, output_folder, building_data=None, buildings_path=None, layer=None):
+    def __init__(self, output_folder, building_mask=None, water_mask=None):
         self.output_folder = output_folder
-        self.building_data = building_data
-        self.buildings_path = buildings_path
         self.gdal_dataset = None
-        self.layer = layer
-        self.building_mask = self.create_building_mask()
+
+        self.valid_mask = None
+        self.init_mask(building_mask, water_mask)
 
         self.tmrt_arrays_by_time = self.calc_arrays(output_folder)
         self.time_groups = self.group_by_time_of_day()
@@ -26,75 +25,89 @@ class TmrtOutput:
         self.averaged_pet = {}
         self.averaged_class_pet = {}
 
-    @staticmethod
-    def get_pet_raster_from_lookup(tmrt_raster, wind_speed, air_temp, rh, body_type, lookup_file):
+    def init_mask(self, building_mask, water_mask):
+        """
+        Update the valid mask by combining the building and water masks.
+        Pixels marked as buildings or water are invalid (set to False).
+        """
+        # Start with an all-True mask (valid everywhere)
+        self.valid_mask = np.ones_like(building_mask, dtype=bool)
+
+        # Apply the building mask (mark buildings as invalid)
+        if building_mask is not None:
+            self.valid_mask &= (building_mask != 0)
+
+        # Apply the water mask (mark water areas as invalid)
+        if water_mask is not None:
+            self.valid_mask &= (water_mask != 0)
+
+
+    def get_pet_raster_from_lookup(self, tmrt_raster, wind_speed, air_temp, rh, body_type, lookup_file,
+                               tmrt_min=0, tmrt_max=65, tmrt_step=0.5, wind_speeds=None, rhs=None, temps=None):
+        """
+        Get the PET raster for a given Tmrt raster and environmental conditions.
+
+        Parameters:
+            tmrt_raster (np.ndarray): TMRT raster array.
+            wind_speed (float): Wind speed in m/s.
+            air_temp (float): Air temperature in °C.
+            rh (float): Relative humidity in %.
+            body_type (str): Body type for PET lookup ('standard_man', 'elderly_woman', 'young_child').
+            lookup_file (str): Path to the HDF5 lookup file.
+            tmrt_min (float): Minimum TMRT value (default 0°C).
+            tmrt_max (float): Maximum TMRT value (default 65°C).
+            tmrt_step (float): Step size for TMRT values (default 0.5°C).
+            wind_speeds (list): List of wind speed values (default [0.1, 2.0, 6.0]).
+            rhs (list): List of relative humidity values (default [100, 80, 60, 40, 20, 0]).
+            temps (list): List of air temperature values (default [40, 39.5, 39.0, 38.5, .... 0.5, 0.0]).
+
+        Returns:
+            np.ndarray: PET raster corresponding to the given parameters.
+        """
+        if wind_speeds is None:
+            wind_speeds = np.array([0.1, 2.0, 6.0])  # Default wind speed values if not provided
+        if rhs is None:
+            rhs = np.arange(100, -1, -10)  # Default relative humidity values if not provided
+        if temps is None:
+            temps = np.arange(40.0, -0.1, -0.5)  # Default air temperature values if not provided
+
         with h5py.File(lookup_file, "r") as f:
-            pet_dataset = f[body_type]
+                pet_dataset = f[body_type]
 
-            wind_speeds = np.array([0.1, 2.0, 6.0])
-            rhs = np.arange(100, -1, -20)
-            tmrts = np.arange(65, -1, -1)
-            temps = np.arange(40, -1, -1)
+                def find_nearest_index(array, value):
+                    return np.abs(array - value).argmin()
 
-            def find_nearest_index(array, value):
-                return np.abs(array - value).argmin()
+                # Find the closest indices for the environmental conditions
+                ws_idx = find_nearest_index(wind_speeds, wind_speed)
+                rh_idx = find_nearest_index(rhs, rh)
+                ta_idx = find_nearest_index(temps, air_temp)
 
-            ws_idx = find_nearest_index(wind_speeds, wind_speed)
-            rh_idx = find_nearest_index(rhs, rh)
-            ta_idx = find_nearest_index(temps, air_temp)
+                # Clip and map tmrt values to lookup indices based on configurable parameters
+                tmrt_clipped = np.clip(tmrt_raster, tmrt_min, tmrt_max)
 
-            print(ws_idx)
-            print(rh_idx)
-            print(ta_idx)
+                tmrt_clipped_valid = tmrt_clipped[self.valid_mask]
 
-            # Clamp and map tmrt values to lookup indices (reversed axis)
-            tmrt_clipped = np.clip(tmrt_raster, 0, 65)
-            tmrt_rounded = np.round(tmrt_clipped).astype(int)  # Round to nearest integer
-            # Map tmrt values to lookup indices (reversed axis)
-            valid_mask = ~np.isnan(tmrt_clipped)
-            tmrt_indices = np.full_like(tmrt_raster, -1, dtype=np.int32)
-            tmrt_indices[valid_mask] = (65 - tmrt_rounded[valid_mask]).astype(np.int32)
+                # Calculate the indices only for valid TMRT values
+                tmrt_indices_valid = np.round((tmrt_clipped_valid - tmrt_min) / tmrt_step).astype(int)
 
+                # Ensure that indices stay within bounds for valid TMRT values
+                max_index = int((tmrt_max - tmrt_min) / tmrt_step)
+                tmrt_indices_valid = np.clip(tmrt_indices_valid, 0, max_index)
+                tmrt_indices_valid = max_index - tmrt_indices_valid
 
-            pet_raster = np.take(pet_dataset[ws_idx, rh_idx, :, ta_idx], tmrt_indices)
-            pet_raster[~valid_mask] = np.nan
-            return pet_raster
+                # Create an array of the same shape as the original TMRT raster and fill it with -1
+                tmrt_indices = np.full_like(tmrt_raster, -1, dtype=int)
 
-    def create_building_mask(self):
-        """Create building mask using the first matching TMRT file"""
-        pattern = re.compile(r'^Tmrt_\d{4}_\d{3}_(\d{4})D\.tif$')
+                # Place the valid indices into the correct positions
+                tmrt_indices[self.valid_mask] = tmrt_indices_valid
 
-        first_tmrt_file = None
-        for filename in os.listdir(self.output_folder):
-            if pattern.match(filename):
-                first_tmrt_file = os.path.join(self.output_folder, filename)
-                break
+                # Fetch the PET raster based on these indices
+                pet_raster = np.take(pet_dataset[ws_idx, rh_idx, :, ta_idx], tmrt_indices)
 
-        if not first_tmrt_file:
-            print("No TMRT .tif files found in the folder.")
-            return None
+                # Handle NaN areas where tmrt was outside the valid range
+                pet_raster[~self.valid_mask] = np.nan
 
-        self.gdal_dataset = gdal.Open(first_tmrt_file)
-
-        if self.building_data is not None:
-            building_shapes = [shape(b['geometry']) for b in self.building_data if 'geometry' in b]
-        else:
-            gdf = gpd.read_file(self.buildings_path, layer=self.layer)
-            building_shapes = [geom for geom in gdf.geometry]
-
-        transform = Affine.from_gdal(*self.gdal_dataset.GetGeoTransform())
-        raster_shape = self.gdal_dataset.GetRasterBand(1).ReadAsArray().shape
-
-        mask = features.rasterize(
-            ((mapping(geom), 1) for geom in building_shapes),
-            out_shape=raster_shape,
-            transform=transform,
-            fill=0,
-            dtype=np.uint8
-        )
-
-        return mask
-
+                return pet_raster
 
     def calc_arrays(self, output_folder):
         tmrt_arrays_by_time = {}
@@ -116,7 +129,7 @@ class TmrtOutput:
                 band = dataset.GetRasterBand(1)
                 array = band.ReadAsArray()
 
-                masked_array = np.where(self.building_mask == 1, np.nan, array)
+                masked_array = np.where(self.valid_mask == 0, np.nan, array)
 
                 tmrt_arrays_by_time[time_key] = masked_array
 
@@ -158,7 +171,6 @@ class TmrtOutput:
             bins = [-np.inf, 15, 20, 25, 30, 35, 40, 45, 50, np.inf]
         else:
             bins = [-np.inf, 4, 8, 13, 18, 23, 29, 35, 41, np.inf]
-        masked = array[~np.isnan(array)]
 
         stats = {
             'mean': np.nanmean(array),
@@ -167,7 +179,7 @@ class TmrtOutput:
             'max': np.nanmax(array),
         }
 
-        hist, bin_edges = np.histogram(masked, bins=bins)
+        hist, bin_edges = np.histogram(array[self.valid_mask], bins=bins)
         pixel_area = pixel_size ** 2
         bin_areas = hist * pixel_area
         total_area = np.sum(bin_areas)

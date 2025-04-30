@@ -1,16 +1,6 @@
-import requests
-import json
 import geopandas as gpd
-import numpy as np
-import rasterio
-from rasterio.features import geometry_mask
-from shapely.geometry import shape, mapping, Polygon, MultiPolygon, LineString, MultiLineString
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap, BoundaryNorm
-import ezdxf
-import json
-from shapely.affinity import translate
-
 
 import requests
 from io import BytesIO
@@ -19,7 +9,7 @@ import os
 import pandas as pd
 import numpy as np
 import rasterio
-from shapely.geometry import mapping
+from shapely.geometry import mapping, Polygon, MultiPolygon, LineString, MultiLineString
 from rasterio.features import geometry_mask, shapes
 from shapely.geometry import shape,box
 from scipy.ndimage import label
@@ -39,6 +29,8 @@ class LandCover:
         self.dtm_dataset = dataset_path
         self.base_url = "https://api.pdok.nl/brt/top10nl/ogc/v1"
 
+        self.water_mask = None
+        self.building_mask = None
         self.buildings_path = buildings_path
         self.layer = layer
         self.building_data = building_data
@@ -208,6 +200,7 @@ class LandCover:
             print("No valid water geometries found. Skipping water rasterization.")
         else:
             water_mask = geometry_mask(water_geometries, transform=transform, invert=False, out_shape=array.shape)
+            self.water_mask = water_mask
             array = np.where(water_mask, array, 7)
 
         self.landcover_withoutbuild = array
@@ -217,6 +210,7 @@ class LandCover:
             print("No valid building geometries found. Skipping building rasterization.")
         else:
             building_mask = geometry_mask(building_geometries, transform=transform, invert=False, out_shape=array.shape)
+            self.building_mask = building_mask
             array = np.where(building_mask, array, 2)
 
         self.visualize_raster(array)
@@ -505,43 +499,51 @@ class Buildings:
 
 
 if __name__ == "__main__":
-    bbox_dict = {
-        'historisch': [(175905, 317210, 176505, 317810), (84050, 447180, 84650, 447780), (80780, 454550, 81380, 455150),
-                       (233400, 581500, 234000, 582100), (136600, 455850, 137200, 456450),
-                       (121500, 487000, 122100, 487600)
-                       ],
-        'tuindorp': [(76800, 455000, 78200, 455700), (152600, 463250, 153900, 463800), (139140, 469570, 139860, 470400),
-                     (190850, 441790, 191750, 442540), (113100, 551600, 113650, 552000), (32050, 391900, 32850, 392500)
 
-                     ],
-        'vinex': [(146100, 486500, 147000, 487400), (153750, 467550, 154650, 468450), (115300, 517400, 116100, 518250),
-                  (102000, 475900, 103100, 476800), (160750, 388450, 161650, 389350), (84350, 449800, 85250, 450700)
 
-                  ],
-        'volkswijk': [(104200, 490550, 105100, 491450), (78200, 453900, 79100, 454800), (83500, 447020, 84050, 447900),
-                      (136200, 456500, 137100, 457300), (182700, 579200, 183800, 579750),
-                      (233400, 582800, 234300, 583700)
+    # bbox_dict = {
+    #     'historisch': [(175905, 317210, 176505, 317810), (84050, 447180, 84650, 447780), (80780, 454550, 81380, 455150),
+    #                    (233400, 581500, 234000, 582100), (136600, 455850, 137200, 456450),
+    #                    (121500, 487000, 122100, 487600)
+    #                    ],
+    #     'tuindorp': [(76800, 455000, 78200, 455700), (152600, 463250, 153900, 463800), (139140, 469570, 139860, 470400),
+    #                  (190850, 441790, 191750, 442540), (113100, 551600, 113650, 552000), (32050, 391900, 32850, 392500)
+    #
+    #                  ],
+    #     'vinex': [(146100, 486500, 147000, 487400), (153750, 467550, 154650, 468450), (115300, 517400, 116100, 518250),
+    #               (102000, 475900, 103100, 476800), (160750, 388450, 161650, 389350), (84350, 449800, 85250, 450700)
+    #
+    #               ],
+    #     'volkswijk': [(104200, 490550, 105100, 491450), (78200, 453900, 79100, 454800), (83500, 447020, 84050, 447900),
+    #                   (136200, 456500, 137100, 457300), (182700, 579200, 183800, 579750),
+    #                   (233400, 582800, 234300, 583700)
+    #
+    #                   ],
+    #     'bloemkool': [(81700, 427490, 82700, 428200), (84050, 444000, 84950, 444900), (116650, 518700, 117550, 519600),
+    #                   (235050, 584950, 235950, 585850), (210500, 473900, 211400, 474800),
+    #                   (154700, 381450, 155700, 382150)
+    #
+    #                   ],
+    #
+    #     'stedelijk': [
+    #         (90300, 436900, 91300, 437600), (91200, 438500, 92100, 439300), (121350, 483750, 122250, 484650),
+    #         (118400, 486400, 119340, 487100)
+    #     ]
+    # }
 
-                      ],
-        'bloemkool': [(81700, 427490, 82700, 428200), (84050, 444000, 84950, 444900), (116650, 518700, 117550, 519600),
-                      (235050, 584950, 235950, 585850), (210500, 473900, 211400, 474800),
-                      (154700, 381450, 155700, 382150)
+    bbox_list = [(120000, 485700, 120126, 485826), (120000, 485700, 120251, 485951), (120000, 485700, 120501, 486201), (120000, 485700, 120751, 486451), (120000, 485700, 121001, 486701), (120000, 485700, 121501, 487201) ]
+    folder_list = ['250', '500', '1000', '1500', '2000', '3000']
+    crs = "http://www.opengis.net/def/crs/EPSG/0/28992"
 
-                      ],
-
-        'stedelijk': [
-            (90300, 436900, 91300, 437600), (91200, 438500, 92100, 439300), (121350, 483750, 122250, 484650),
-            (118400, 486400, 119340, 487100)
-        ]
-    }
-
-    # bbox = (120570,487570,120970,487870)
-    # crs = "http://www.opengis.net/def/crs/EPSG/0/28992"
-    # dataset_path = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dsm.tif"
-    # buildings_path = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/buildings.gpkg"
-    # output = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/landcover.tif"
-    # landcover = LandCover(bbox, crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
-    # landcover.save_raster(output, False)
+    D = 'D'
+    i = 0
+    for folder in folder_list:
+        dataset_path = f"{D}:/Geomatics/optimization_tests/{folder}/final_dsm_over.tif"
+        buildings_path = f"{D}:/Geomatics/optimization_tests/{folder}/buildings.gpkg"
+        output = f"{D}:/Geomatics/optimization_tests/{folder}/landcover.tif"
+        landcover = LandCover(bbox_list[i], crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
+        landcover.save_raster(output, False)
+        i += 1
 
     # crs = "http://www.opengis.net/def/crs/EPSG/0/28992"
     # for nbh_type in ['historisch', 'tuindorp', 'vinex', 'volkswijk', 'bloemkool']:
@@ -563,13 +565,13 @@ if __name__ == "__main__":
     #         landcover.save_raster(output, False)
 
 
-    crs = "http://www.opengis.net/def/crs/EPSG/0/28992"
-    for nbh_type in ['vinex', 'volkswijk', 'bloemkool']:
-        for i in [0, 1, 2, 3, 4, 5]:
-            output =  f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/landcover_stone.tif"
-            bbox = bbox_dict[nbh_type][i]
-            dataset_path = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dsm_over.tif"
-            buildings_path = (f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/buildings.gpkg")
-            landcover = LandCover(bbox, crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
-            landcover.save_raster(output, False)
-    #
+    # crs = "http://www.opengis.net/def/crs/EPSG/0/28992"
+    # for nbh_type in ['vinex', 'volkswijk', 'bloemkool']:
+    #     for i in [0, 1, 2, 3, 4, 5]:
+    #         output =  f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/landcover_stone.tif"
+    #         bbox = bbox_dict[nbh_type][i]
+    #         dataset_path = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dsm_over.tif"
+    #         buildings_path = (f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/buildings.gpkg")
+    #         landcover = LandCover(bbox, crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
+    #         landcover.save_raster(output, False)
+    # #

@@ -6,6 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import cProfile
 import pstats
 import cupy as cp
+import gc
 from rasterio import Affine
 """
 /***************************************************************************
@@ -239,6 +240,12 @@ class ProcessingSkyViewFactorAlgorithm():
 
         print("Sky View Factor: SVF grid(s) successfully generated")
 
+        gc.collect()
+
+        # Clear memory pools
+        cp._default_memory_pool.free_all_blocks()
+        cp._default_pinned_memory_pool.free_all_blocks()
+
         return {self.OUTPUT_DIR: outputDir, self.OUTPUT_FILE: outputFile}
 
     def processAlgorithm_3d(self):
@@ -416,107 +423,81 @@ class ProcessingSkyViewFactorAlgorithm():
 
         print("Sky View Factor: SVF grid(s) successfully generated")
 
+        gc.collect()
+
+        # Clear memory pools
+        cp._default_memory_pool.free_all_blocks()
+        cp._default_pinned_memory_pool.free_all_blocks()
+
         return {self.OUTPUT_DIR: outputDir, self.OUTPUT_FILE: outputFile}
 
-# ===================== normal test case ==============================
+if __name__ == "__main__":
 
-# locations = [1] #[1, 2, 3, 4, 5, 6]
-# d = "G"
-# for loc in locations:
-    #  og
-
-    # for nbh_type in ['stedelijk']:
-    #     for i in [0, 1, 2, 3]:
-    #         INPUT_DSM = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dsm_over.tif"
-    #         INPUT_CDSM =  None # f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/CHM.tif"
-    #         OUTPUT_DIR = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/svf_build"
-    #         OUTPUT_FILE = f"profiling/wcstest"
-    #         INPUT_DTM = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dtm.tif"
+    # ===================== normal test case ==============================
+    #     INPUT_DSM = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dsm.tif"
+    #     INPUT_CDSM =  "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/CHM.tif"
+    #     OUTPUT_DIR = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/svfs_pet"
+    #     OUTPUT_FILE = f"profiling/wcstest"
+    #     INPUT_DTM = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dtm.tif"
     #
-    #         with cProfile.Profile() as profiler2:
-    #             ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
-    #                                              INPUT_DTM=INPUT_DTM).processAlgorithm()
-    #
-    # for nbh_type in ['historisch', 'tuindorp', 'vinex', 'volkswijk', 'bloemkool']:
-    #     for i in [0, 1, 2, 3, 4, 5]:
-    #         INPUT_DSM = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dsm_over.tif"
-    #         INPUT_CDSM = None # f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/CHM.tif"
-    #         OUTPUT_DIR = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/svf_build"
-    #         OUTPUT_FILE = f"profiling/wcstest"
-    #         INPUT_DTM = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dtm.tif"
-    #
-    #         with cProfile.Profile() as profiler2:
-    #             ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
-    #                                              INPUT_DTM=INPUT_DTM).processAlgorithm()
+    #     with cProfile.Profile() as profiler2:
+    #         ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
+    #                                          INPUT_DTM=INPUT_DTM).processAlgorithm()
 
+    D = 'D'
+    folder_list = ['250', '500', '1000', '1500', '2000', '3000']
 
-for nbh_type in ['historisch', 'tuindorp', 'vinex', 'volkswijk', 'bloemkool']:
-    for i in [0, 1, 2, 3, 4, 5]:
-        INPUT_DSM = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dsm_over.tif"
-        INPUT_CDSM = None # f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/CHM.tif"
-        OUTPUT_DIR = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/svf_build"
-        OUTPUT_FILE = f"profiling/wcstest"
-        INPUT_DTM = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dtm.tif"
+    for folder in folder_list:
+        INPUT_DSM = f"{D}:/Geomatics/optimization_tests/{folder}/final_dsm_over.tif"
+        INPUT_CDSM = f"{D}:/Geomatics/optimization_tests/{folder}/CHM.tif"
+        OUTPUT_DIR = f"{D}:/Geomatics/optimization_tests/{folder}/svf_trees"
+        OUTPUT_FILE = f"{D}:/Geomatics/optimization_tests/{folder}/output.tif"
 
-        with cProfile.Profile() as profiler2:
-            ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
-                                             INPUT_DTM=INPUT_DTM).processAlgorithm()
+        dump_stats = f"{D}:/Geomatics/optimization_tests/{folder}/svf_profile_results_new_chm.prof"
 
-    for nbh_type in ['volkswijk']:
-        for i in [0, 1, 2, 3, 4, 5]:
-            INPUT_DSM = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dsm_over.tif"
-            INPUT_CDSM = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/CHM.tif"
-            OUTPUT_DIR = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/svf"
-            OUTPUT_FILE = f"profiling/wcstest"
-            INPUT_DTM = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dtm.tif"
+        test = ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE)
 
-            with cProfile.Profile() as profiler2:
-                ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
-                                                 INPUT_DTM=INPUT_DTM).processAlgorithm()
+        with cProfile.Profile() as profiler:
+            test.processAlgorithm()
 
-    # # gap
-    # INPUT_DSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/dsm_0.tif"
-    # INPUT_CDSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
-    # OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_hole"
-    # OUTPUT_FILE = "profiling/wcstest"
-    # INPUT_DTM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
-    #
-    # with cProfile.Profile() as profiler2:
-    #     ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
-    #                                      INPUT_DTM=INPUT_DTM).processAlgorithm()
-    #
-    # # og over
-    # INPUT_DSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dsm_over.tif"
-    # INPUT_CDSM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
-    # OUTPUT_DIR = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_over"
-    # OUTPUT_FILE = "profiling/wcstest"
-    # INPUT_DTM = f"E:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
-    #
-    # with cProfile.Profile() as profiler2:
-    #     ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
-    #                                      INPUT_DTM=INPUT_DTM).processAlgorithm()
+        # Print profiling results
+        stats = pstats.Stats(profiler)
+        stats.sort_stats('cumulative')
+        stats.print_stats(20)
 
-    #  3d
-    # INPUT_DSM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dsm.tif"
-    # INPUT_CDSM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
-    # OUTPUT_DIR = f"{d}:/Geomatics/thesis/_svfcheck/ams/location_{loc}/svf"
-    # OUTPUT_FILE = f"profiling/wcstest"
-    # INPUT_DTM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
-    # INPUT_DSMS =  f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/dsms.tif"
+        stats.dump_stats(dump_stats)
 
+        txt_output = f"{D}:/Geomatics/optimization_tests/{folder}/svf_profile_results_new_chm.txt"
+        with open(txt_output, "w") as f:
+            stats = pstats.Stats(profiler, stream=f)
+            stats.sort_stats('cumulative')
+            stats.print_stats(20)
 
-    # with cProfile.Profile() as profiler2:
-    #     ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_MULT_DSMS=INPUT_DSMS, INPUT_DTM=None, ANISO=True).processAlgorithm_3d()
+        D = 'D'
+        folder_list = ['250', '500', '1000', '1500', '2000', '3000']
 
-#
-# with cProfile.Profile() as profiler2:
-#     ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_DTM=INPUT_DTM ).processAlgorithm()
-    # ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_MULT_DSMS=INPUT_DSMS, INPUT_DTM=INPUT_DTM).processAlgorithm_3d()
+        for folder in folder_list:
+            INPUT_DSM = f"{D}:/Geomatics/optimization_tests/{folder}/final_dsm_over.tif"
+            INPUT_CDSM = None
+            OUTPUT_DIR = f"{D}:/Geomatics/optimization_tests/{folder}/svf"
+            OUTPUT_FILE = f"{D}:/Geomatics/optimization_tests/{folder}/output.tif"
 
-    # ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, dsm2=DSM2, dsm3=DSM3).processAlgorithm()
+            dump_stats = f"{D}:/Geomatics/optimization_tests/{folder}/svf_profile_results_new.prof"
 
-stats3 = pstats.Stats(profiler2)
-stats3.sort_stats('cumulative')
-print("\nProfiling with veg cap CDSM:\n")
-stats3.print_stats(20)
-# stats3.dump_stats("profiling/profile_cupy_layered3d.prof")
+            test = ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE)
+
+            with cProfile.Profile() as profiler:
+                test.processAlgorithm()
+
+            # Print profiling results
+            stats = pstats.Stats(profiler)
+            stats.sort_stats('cumulative')
+            stats.print_stats(20)
+
+            stats.dump_stats(dump_stats)
+
+            txt_output = f"{D}:/Geomatics/optimization_tests/{folder}/svf_profile_results_new.txt"
+            with open(txt_output, "w") as f:
+                stats = pstats.Stats(profiler, stream=f)
+                stats.sort_stats('cumulative')
+                stats.print_stats(20)

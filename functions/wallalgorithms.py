@@ -35,51 +35,45 @@ def findwalls(a, walllimit):
     return walls
 
 # # original
-# def findwalls(a, walllimit):
-#     # This function identifies walls based on a DSM and a wall-height limit
-#     # Walls are represented by outer pixels within building footprints
-#     #
-#     # Fredrik Lindberg, Goteborg Urban Climate Group
-#     # fredrikl@gvc.gu.se
-#     # 20150625
-#
-#     col = a.shape[0]
-#     row = a.shape[1]
-#     walls = np.zeros((col, row))
-#     domain = np.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]])
-#     index = 0
-#     for i in np.arange(1, row-1):
-#         for j in np.arange(1, col-1):
-#             dom = a[j-1:j+2, i-1:i+2]
-#             walls[j, i] = np.max(dom[np.where(domain == 1)])  # new 20171006
-#             index = index + 1
-#
-#     walls = np.copy(walls - a)  # new 20171006
-#     walls[(walls < walllimit)] = 0
-#
-#     walls[0:walls .shape[0], 0] = 0
-#     walls[0:walls .shape[0], walls .shape[1] - 1] = 0
-#     walls[0, 0:walls .shape[0]] = 0
-#     walls[walls .shape[0] - 1, 0:walls .shape[1]] = 0
-#     return walls
+def findwalls_og(a, walllimit):
+    # This function identifies walls based on a DSM and a wall-height limit
+    # Walls are represented by outer pixels within building footprints
+    #
+    # Fredrik Lindberg, Goteborg Urban Climate Group
+    # fredrikl@gvc.gu.se
+    # 20150625
+    col = a.shape[0]
+    row = a.shape[1]
+    walls = np.zeros((col, row))
+    domain = np.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]])
+    index = 0
+    for i in np.arange(1, row-1):
+        for j in np.arange(1, col-1):
+            dom = a[j-1:j+2, i-1:i+2]
+            walls[j, i] = np.max(dom[np.where(domain == 1)])  # new 20171006
+            index = index + 1
+
+    walls = np.copy(walls - a)  # new 20171006
+    walls[(walls < walllimit)] = 0
+
+    walls[0:walls .shape[0], 0] = 0
+    walls[0:walls .shape[0], walls .shape[1] - 1] = 0
+    walls[0, 0:walls .shape[0]] = 0
+    walls[walls .shape[0] - 1, 0:walls .shape[1]] = 0
+    return walls
+
 
 def filter_aspect_sobel(walls, a, sigma=0):
     """
-    Compute wall aspect using a Sobel filter in a fully vectorized manner.
-    This function computes the gradient of the DSM 'a' using Sobel,
+    Compute wall aspect using a Sobel filter in a vectorized manner.
+    This function computes the gradient of the DSM using Sobel,
     derives the orientation (aspect) at each pixel, and then assigns that
     orientation only to pixels where 'walls'==1.
-
-    :param walls: 2D CuPy array (binary mask of wall pixels; nonzero==wall)
-    :param scale: scale factor (not used directly here but kept for compatibility)
-    :param a:     2D CuPy array (DSM or image where gradients are computed)
-    :param sigma: Optional smoothing sigma; if > 0, applies a Gaussian filter to 'a'
-    :return:      2D CuPy array of the same shape as 'a', with aspect (orientation) in degrees.
     """
     # Ensure walls are binary
     walls = cp.where(walls > 0, 1, 0)
 
-    # Optional smoothing if your DSM is noisy (for thin binary lines, you might skip this)
+    # Optional smoothing if DSM is noisy
     if sigma > 0:
         a = cnd.gaussian_filter(a, sigma=sigma)
 

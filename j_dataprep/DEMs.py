@@ -1300,7 +1300,22 @@ def load_buildings(buildings_path, layer):
 
 
 if __name__ == "__main__":
+    # bbox_list = [(120000, 485700, 120126, 485826), (120000, 485700, 120251, 485951), (120000, 485700, 120501, 486201), (120000, 485700, 120751, 486451), (120000, 485700, 121001, 486701), (120000, 485700, 121501, 487201) ]
+    # folder_list = ['250', '500', '1000', '1500', '2000', '3000']
+    # folder = '250',
+    # bbox = 120000, 485700, 120126, 485826
 
+    bbox_list = [(120000, 485700, 121001, 486701), (120000, 485700, 121501, 487201) ]
+    folder_list = ['2000', '3000']
+    i = 0
+    for folder in folder_list:
+        output_dir=f"D:/Geomatics/optimization_tests/{folder}"
+        buildings = Buildings(bbox_list[i], output_folder=output_dir).building_geometries
+        dems = DEMS(bbox_list[i], buildings, bridge=True, output_dir=output_dir)
+        dtm = dems.dtm
+        merged_output= f'pointcloud_{i}.las'
+        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir, merged_output=merged_output).chm
+        i += 1
     # bbox_list = [(175905, 317210, 176505, 317810), (84050, 447180, 84650, 447780),(80780, 454550, 81380, 455150),(233400, 581500, 234000, 582100),(136600, 455850, 137200, 456450),(121500, 487000, 122100, 487600)]
     # for i in [1, 2, 3, 4, 5]:
     #     output_dir=f"D:/Geomatics/thesis/_analysisfinal/historisch/loc_{i}"
@@ -1346,30 +1361,29 @@ if __name__ == "__main__":
     #     merged_output = f'tuin_{i}_pointcloud.las'
     #     chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir, merged_output=merged_output).chm
 
-    bbox_dict = {
-        'historisch': [(175905, 317210, 176505, 317810), (84050, 447180, 84650, 447780),(80780, 454550, 81380, 455150),(233400, 581500, 234000, 582100),(136600, 455850, 137200, 456450),(121500, 487000, 122100, 487600)
-        ],
-        'tuindorp': [(76800, 455000, 78200, 455700),(152600, 463250, 153900, 463800),(139140, 469570, 139860, 470400),(190850, 441790, 191750, 442540),(113100, 551600, 113650, 552000),(32050, 391900, 32850, 392500)
-
-<<<<<<< Updated upstream
-        ],
-        'vinex': [(146100, 486500, 147000, 487400),(153750, 467550, 154650, 468450),(115300, 517400, 116100, 518250),(102000, 475900, 103100, 476800),(160750, 388450, 161650, 389350),(84350, 449800, 85250, 450700)
-
-        ],
-        'volkswijk': [(104200, 490550, 105100, 491450), (78200, 453900, 79100, 454800), (83500, 447020, 84050, 447900),
-                 (136200, 456500, 137100, 457300), (182700, 579200, 183800, 579750),
-                 (233400, 582800, 234300, 583700)
-
-        ],
-        'bloemkool': [(81700, 427490, 82700, 428200),(84050, 444000, 84950, 444900),(116650, 518700, 117550, 519600),(235050, 584950, 235950, 585850),(210500, 473900, 211400, 474800),(154700, 381450, 155700, 382150)
-
-        ],
-
-        'stedelijk':[
-            (90300, 436900, 91300, 437600), (91200, 438500, 92100, 439300), (121350, 483750, 122250, 484650),
-            (118400, 486400, 119340, 487100)
-        ]
-    }
+    # bbox_dict = {
+    #     'historisch': [(175905, 317210, 176505, 317810), (84050, 447180, 84650, 447780),(80780, 454550, 81380, 455150),(233400, 581500, 234000, 582100),(136600, 455850, 137200, 456450),(121500, 487000, 122100, 487600)
+    #     ],
+    #     'tuindorp': [(76800, 455000, 78200, 455700),(152600, 463250, 153900, 463800),(139140, 469570, 139860, 470400),(190850, 441790, 191750, 442540),(113100, 551600, 113650, 552000),(32050, 391900, 32850, 392500)
+    #
+    #     ],
+    #     'vinex': [(146100, 486500, 147000, 487400),(153750, 467550, 154650, 468450),(115300, 517400, 116100, 518250),(102000, 475900, 103100, 476800),(160750, 388450, 161650, 389350),(84350, 449800, 85250, 450700)
+    #
+    #     ],
+    #     'volkswijk': [(104200, 490550, 105100, 491450), (78200, 453900, 79100, 454800), (83500, 447020, 84050, 447900),
+    #              (136200, 456500, 137100, 457300), (182700, 579200, 183800, 579750),
+    #              (233400, 582800, 234300, 583700)
+    #
+    #     ],
+    #     'bloemkool': [(81700, 427490, 82700, 428200),(84050, 444000, 84950, 444900),(116650, 518700, 117550, 519600),(235050, 584950, 235950, 585850),(210500, 473900, 211400, 474800),(154700, 381450, 155700, 382150)
+    #
+    #     ],
+    #
+    #     'stedelijk':[
+    #         (90300, 436900, 91300, 437600), (91200, 438500, 92100, 439300), (121350, 483750, 122250, 484650),
+    #         (118400, 486400, 119340, 487100)
+    #     ]
+    # }
 
     # for nbh_type in ['historisch', 'tuindorp', 'vinex', 'volkswijk', 'bloemkool']:
     #     for i in [0, 1, 2, 3, 4, 5]:
@@ -1377,11 +1391,11 @@ if __name__ == "__main__":
     #         buildings = Buildings(bbox_dict[nbh_type][i],
     #                               gpkg_name=f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/buildings").building_geometries
 
-    for nbh_type in ['stedelijk']:
-        for i in [0, 1, 2, 3]:
-            output_dir = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}"
-            buildings = Buildings(bbox_dict[nbh_type][i],
-                                  gpkg_name=f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/buildings").building_geometries
+    # for nbh_type in ['stedelijk']:
+    #     for i in [0, 1, 2, 3]:
+    #         output_dir = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}"
+    #         buildings = Buildings(bbox_dict[nbh_type][i],
+    #                               gpkg_name=f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/buildings").building_geometries
 
 
     # for i in [0, 1, 2, 3, 4, 5]:
@@ -1391,15 +1405,15 @@ if __name__ == "__main__":
         # dtm = dems.dtm
         # merged_output = f'volk_{i}_pointcloud.las'
         # chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir, merged_output=merged_output).chm
-=======
-    for i in [0, 1, 2, 3, 4, 5]:
-        output_dir = f"D:/Geomatics/thesis/_analysisfinal/volkswijk/loc_{i}"
-        buildings = Buildings(bbox_list[i]).building_geometries
-        dems = DEMS(bbox_list[i], buildings, bridge=True, output_dir=output_dir)
-        dtm = dems.dtm
-        merged_output = f'volk_{i}_pointcloud.las'
-        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir, merged_output=merged_output).chm
->>>>>>> Stashed changes
+    #
+    # for i in [0, 1, 2, 3, 4, 5]:
+    #     output_dir = f"D:/Geomatics/thesis/_analysisfinal/volkswijk/loc_{i}"
+    #     buildings = Buildings(bbox_list[i]).building_geometries
+    #     dems = DEMS(bbox_list[i], buildings, bridge=True, output_dir=output_dir)
+    #     dtm = dems.dtm
+    #     merged_output = f'volk_{i}_pointcloud.las'
+    #     chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir, merged_output=merged_output).chm
+
 
     # buildings = Buildings(bbox).data
     # # buildings_data = load_buildings("temp/buildings_test.gpkg", "buildings")
