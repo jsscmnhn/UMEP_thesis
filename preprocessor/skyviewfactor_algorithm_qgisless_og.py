@@ -70,12 +70,11 @@ class ProcessingSkyViewFactorAlgorithm():
         self.OUTPUT_DIR = OUTPUT_DIR
         self.OUTPUT_FILE = OUTPUT_FILE
 
-    def processAlgorithm(self, parameters, context, feedback):
+    def processAlgorithm(self):
         # InputParameters
         # InputParameters
         outputDir = self.OUTPUT_DIR
         outputFile = self.OUTPUT_FILE
-        dsmlayer = self.INPUT_DSM
         # usevegdem = self.USE_VEG
         transVeg = float(self.TRANS_VEG)
         vegdsm = self.INPUT_CDSM
@@ -85,16 +84,8 @@ class ProcessingSkyViewFactorAlgorithm():
         aniso = bool(self.ANISO)
         dtm_path = self.INPUT_DTM
 
-
-        feedback.setProgressText('Initiating algorithm')
-
-        if parameters['OUTPUT_DIR'] == 'TEMPORARY_OUTPUT':
-            if not (os.path.isdir(outputDir)):
-                os.mkdir(outputDir)
-
-        provider = dsmlayer.dataProvider()
-        filepath_dsm = str(provider.dataSourceUri())
-        gdal_dsm = gdal.Open(filepath_dsm)
+        gdal_dsm = gdal.Open(self.INPUT_DSM)
+        print(self.INPUT_DSM)
         dsm = gdal_dsm.ReadAsArray().astype(float)
 
         # response to issue #85
@@ -113,16 +104,12 @@ class ProcessingSkyViewFactorAlgorithm():
 
         if vegdsm:
             usevegdem = 1
-            feedback.setProgressText('Vegetation scheme activated')
             # vegdsm = self.parameterAsRasterLayer(parameters, self.INPUT_CDSM, context)
             # if vegdsm is None:
             # raise QgsProcessingException("Error: No valid vegetation DSM selected")
 
             # load raster
-            gdal.AllRegister()
-            provider = vegdsm.dataProvider()
-            filePathOld = str(provider.dataSourceUri())
-            dataSet = gdal.Open(filePathOld)
+            dataSet = gdal.Open(self.INPUT_CDSM)
             vegdsm = dataSet.ReadAsArray().astype(float)
 
             vegsizex = vegdsm.shape[0]
@@ -161,11 +148,11 @@ class ProcessingSkyViewFactorAlgorithm():
             usevegdem = 0
 
         if aniso == 1:
-            feedback.setProgressText('Calculating SVF using 153 iterations')
-            ret = svf.svfForProcessing153(dsm, vegdsm, vegdsm2, scale, usevegdem, feedback)
+            print('Calculating SVF using 153 iterations')
+            ret = svf.svfForProcessing153(dsm, vegdsm, vegdsm2, scale, usevegdem)
         else:
-            feedback.setProgressText('Calculating SVF using 655 iterations')
-            ret = svf.svfForProcessing655(dsm, vegdsm, vegdsm2, scale, usevegdem, feedback)
+            print('Calculating SVF using 655 iterations')
+            ret = svf.svfForProcessing655(dsm, vegdsm, vegdsm2, scale, usevegdem)
 
         filename = outputFile
 
@@ -275,7 +262,6 @@ class ProcessingSkyViewFactorAlgorithm():
                 # vbshvegshmat=vbshvegshmat, wallshmat=wallshmat, wallsunmat=wallsunmat,
                 # facesunmat=facesunmat, wallshvemat=wallshvemat)
 
-        feedback.setProgressText("Sky View Factor: SVF grid(s) successfully generated")
 
         return {self.OUTPUT_DIR: outputDir, self.OUTPUT_FILE: outputFile}
 
@@ -292,16 +278,44 @@ if __name__ == "__main__":
     #         ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
     #                                          INPUT_DTM=INPUT_DTM).processAlgorithm()
 
-    D = 'D'
-    folder_list = ['250', '500', '1000', '1500', '2000', '3000']
+    D = 'E'
+    # folder_list = ['250', '500', '1000', '1500', '2000', '3000']
+    #
+    # for folder in folder_list:
+    #     INPUT_DSM = f"{D}:/Geomatics/optimization_tests/{folder}/final_dsm_over.tif"
+    #     INPUT_CDSM = f"{D}:/Geomatics/optimization_tests/{folder}/CHM.tif"
+    #     OUTPUT_DIR = f"{D}:/Geomatics/optimization_tests/{folder}/svf_umep_trees"
+    #     OUTPUT_FILE = f"{D}:/Geomatics/optimization_tests/{folder}/output.tif"
+    #
+    #     dump_stats = f"{D}:/Geomatics/optimization_tests/{folder}/svf_profile_results_umep_chm.prof"
+    #
+    #     test = ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE)
+    #
+    #     with cProfile.Profile() as profiler:
+    #         test.processAlgorithm()
+    #
+    #     # Print profiling results
+    #     stats = pstats.Stats(profiler)
+    #     stats.sort_stats('cumulative')
+    #     stats.print_stats(20)
+    #
+    #     stats.dump_stats(dump_stats)
+    #
+    #     txt_output = f"{D}:/Geomatics/optimization_tests/{folder}/svf_profile_results_umep_chm.txt"
+    #     with open(txt_output, "w") as f:
+    #         stats = pstats.Stats(profiler, stream=f)
+    #         stats.sort_stats('cumulative')
+    #         stats.print_stats(20)
+
+    folder_list = ['1500', '2000', '3000']
 
     for folder in folder_list:
         INPUT_DSM = f"{D}:/Geomatics/optimization_tests/{folder}/final_dsm_over.tif"
-        INPUT_CDSM = f"{D}:/Geomatics/optimization_tests/{folder}/CHM.tif"
-        OUTPUT_DIR = f"{D}:/Geomatics/optimization_tests/{folder}/svf_umep_trees"
+        INPUT_CDSM = None
+        OUTPUT_DIR = f"{D}:/Geomatics/optimization_tests/{folder}/svf_umep"
         OUTPUT_FILE = f"{D}:/Geomatics/optimization_tests/{folder}/output.tif"
 
-        dump_stats = f"{D}:/Geomatics/optimization_tests/{folder}/svf_profile_results_umep_chm.prof"
+        dump_stats = f"{D}:/Geomatics/optimization_tests/{folder}/svf_profile_results_umep.prof"
 
         test = ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE)
 
@@ -315,37 +329,8 @@ if __name__ == "__main__":
 
         stats.dump_stats(dump_stats)
 
-        txt_output = f"{D}:/Geomatics/optimization_tests/{folder}/svf_profile_results_umep_chm.txt"
+        txt_output = f"{D}:/Geomatics/optimization_tests/{folder}/svf_profile_results_umep.txt"
         with open(txt_output, "w") as f:
             stats = pstats.Stats(profiler, stream=f)
             stats.sort_stats('cumulative')
             stats.print_stats(20)
-
-        D = 'D'
-        folder_list = ['250', '500', '1000', '1500', '2000', '3000']
-
-        for folder in folder_list:
-            INPUT_DSM = f"{D}:/Geomatics/optimization_tests/{folder}/final_dsm_over.tif"
-            INPUT_CDSM = None
-            OUTPUT_DIR = f"{D}:/Geomatics/optimization_tests/{folder}/svf_umep"
-            OUTPUT_FILE = f"{D}:/Geomatics/optimization_tests/{folder}/output.tif"
-
-            dump_stats = f"{D}:/Geomatics/optimization_tests/{folder}/svf_profile_results_umep.prof"
-
-            test = ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE)
-
-            with cProfile.Profile() as profiler:
-                test.processAlgorithm()
-
-            # Print profiling results
-            stats = pstats.Stats(profiler)
-            stats.sort_stats('cumulative')
-            stats.print_stats(20)
-
-            stats.dump_stats(dump_stats)
-
-            txt_output = f"{D}:/Geomatics/optimization_tests/{folder}/svf_profile_results_umep.txt"
-            with open(txt_output, "w") as f:
-                stats = pstats.Stats(profiler, stream=f)
-                stats.sort_stats('cumulative')
-                stats.print_stats(20)

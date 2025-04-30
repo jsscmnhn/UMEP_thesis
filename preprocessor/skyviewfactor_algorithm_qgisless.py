@@ -234,7 +234,10 @@ class ProcessingSkyViewFactorAlgorithm():
                 # wallshvemat = ret["wallshvemat"]
                 # facesunmat = ret["facesunmat"]
 
-                np.savez_compressed(outputDir + '/' + "shadowmats.npz", shadowmat=shmat, vegshadowmat=vegshmat, vbshmat=vbshvegshmat)
+                np.savez(outputDir + '/' + "shadowmats.npz", shadowmat=shmat, vegshadowmat=vegshmat,
+                                    vbshmat=vbshvegshmat)
+
+                # np.savez_compressed(outputDir + '/' + "shadowmats.npz", shadowmat=shmat, vegshadowmat=vegshmat, vbshmat=vbshvegshmat)
                                     # vbshvegshmat=vbshvegshmat, wallshmat=wallshmat, wallsunmat=wallsunmat,
                                     # facesunmat=facesunmat, wallshvemat=wallshvemat)
 
@@ -444,16 +447,16 @@ if __name__ == "__main__":
     #         ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
     #                                          INPUT_DTM=INPUT_DTM).processAlgorithm()
 
-    D = 'D'
+    D = 'E'
     folder_list = ['250', '500', '1000', '1500', '2000', '3000']
 
     for folder in folder_list:
         INPUT_DSM = f"{D}:/Geomatics/optimization_tests/{folder}/final_dsm_over.tif"
         INPUT_CDSM = f"{D}:/Geomatics/optimization_tests/{folder}/CHM.tif"
-        OUTPUT_DIR = f"{D}:/Geomatics/optimization_tests/{folder}/svf_trees"
+        OUTPUT_DIR = f"{D}:/Geomatics/optimization_tests/{folder}/svf_trees_nc"
         OUTPUT_FILE = f"{D}:/Geomatics/optimization_tests/{folder}/output.tif"
 
-        dump_stats = f"{D}:/Geomatics/optimization_tests/{folder}/svf_profile_results_new_chm.prof"
+        dump_stats = f"{D}:/Geomatics/optimization_tests/{folder}/svf_profile_results_new_chm_nc.prof"
 
         test = ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE)
 
@@ -467,37 +470,35 @@ if __name__ == "__main__":
 
         stats.dump_stats(dump_stats)
 
-        txt_output = f"{D}:/Geomatics/optimization_tests/{folder}/svf_profile_results_new_chm.txt"
+        txt_output = f"{D}:/Geomatics/optimization_tests/{folder}/svf_profile_results_new_chm_nc.txt"
         with open(txt_output, "w") as f:
             stats = pstats.Stats(profiler, stream=f)
             stats.sort_stats('cumulative')
             stats.print_stats(20)
 
-        D = 'D'
-        folder_list = ['250', '500', '1000', '1500', '2000', '3000']
 
-        for folder in folder_list:
-            INPUT_DSM = f"{D}:/Geomatics/optimization_tests/{folder}/final_dsm_over.tif"
-            INPUT_CDSM = None
-            OUTPUT_DIR = f"{D}:/Geomatics/optimization_tests/{folder}/svf"
-            OUTPUT_FILE = f"{D}:/Geomatics/optimization_tests/{folder}/output.tif"
+    for folder in folder_list:
+        INPUT_DSM = f"{D}:/Geomatics/optimization_tests/{folder}/final_dsm_over.tif"
+        INPUT_CDSM = None
+        OUTPUT_DIR = f"{D}:/Geomatics/optimization_tests/{folder}/svf_nc"
+        OUTPUT_FILE = f"{D}:/Geomatics/optimization_tests/{folder}/output.tif"
 
-            dump_stats = f"{D}:/Geomatics/optimization_tests/{folder}/svf_profile_results_new.prof"
+        dump_stats = f"{D}:/Geomatics/optimization_tests/{folder}/svf_profile_results_new_nc.prof"
 
-            test = ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE)
+        test = ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE)
 
-            with cProfile.Profile() as profiler:
-                test.processAlgorithm()
+        with cProfile.Profile() as profiler:
+            test.processAlgorithm()
 
-            # Print profiling results
-            stats = pstats.Stats(profiler)
+        # Print profiling results
+        stats = pstats.Stats(profiler)
+        stats.sort_stats('cumulative')
+        stats.print_stats(20)
+
+        stats.dump_stats(dump_stats)
+
+        txt_output = f"{D}:/Geomatics/optimization_tests/{folder}/svf_profile_results_new_nc.txt"
+        with open(txt_output, "w") as f:
+            stats = pstats.Stats(profiler, stream=f)
             stats.sort_stats('cumulative')
             stats.print_stats(20)
-
-            stats.dump_stats(dump_stats)
-
-            txt_output = f"{D}:/Geomatics/optimization_tests/{folder}/svf_profile_results_new.txt"
-            with open(txt_output, "w") as f:
-                stats = pstats.Stats(profiler, stream=f)
-                stats.sort_stats('cumulative')
-                stats.print_stats(20)

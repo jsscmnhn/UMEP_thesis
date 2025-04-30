@@ -731,9 +731,9 @@ class SOLWEIGAlgorithm():
 
         # % Ts parameterisation maps
         if landcover == 1.:
-            if np.max(lcgrid) > 21 or np.min(lcgrid) < 1:
+            if np.max(lcgrid) > 21 or np.min(lcgrid) < 0:
                 raise Exception("The land cover grid includes integer values higher (or lower) than UMEP-formatted" 
-                    "land cover grid (should be integer between 1 and 7). If other LC-classes should be included they also need to be included in landcoverclasses_2016a.txt")
+                    "land cover grid (should be integer between 0 and 7). If other LC-classes should be included they also need to be included in landcoverclasses_2016a.txt")
             if np.where(lcgrid) == 3 or np.where(lcgrid) == 4:
                 raise Exception("The land cover grid includes values (decidouos and/or conifer) not appropriate for SOLWEIG-formatted land cover grid (should not include 3 or 4).")
 
@@ -1013,20 +1013,22 @@ class SOLWEIGAlgorithm():
 
 D = 'D'
 folder_list = ['250', '500', '1000', '1500', '2000', '3000']
+front = "D:/SA/JESS/optimization_tests"
+INPUT_MET = f"{front}/UMEPclimate_oneday.txt"
 
+# f"{D}:/Geomatics/optimization_tests/
 for folder in folder_list:
-    INPUT_DSM = f"{D}:/Geomatics/optimization_tests/{folder}/final_dsm_over.tif"
-    INPUT_SVF = f"{D}:/Geomatics/optimization_tests/{folder}/svf_umep_trees/svfs.zip"
-    INPUT_ANISO = f"{D}:/Geomatics/optimization_tests/{folder}/svf_umep_trees/shadowmats.npz"
-    INPUT_LC = f"{D}:/Geomatics/optimization_tests/{folder}/landcover.tif"
-    INPUT_CDSM = f"{D}:/Geomatics/optimization_tests/{folder}/CHM.tif"
-    INPUT_HEIGHT = f"{D}:/Geomatics/optimization_tests/{folder}/wallheight.tif"
-    INPUT_ASPECT = f"{D}:/Geomatics/optimization_tests/{folder}/wallaspect.tif"
+    INPUT_DSM = f"{front}/{folder}/final_dsm_over.tif"
+    INPUT_SVF = f"{front}/{folder}/svf_umep_trees/svfs.zip"
+    INPUT_ANISO = f"{front}/{folder}/svf_umep_trees/shadowmats.npz"
+    INPUT_LC = f"{front}/{folder}/landcover.tif"
+    INPUT_CDSM = f"{front}/{folder}/CHM.tif"
+    INPUT_HEIGHT = f"{front}/{folder}/wallheight.tif"
+    INPUT_ASPECT = f"{front}/{folder}/wallaspect.tif"
     UTC = 0
-    OUTPUT_DIR =f"{D}:/Geomatics/optimization_tests/{folder}/solweig_umep_chm"
-    INPUT_MET = f"{D}:/Geomatics/thesis/heattryout/preprocess/climatedata/UMEPclimate_oneday.txt"
+    OUTPUT_DIR =f"{front}/{folder}/solweig_umep_chm"
 
-    dump_stats = f"{D}:/Geomatics/optimization_tests/{folder}/profile_results_umep_chm.prof"
+    dump_stats = f"{front}/profile_results_umep_chm.prof"
 
     test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET, INPUT_LC=INPUT_LC, INPUT_ANISO=INPUT_ANISO)
 
@@ -1040,25 +1042,26 @@ for folder in folder_list:
 
     stats.dump_stats(dump_stats)
 
-    txt_output = f"{D}:/Geomatics/optimization_tests/{folder}/profile_results_umep_chm.txt"
+    txt_output = f"{front}/{folder}/profile_results_umep_chm.txt"
     with open(txt_output, "w") as f:
         stats = pstats.Stats(profiler, stream=f)
         stats.sort_stats('cumulative')
         stats.print_stats(20)
 
-for folder in folder_list:
-    INPUT_DSM = f"{D}:/Geomatics/optimization_tests/{folder}/final_dsm_over.tif"
-    INPUT_SVF = f"{D}:/Geomatics/optimization_tests/{folder}/svf_umep/svfs.zip"
-    INPUT_ANISO = f"{D}:/Geomatics/optimization_tests/{folder}/svf_umep/shadowmats.npz"
-    INPUT_LC = f"{D}:/Geomatics/optimization_tests/{folder}/landcover.tif"
-    INPUT_CDSM = None
-    INPUT_HEIGHT = f"{D}:/Geomatics/optimization_tests/{folder}/wallheight.tif"
-    INPUT_ASPECT = f"{D}:/Geomatics/optimization_tests/{folder}/wallaspect.tif"
-    UTC = 0
-    OUTPUT_DIR =f"{D}:/Geomatics/optimization_tests/{folder}/solweig_umep"
-    INPUT_MET = f"{D}:/Geomatics/thesis/heattryout/preprocess/climatedata/UMEPclimate_oneday.txt"
+folder_list = ['250', '500', '1000']
 
-    dump_stats = f"{D}:/Geomatics/optimization_tests/{folder}/profile_results_umep.prof"
+for folder in folder_list:
+    INPUT_DSM = f"{front}/{folder}/final_dsm_over.tif"
+    INPUT_SVF =f"{front}/{folder}/svf_umep/svfs.zip"
+    INPUT_ANISO = f"{front}/{folder}/svf_umep/shadowmats.npz"
+    INPUT_LC = f"{front}/{folder}/landcover.tif"
+    INPUT_CDSM = None
+    INPUT_HEIGHT =f"{front}/{folder}/wallheight.tif"
+    INPUT_ASPECT = f"{front}/{folder}/wallaspect.tif"
+    UTC = 0
+    OUTPUT_DIR =f"{front}/{folder}/solweig_umep"
+
+    dump_stats = f"{front}/{folder}/profile_results_umep.prof"
 
     test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET, INPUT_LC=INPUT_LC, INPUT_ANISO=INPUT_ANISO)
 
@@ -1072,7 +1075,7 @@ for folder in folder_list:
 
     stats.dump_stats(dump_stats)
 
-    txt_output = f"{D}:/Geomatics/optimization_tests/{folder}/profile_results_umep.txt"
+    txt_output = f"{front}/{folder}/profile_results_umep.txt"
     with open(txt_output, "w") as f:
         stats = pstats.Stats(profiler, stream=f)
         stats.sort_stats('cumulative')
