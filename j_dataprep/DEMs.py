@@ -1277,6 +1277,51 @@ class CHM:
             randomness=randomness
         )
 
+    def insert_type_tree(self, age, position, type="fraxinus", resolution=0.5, canopy_base=0.0):
+        """
+        Insert a tree based on a specified age.
+
+        Inputs:
+        - age (int): Age of the tree
+        - position (tuple): (row, col) position of the tree
+        - type (str): Type of tree (default is "fraxinus")
+        - resolution (float): Map resolution (default is 0.5)
+        - canopy_base (float): Height of the base of the canopy (default is 0.0)
+        """
+        # Find the tree data for the specified age
+        with open("fraxinus_growth.json") as f:
+            tree_db = json.load(f)
+
+        tree_data = next((item for item in tree_db if item["age"] == age), None)
+
+        if not tree_data:
+            raise ValueError(f"No data available for age {age}")
+
+        # Extract the relevant attributes from the tree data
+        tree_height = tree_data["tree ht"]
+        crown_height = tree_data["crown ht"]
+        crown_dia = tree_data["crown dia"]
+
+        # Calculate derived values
+        trunk_height = max(0, tree_height - crown_height)
+        crown_radius = crown_dia / 2
+
+        # Set defaults for type and randomness
+        tree_type = 'parabolic'  # Canopy type is fixed as parabolic
+        randomness = 0.8  # Fixed randomness
+
+        # Insert the tree with the calculated values
+        self.insert_tree(
+            position=position,
+            height=tree_height,
+            crown_radius=crown_radius,
+            trunk_height=trunk_height,
+            canopy_base_height=canopy_base,
+            resolution=resolution,
+            type=tree_type,
+            randomness=randomness
+        )
+
 
 def load_buildings(buildings_path, layer):
     """
