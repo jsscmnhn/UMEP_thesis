@@ -63,13 +63,26 @@ class LandCover:
         return self.landcover_mapping.get(category, {}).get(land_type.lower(), -1)
 
     def get_top10nl(self, item_type):
+        features = []
         url = f"{self.base_url}/collections/{item_type}/items?bbox={self.bbox[0]},{self.bbox[1]},{self.bbox[2]},{self.bbox[3]}&bbox-crs={self.crs}&crs={self.crs}&limit=1000&f=json"
-        response = requests.get(url)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            print(f"Error: {response.status_code}, {response.text}")
-            return {}
+
+        while url:
+            response = requests.get(url)
+            if response.status_code != 200:
+                print(f"Error: {response.status_code}, {response.text}")
+                break
+
+            data = response.json()
+            features.extend(data.get("features", []))
+
+            # Look for the "next" link
+            next_link = next(
+                (link["href"] for link in data.get("links", []) if link.get("rel") == "next"),
+                None
+            )
+            url = next_link  # If None, loop will exit
+
+        return {"features": features}
 
     def process_water_features(self):
         waterdata_vlak = self.get_top10nl("waterdeel_vlak")
@@ -531,8 +544,11 @@ if __name__ == "__main__":
     #     ]
     # }
 
-    bbox_list = [(120000, 485700, 120126, 485826), (120000, 485700, 120251, 485951), (120000, 485700, 120501, 486201), (120000, 485700, 120751, 486451), (120000, 485700, 121001, 486701), (120000, 485700, 121501, 487201) ]
-    folder_list = ['250', '500', '1000', '1500', '2000', '3000']
+    # bbox_list = [(120000, 485700, 120126, 485826), (120000, 485700, 120251, 485951), (120000, 485700, 120501, 486201), (120000, 485700, 120751, 486451), (120000, 485700, 121001, 486701), (120000, 485700, 121501, 487201) ]
+    # folder_list = ['250', '500', '1000', '1500', '2000', '3000']
+
+    bbox_list = [ (120000, 485700, 121501, 487201)]
+    folder_list = ['3000']
     crs = "http://www.opengis.net/def/crs/EPSG/0/28992"
 
     D = 'D'

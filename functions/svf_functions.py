@@ -316,7 +316,7 @@ def svfForProcessing153_3d(dsms, dtm, vegdem, vegdem2, scale, usevegdem):
                 if altitude == 90:
                     sh = shadow.shadowingfunctionglobalradiation_3d_90(dsms)
                 else:
-                    sh = shadow.shadowingfunctionglobalradiation_3d(dsms, amaxvalue, azimuth, altitude, scale, 1)
+                    sh = shadow.shadowingfunctionglobalradiation_3d(dsms, amaxvalue, azimuth, altitude, scale)
 
             shmat[:, :, index] = sh
 

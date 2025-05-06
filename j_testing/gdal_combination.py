@@ -11,6 +11,7 @@ def combine_tiffs(folder, input_files, output_file):
     out_dataset = driver.Create(output_file, cols, rows, len(datasets), gdal.GDT_Float32)
 
     for i, dataset in enumerate(datasets):
+
         band_data = dataset.ReadAsArray()
         out_band = out_dataset.GetRasterBand(i + 1)
         out_band.WriteArray(band_data)

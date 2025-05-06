@@ -4,6 +4,47 @@ import numpy as np
 from math import radians
 import cupy as cp
 
+from rasterio import CRS, Affine
+import rasterio
+
+
+
+def write_output(output, name):
+    """
+    Write grid to .tiff file.
+    ----
+    Input:
+    - dataset: Can be either a rasterio dataset (for rasters) or laspy dataset (for point clouds)
+    - output (Array): the output grid, a numpy grid.
+    - name (String): the name of the output file.
+    - transform:
+      a user defined rasterio Affine object, used for the transforming the pixel coordinates
+      to spatial coordinates.
+    - change_nodata (Boolean): true: use a no data value of -9999, false: use the datasets no data value
+    """
+    output_file = name
+
+    output = np.squeeze(output)
+    # Set the nodata value: use -9999 if nodata_value is True or dataset does not have nodata.
+    crs = CRS.from_epsg(28992)
+    nodata_value = -9999
+    # transform = Affine(0.50, 0.00, 119300.00,
+    #                    0.00, -0.50, 486500.00)
+    transform = Affine(0.50, 0.00, 153100.0,
+                       0.00, -0.50,  471200.0)
+
+    # output the dataset
+    with rasterio.open(output_file, 'w',
+                       driver='GTiff',
+                       height=output.shape[0],  # Assuming output is (rows, cols)
+                       width=output.shape[1],
+                       count=1,
+                       dtype=np.float32,
+                       crs=crs,
+                       nodata=nodata_value,
+                       transform=transform) as dst:
+        dst.write(output, 1)
+    print("File written to '%s'" % output_file)
 
 def shadowingfunction_wallheight_13(amaxvalue, a, azimuth, altitude, scale, walls, aspect):
     """
@@ -135,76 +176,42 @@ def shadowingfunction_wallheight_13(amaxvalue, a, azimuth, altitude, scale, wall
 
 # TO DO: UPDATE THIS FUNCTION
 def shadowingfunction_wallheight_13_3d(amaxvalue, a, azimuth, altitude, scale, walls, aspect):
-    """
-    This m.file calculates shadows on a DSM and shadow height on building
-    walls.
-
-    INPUTS:
-    a = DSM
-    azimuth and altitude = sun position
-    scale= scale of DSM (1 meter pixels=1, 2 meter pixels=0.5)
-    walls= pixel row 'outside' buildings. will be calculated if empty
-    aspect = normal aspect of buildings walls
-
-    OUTPUT:
-    sh=ground and roof shadow
-    wallsh = height of wall that is in shadow
-    wallsun = hieght of wall that is in sun
-
-    Fredrik Lindberg 2012-03-19
-    fredrikl@gvc.gu.se
-
-     Utdate 2013-03-13 - bugfix for walls alinged with sun azimuths
-
-    :param a:
-    :param azimuth:
-    :param altitude:
-    :param scale:
-    :param walls:
-    :param aspect:
-    :return:
-    """
-
     # conversion
-    # degrees = np.pi/180
-    azimuth = radians(azimuth)
-    altitude = radians(altitude)
-
-    # measure the size of the image
+    degrees = np.pi / 180.
+    # if azimuth == 0.0:
+    # azimuth = 0.000000000001
+    azimuth *= degrees
+    altitude *= degrees
+    # % measure the size of the image
     sizex, sizey = a[0].shape[0], a[0].shape[1]
 
-    # initialise parameters
-    f = cp.copy(a)
     dx = dy = dz = 0.0
+
     num_layers = len(a)
     temp = cp.zeros((sizex, sizey), dtype=cp.float32)
     temp_layers = cp.full((num_layers - 1, sizex, sizey), np.nan, dtype=cp.float32)
-
     dsm_ground = a[0]
 
-
-    sh = cp.zeros((sizex, sizey),  dtype=cp.float32) #shadows from buildings
+    sh = cp.zeros((sizex, sizey), dtype=cp.float32)  # shadows from buildings
 
     num_combinations = (num_layers - 1) // 2
     sh_stack = cp.full((num_combinations, sizex, sizey), np.nan, dtype=cp.float32)
 
-    wallbol = (walls > 0).astype(float)
+    wallbol = cp.array((walls > 0), dtype=cp.float32)
 
-    # other loop parameters
-    pibyfour = np.pi / 4
-    threetimespibyfour = 3 * pibyfour
-    fivetimespibyfour = 5 * pibyfour
-    seventimespibyfour = 7 * pibyfour
+    # Precompute trigonometric values
+    pibyfour = np.pi / 4.0
+    threetimespibyfour = 3.0 * pibyfour
+    fivetimespibyfour = 5.0 * pibyfour
+    seventimespibyfour = 7.0 * pibyfour
     sinazimuth = np.sin(azimuth)
     cosazimuth = np.cos(azimuth)
     tanazimuth = np.tan(azimuth)
     signsinazimuth = np.sign(sinazimuth)
     signcosazimuth = np.sign(cosazimuth)
-    dssin = np.abs(1 / sinazimuth)
-    dscos = np.abs(1 / cosazimuth)
+    dssin = np.abs(1.0 / sinazimuth)
+    dscos = np.abs(1.0 / cosazimuth)
     tanaltitudebyscale = np.tan(altitude) / scale
-
-    index = 0.0
 
     isVert = ((pibyfour <= azimuth) & (azimuth < threetimespibyfour)) | \
              ((fivetimespibyfour <= azimuth) & (azimuth < seventimespibyfour))
@@ -215,32 +222,32 @@ def shadowingfunction_wallheight_13_3d(amaxvalue, a, azimuth, altitude, scale, w
 
     preva = a[0] - ds * tanaltitudebyscale
 
-    # main loop
+    index = 0.0
+    # % main loop
     while (amaxvalue >= dz) and (np.abs(dx) < sizex) and (np.abs(dy) < sizey):
         if isVert:
             dy = signsinazimuth * index
-            dx = -1 * signcosazimuth * np.abs(np.round(index / tanazimuth))
+            dx = -signcosazimuth * np.abs(np.round(index / tanazimuth))
         else:
             dy = signsinazimuth * np.abs(np.round(index * tanazimuth))
-            dx = -1 * signcosazimuth * index
+            dx = -signcosazimuth * index
 
-        # note: dx and dy represent absolute values while ds is an incremental value
-        dz = ds * index * tanaltitudebyscale
+        dz = (ds * index) * tanaltitudebyscale
         temp.fill(0.0)
+
         temp_layers[:] = np.nan
 
         absdx = np.abs(dx)
         absdy = np.abs(dy)
 
-        xc1 = int((dx + absdx) / 2)
-        xc2 = int(sizex + (dx - absdx) / 2)
-        yc1 = int((dy + absdy) / 2)
-        yc2 = int(sizey + (dy - absdy) / 2)
-
-        xp1 = int(-((dx - absdx) / 2))
-        xp2 = int(sizex - (dx + absdx) / 2)
-        yp1 = int(-((dy - absdy) / 2))
-        yp2 = int(sizey - (dy + absdy) / 2)
+        xc1 = int((dx + absdx) / 2.)
+        xc2 = int(sizex + (dx - absdx) / 2.)
+        yc1 = int((dy + absdy) / 2.)
+        yc2 = int(sizey + (dy - absdy) / 2.)
+        xp1 = int(-((dx - absdx) / 2.))
+        xp2 = int(sizex - (dx + absdx) / 2.)
+        yp1 = int(-((dy - absdy) / 2.))
+        yp2 = int(sizey - (dy + absdy) / 2.)
 
         # Building Part
         temp[xp1:xp2, yp1:yp2] = a[0][xc1:xc2, yc1:yc2] - dz
@@ -249,6 +256,7 @@ def shadowingfunction_wallheight_13_3d(amaxvalue, a, azimuth, altitude, scale, w
         dsm_ground = cp.fmax(dsm_ground, temp)
 
         sh = (dsm_ground > a[0]).astype(cp.float32)
+
         for i in range(0, num_layers - 1, 2):
             # first gap part
             gap_layer_index = i
@@ -259,20 +267,23 @@ def shadowingfunction_wallheight_13_3d(amaxvalue, a, azimuth, altitude, scale, w
             layerabovea = temp_layers[layer_index] > a[0]
             prevgapabovea = temp_layers[gap_layer_index] > preva
             prevlayerabovea = temp_layers[layer_index] > preva
+
             sh_temp = cp.add(cp.add(cp.add(layerabovea, gapabovea, dtype=float), prevgapabovea, dtype=float),
                              prevlayerabovea, dtype=float)
+
             # for i in range(0, num_layers - 1):
-            #     name = f"D:/Geomatics/thesis/3D_solweig/shade_debug/add_check_{i}_{index}" + str(
+            #     name = f"D:/Geomatics/3D_solweig/add_check_{i}_{index}" + str(
             #         round(azimuth, 2)) + "_" + str(round(altitude, 2)) + ".tif"
             #     write_output(sh_temp.get(), name)
 
             sh_temp = cp.where(sh_temp == 4.0, 0.0, sh_temp)
             sh_temp = cp.where(sh_temp > 0.0, 1.0, sh_temp)
 
+
+
             sh_stack[i // 2] = cp.fmax(sh_stack[i // 2], sh_temp)
 
-        index += 1.0
-
+        index += 1.
 
     sh_combined = sh_stack[0]
 

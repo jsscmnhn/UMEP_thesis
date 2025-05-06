@@ -6,13 +6,12 @@ import pandas as pd
 import geopandas as gpd
 import numpy as np
 import rasterio
-from shapely.geometry import mapping
 from rasterio.features import geometry_mask, shapes
 from scipy.interpolate import NearestNDInterpolator
 import random
 import startinpy
 from rasterio import Affine
-from shapely.geometry import shape,box
+from shapely.geometry import shape,box, mapping
 from rasterio.crs import CRS
 from pathlib import Path
 import laspy
@@ -25,6 +24,7 @@ import json
 from shapely.affinity import translate
 from rasterio.enums import Resampling
 from rasterio.warp import calculate_default_transform, reproject
+
 
 def write_output(dataset, crs, output, transform, name, change_nodata=False):
     """
@@ -1300,22 +1300,28 @@ def load_buildings(buildings_path, layer):
 
 
 if __name__ == "__main__":
+    bbox = (111000, 400000, 111351, 400351)
+    "D:/Geomatics/thesis/__newgaptesting/option1"
+    output_dir= "D:/Geomatics/thesis/__newgaptesting/option1"
+    buildings = Buildings(bbox, output_folder=output_dir).building_geometries
+    dems = DEMS(bbox, buildings, bridge=True, output_dir=output_dir)
+    dtm = dems.dtm
     # bbox_list = [(120000, 485700, 120126, 485826), (120000, 485700, 120251, 485951), (120000, 485700, 120501, 486201), (120000, 485700, 120751, 486451), (120000, 485700, 121001, 486701), (120000, 485700, 121501, 487201) ]
     # folder_list = ['250', '500', '1000', '1500', '2000', '3000']
     # folder = '250',
     # bbox = 120000, 485700, 120126, 485826
 
-    bbox_list = [(120000, 485700, 121001, 486701), (120000, 485700, 121501, 487201) ]
-    folder_list = ['2000', '3000']
-    i = 0
-    for folder in folder_list:
-        output_dir=f"D:/Geomatics/optimization_tests/{folder}"
-        buildings = Buildings(bbox_list[i], output_folder=output_dir).building_geometries
-        dems = DEMS(bbox_list[i], buildings, bridge=True, output_dir=output_dir)
-        dtm = dems.dtm
-        merged_output= f'pointcloud_{i}.las'
-        chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir, merged_output=merged_output).chm
-        i += 1
+    # bbox_list = [(120000, 485700, 121001, 486701), (120000, 485700, 121501, 487201) ]
+    # folder_list = ['2000', '3000']
+    # i = 0
+    # for folder in folder_list:
+    #     output_dir=f"D:/Geomatics/optimization_tests/{folder}"
+    #     buildings = Buildings(bbox_list[i], output_folder=output_dir).building_geometries
+    #     dems = DEMS(bbox_list[i], buildings, bridge=True, output_dir=output_dir)
+    #     dtm = dems.dtm
+    #     merged_output= f'pointcloud_{i}.las'
+    #     chm = CHM(bbox_list[i], dtm, 0.25, "output", "temp2", output_dir, merged_output=merged_output).chm
+    #     i += 1
     # bbox_list = [(175905, 317210, 176505, 317810), (84050, 447180, 84650, 447780),(80780, 454550, 81380, 455150),(233400, 581500, 234000, 582100),(136600, 455850, 137200, 456450),(121500, 487000, 122100, 487600)]
     # for i in [1, 2, 3, 4, 5]:
     #     output_dir=f"D:/Geomatics/thesis/_analysisfinal/historisch/loc_{i}"

@@ -278,6 +278,7 @@ def shadowingfunction_23_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxva
         dsm_ground = cp.fmax(dsm_ground, temp)
 
         sh = (dsm_ground > a[0]).astype(cp.float32)
+
         for i in range(0, num_layers - 1, 2):
             # first gap part
             gap_layer_index = i

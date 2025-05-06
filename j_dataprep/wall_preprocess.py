@@ -243,17 +243,18 @@ class WallData:
 
 
 if __name__ == "__main__":
-    folder_list = ['250' '500', '1000', '1500', '2000', '3000']
-    D = 'D'
-    for folder in folder_list:
-        file = f"{D}:/Geomatics/optimization_tests/{folder}/final_dsm_over.tif"
-        output_aspect = f"{D}:/Geomatics/optimization_tests/{folder}/wallaspect.tif"
-        output_height = f"{D}:/Geomatics/optimization_tests/{folder}/wallheight.tif"
-        gdal_dsms = gdal.Open(file)
 
-        walldata = WallData(gdal_dsms, 2)
-        wall_aspect = walldata.wall_aspect
+    begin = "D:/Geomatics/thesis/__newgaptesting/option2"
 
-        saveraster(gdal_dsms, output_aspect, wall_aspect.get())
-        saveraster(gdal_dsms, output_height, walldata.wall_height.get())
+    file = f"{begin}/1gap_0.tiff"
+
+    output_aspect = f"{begin}/wallaspect.tif"
+    output_height = f"{begin}/wallheight.tif"
+    gdal_dsms = gdal.Open(file)
+
+    walldata = WallData(gdal_dsms, 2)
+    wall_aspect = walldata.wall_aspect
+
+    saveraster(gdal_dsms, output_aspect, wall_aspect.get())
+    saveraster(gdal_dsms, output_height, walldata.wall_height.get())
 

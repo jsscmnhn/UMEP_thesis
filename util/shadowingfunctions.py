@@ -129,20 +129,15 @@ def shadowingfunctionglobalradiation_cupy(a, amaxvalue, azimuth, altitude, scale
     return sh
 
 
-def shadowingfunctionglobalradiation_3d(a, amaxvalue, azimuth, altitude, scale, forsvf):
-    #%This m.file calculates shadows on a DEM
-    #% conversion
-    degrees = np.pi/180.
-    # if azimuth == 0.0:
-        # azimuth = 0.000000000001
+def shadowingfunctionglobalradiation_3d(a, amaxvalue, azimuth, altitude, scale):
+
+    # Conversion
+    degrees = np.pi / 180.0
     azimuth *= degrees
     altitude *= degrees
-    #% measure the size of the image
-    sizex = a[0].shape[0]
-    sizey = a[0].shape[1]
-    if forsvf == 0:
-        barstep = np.max([sizex, sizey])
-        total = 100. / barstep #dlg.progressBar.setRange(0, barstep)
+    # factor = cp.float32(2.0)
+    # Grid size
+    sizex, sizey = a[0].shape[0], a[0].shape[1]
 
     dx = 0.
     dy = 0.
@@ -150,7 +145,7 @@ def shadowingfunctionglobalradiation_3d(a, amaxvalue, azimuth, altitude, scale, 
 
     num_layers = len(a)
     temp = cp.zeros((sizex, sizey), dtype=cp.float32)
-    temp_layers = {i: cp.full((sizex, sizey), np.nan, dtype=cp.float32) for i in range(0, num_layers - 1)}
+    temp_layers = cp.full((num_layers - 1, sizex, sizey), np.nan, dtype=cp.float32)
     dsm_ground = a[0]
 
     sh = cp.zeros((sizex, sizey), dtype=cp.float32)  # shadows from buildings
@@ -237,10 +232,23 @@ def shadowingfunctionglobalradiation_3d(a, amaxvalue, azimuth, altitude, scale, 
 
         index += 1.
     sh_combined = sh_stack[0]
+    # name = f"D:/Geomatics/3D_solweig/sh_multgap_stack_0" + str(round(azimuth, 2)) + "   " + str(
+    #     round(altitude, 2)) + ".tif"
+    # write_output(sh_stack[0].get(), name)
     for i in range(1, num_combinations):
         sh_combined = cp.fmax(sh_combined, sh_stack[i])
+
+    # name = f"D:/Geomatics/3D_solweig/sh_multgap_stack_0sh" + str(round(azimuth, 2)) + "   " + str(
+    #     round(altitude, 2)) + ".tif"
+    # write_output(sh.get(), name)
     sh = cp.fmax(sh, sh_combined)
+
     sh = 1.0 - sh
+
+    name = f"D:/Geomatics/thesis/__newgaptesting/example/shade" + str(round(azimuth, 2)) + "   " + str(
+        round(altitude, 2)) + ".tif"
+    write_output(sh.get(), name)
+
 
     return sh
 
