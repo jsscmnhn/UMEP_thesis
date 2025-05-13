@@ -286,45 +286,38 @@ def update_dsm(dsm, dtm, user_buildings, transform, user_array=None, user_arrays
     return dsm
 
 if __name__ == "__main__":
-    data = Building3d_input(798, 598, 0.5)
+    data = Building3d_input(200, 200, 0.5)
     path = "D:/Geomatics/thesis/__newgaptesting/example/building.obj"
-    tiff =  "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dsm.tif"
-    dtm_path = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dtm.tif"
+    tiff = "D:/Geomatics/thesis/_3drust/testing.tif"
     geodataset = gdal.Open(tiff)
-    output_file = "D:/Geomatics/thesis/oldwallvsnewwallmethod/userinput/examplecomb.tif"
+    output = "D:/Geomatics/thesis/_3drust/input"
 
-    dsm = geodataset.ReadAsArray()
-    geodtm = gdal.Open(dtm_path)
-    dtm = geodtm.ReadAsArray()
-    gdal_transform = geodtm.GetGeoTransform()
-    transform = Affine.from_gdal(*gdal_transform)
-
-    dsms, highest, input_arrays = data.rasterize_3dbuilding(path, 1, True)
-
-    print(dsms)
-    user_buildings, user_buildings_higher = insert_user_buildings(highest, transform, dsms)
-
-    dsm_new = update_dsm(dsm, dtm, user_buildings, transform, user_arrays=dsms, higher_buildings=user_buildings_higher)
-
-    combine_tiffs(geodataset, dsm_new, output_file)
+    # path = "D:/Geomatics/thesis/__newgaptesting/example/building.obj"
+    # tiff =  "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dsm.tif"
+    # dtm_path = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dtm.tif"
+    # geodataset = gdal.Open(tiff)
+    # output_file = "D:/Geomatics/thesis/oldwallvsnewwallmethod/userinput/examplecomb.tif"
+    #
+    obj_path = "D:/Geomatics/thesis/objtryouts/3dobj.obj"
+    dsm, highest, input_arrays = data.rasterize_3dbuilding(obj_path, 1, 1)
 
     i = 0
     for array in input_arrays:
         if i == 0:
             array[np.isnan(array)] = 0
-        saveraster(geodataset, f"D:/Geomatics/thesis/oldwallvsnewwallmethod/userinput/input_test_{i}.tiff", array)
+        saveraster(geodataset, f"{output}/input_test_{i}.tiff", array)
         i += 1
 
     i=0
-    for array in dsms:
-        if i == 0:
-            array[np.isnan(array)] = 0
-        saveraster(geodataset, f"D:/Geomatics/thesis/oldwallvsnewwallmethod/userinput/1gap_{i}.tiff", array)
-        i += 1
-
-    i=0
-    for array in dsm_new:
-        if i == 0:
-            array[np.isnan(array)] = 0
-        saveraster(geodataset, f"D:/Geomatics/thesis/oldwallvsnewwallmethod/userinput/new1gap_{i}.tiff", array)
-        i += 1
+    # for array in dsms:
+    #     if i == 0:
+    #         array[np.isnan(array)] = 0
+    #     saveraster(geodataset, f"D:/Geomatics/thesis/oldwallvsnewwallmethod/userinput/1gap_{i}.tiff", array)
+    #     i += 1
+    #
+    # i=0
+    # for array in dsm_new:
+    #     if i == 0:
+    #         array[np.isnan(array)] = 0
+    #     saveraster(geodataset, f"D:/Geomatics/thesis/oldwallvsnewwallmethod/userinput/new1gap_{i}.tiff", array)
+    #     i += 1

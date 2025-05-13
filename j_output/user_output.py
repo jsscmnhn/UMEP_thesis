@@ -1,4 +1,4 @@
-import h5py
+# import h5py
 import numpy as np
 from osgeo import gdal
 from rasterio import features
@@ -42,7 +42,7 @@ class TmrtOutput:
             self.valid_mask &= (water_mask != 0)
 
 
-    def get_pet_raster_from_lookup(self, tmrt_raster, wind_speed, air_temp, rh, body_type, lookup_file,
+    def get_pet_raster_from_lookup(self, tmrt_raster, wind_speed, air_temp, rh, body_type, lookup_file="pet_lookup.h5",
                                tmrt_min=0, tmrt_max=65, tmrt_step=0.5, wind_speeds=None, rhs=None, temps=None):
         """
         Get the PET raster for a given Tmrt raster and environmental conditions.

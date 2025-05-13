@@ -20,11 +20,12 @@ import json
 from shapely.affinity import translate
 
 class LandCover:
-    def __init__(self, bbox, crs, main_roadtype=0, resolution=0.5,building_data=None, dataset_path=None, buildings_path=None, layer=None, landcover_path="landcover.json"):
+    def __init__(self, bbox, crs="http://www.opengis.net/def/crs/EPSG/0/28992", main_roadtype=0, resolution=0.5,building_data=None, dataset_path=None, buildings_path=None, layer=None, landcover_path="landcover.json"):
         self.bbox = bbox
         self.crs = crs
         self.resolution = resolution
         self.main_road = main_roadtype
+        # TO DO: change dataset path to dataset instance itself
         # TO DO: change dataset path to dataset instance itself
         self.dtm_dataset = dataset_path
         self.base_url = "https://api.pdok.nl/brt/top10nl/ogc/v1"
@@ -590,4 +591,4 @@ if __name__ == "__main__":
     #         buildings_path = (f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/buildings.gpkg")
     #         landcover = LandCover(bbox, crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
     #         landcover.save_raster(output, False)
-    # #
+    #

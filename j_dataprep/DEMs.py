@@ -16,7 +16,7 @@ from rasterio.crs import CRS
 from pathlib import Path
 import laspy
 from scipy.spatial import cKDTree
-from scipy.ndimage import median_filter, label
+from scipy.ndimage import median_filter, label, maximum_filter
 import uuid
 from rtree import index
 import ezdxf
@@ -24,6 +24,27 @@ import json
 from shapely.affinity import translate
 from rasterio.enums import Resampling
 from rasterio.warp import calculate_default_transform, reproject
+from rasterio.windows import from_bounds
+
+from landcover import LandCover
+
+def edit_bounds(bounds, buffer, shrink=False):
+    min_x, min_y, max_x, max_y = bounds
+
+    if shrink:
+        return (
+            min_x + buffer,
+            min_y + buffer,
+            max_x - buffer,
+            max_y - buffer
+        )
+    else:
+        return (
+            min_x - buffer,
+            min_y - buffer,
+            max_x + buffer,
+            max_y + buffer
+        )
 
 
 def write_output(dataset, crs, output, transform, name, change_nodata=False):
@@ -72,6 +93,7 @@ def write_output(dataset, crs, output, transform, name, change_nodata=False):
 class Buildings:
     def __init__(self, bbox, wfs_url="https://data.3dbag.nl/api/BAG3D/wfs", layer_name="BAG3D:lod13", gpkg_name="buildings", output_folder = "output", output_layer_name="buildings"):
         self.bbox = bbox
+        self.bufferbbox = edit_bounds(bbox, 2)
         self.wfs_url = wfs_url
         self.layer_name = layer_name
         self.data = self.download_wfs_data(gpkg_name, output_folder, output_layer_name)
@@ -95,7 +117,7 @@ class Buildings:
                 "VERSION": "2.0.0",
                 "TYPENAMES": self.layer_name,
                 "SRSNAME": "urn:ogc:def:crs:EPSG::28992",
-                "BBOX": f"{self.bbox[0]},{self.bbox[1]},{self.bbox[2]},{self.bbox[3]},urn:ogc:def:crs:EPSG::28992",
+                "BBOX": f"{self.bufferbbox[0]},{self.bufferbbox[1]},{self.bufferbbox[2]},{self.bufferbbox[3]},urn:ogc:def:crs:EPSG::28992",
                 "COUNT": count,
                 "COUNT": count,
                 "STARTINDEX": start_index
@@ -205,8 +227,10 @@ class Buildings:
 
 
 class DEMS:
-    def __init__(self, bbox, building_data, resolution=0.5, bridge=False, resampling='cubic_spline', output_dir="output"):
+    def __init__(self, bbox, building_data, resolution=0.5, bridge=False, resampling=Resampling.cubic_spline, output_dir="output"):
+        self.buffer = 2
         self.bbox = bbox
+        self.bufferbbox = edit_bounds(bbox, self.buffer)
         self.building_data = building_data
         self.resolution = resolution
         self.user_building_data = []
@@ -219,10 +243,10 @@ class DEMS:
         self.is3D = False
 
     @staticmethod
-    def fetch_ahn_wcs(bbox, output_file="output/dtm.tif", coverage="dtm_05m", wcs_resolution=0.5):
+    def fetch_ahn_wcs(bbox, bufferbbox, output_file="output/dtm.tif", coverage="dtm_05m", wcs_resolution=0.5):
         # Calculate width and height from bbox and resolution
-        width = int((bbox[2] - bbox[0]) / wcs_resolution)
-        height = int((bbox[3] - bbox[1]) / wcs_resolution)
+        width = int((bufferbbox[2] - bufferbbox[0]) / wcs_resolution)
+        height = int((bufferbbox[3] - bufferbbox[1]) / wcs_resolution)
 
         # WCS Service URL
         WCS_URL = "https://service.pdok.nl/rws/ahn/wcs/v1_0"
@@ -234,7 +258,7 @@ class DEMS:
             "REQUEST": "GetCoverage",
             "FORMAT": "GEOTIFF",
             "COVERAGE": coverage,
-            "BBOX": f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}",
+            "BBOX": f"{bufferbbox[0]},{bufferbbox[1]},{bufferbbox[2]},{bufferbbox[3]}",
             "CRS": "EPSG:28992",
             "RESPONSE_CRS": "EPSG:28992",
             "WIDTH": str(width),
@@ -335,6 +359,23 @@ class DEMS:
 
         return xyz_filled
 
+    def crop_to_bbox(self, array, transform):
+        """
+        Crop a raster array from a buffered array to the original bbox and return
+        the correctly sliced array and new aligned transform.
+        """
+        # Compute the window from the full buffered transform, for the smaller (target) bbox
+        crop_pixels = int(self.buffer / self.resolution)
+
+        # Crop array: remove buffer from all sides
+        print(crop_pixels)
+        cropped_array = array[crop_pixels:-crop_pixels, crop_pixels:-crop_pixels]
+        print(cropped_array.shape)
+
+        # Adjust transform: move origin by number of removed pixels
+        new_transform = transform * Affine.translation(crop_pixels, crop_pixels)
+
+        return cropped_array, new_transform
 
     def resample_raster(self, input_array, input_transform, input_crs, output_resolution):
         height, width = input_array.shape
@@ -384,8 +425,8 @@ class DEMS:
 
         # for interpolation, grid of all column and row positions, excluding the first and last rows/cols
         cols, rows = np.meshgrid(
-            np.arange(1, geo_array.shape[1] - 1),
-            np.arange(1, geo_array.shape[0] - 1)
+            np.arange(0, geo_array.shape[1]),
+            np.arange(0, geo_array.shape[0])
         )
 
         # flatten the grid to get a list of all (col, row) locations
@@ -393,15 +434,13 @@ class DEMS:
         interpolated_values = dt.interpolate({"method": "Laplace"}, locs)
 
         # reshape interpolated grid back to original
-        interpolated_grid = np.reshape(interpolated_values, (geo_array.shape[0] - 2, geo_array.shape[1] - 2))
+        interpolated_grid = np.reshape(interpolated_values, (geo_array.shape[0], geo_array.shape[1]))
 
         # fill new_data with interpolated values
-        new_data[1:-1, 1:-1] = interpolated_grid
+        new_data= interpolated_grid
         new_data = np.where(np.isnan(new_data), nodata_value, new_data)
 
-        new_transform = transform * Affine.translation(1, 1)
-
-        return new_data[1:-1, 1:-1], new_transform
+        return new_data
 
     def replace_buildings(self, filled_dtm, dsm_buildings, buildings_geometries, transform, bridge):
         """
@@ -466,38 +505,48 @@ class DEMS:
 
         # --- Fetch DTM ---
         dtm_dst, dtm_array = self.fetch_ahn_wcs(
-            bbox, output_file="archive/outputs/outputs2/dtm.tif", coverage="dtm_05m", wcs_resolution=0.5
+            bbox, self.bufferbbox, output_file="archive/outputs/outputs2/dtm.tif", coverage="dtm_05m", wcs_resolution=0.5
         )
         transform = dtm_dst.transform
-        filled_dtm, new_transform = self.fill_raster(dtm_array, dtm_dst.nodata, transform)
+        filled_dtm  = self.fill_raster(dtm_array, dtm_dst.nodata, transform)
 
         # --- Fetch DSM if buildings are used ---
         if self.building_data:
             dsm_dst, dsm_array = self.fetch_ahn_wcs(
-                bbox, output_file="archive/outputs/outputs2/dsm.tif", coverage="dsm_05m", wcs_resolution=0.5
+                bbox, self.bufferbbox, output_file="archive/outputs/outputs2/dsm.tif", coverage="dsm_05m", wcs_resolution=0.5
             )
-            filled_dsm, _ = self.fill_raster(dsm_array, dsm_dst.nodata, transform)
+            filled_dsm = self.fill_raster(dsm_array, dsm_dst.nodata, transform)
             final_dsm = self.replace_buildings(
-                filled_dtm, filled_dsm, self.building_data, new_transform, self.bridge
+                filled_dtm, filled_dsm, self.building_data, transform, self.bridge
             )
         else:
             final_dsm = filled_dtm
         # --- Resample if needed ---
         if self.resolution != 0.5:
-            filled_dtm, new_transform = self.resample_raster(
-                filled_dtm, new_transform, dtm_dst.crs, self.resolution
+            filled_dtm, resamp_transform = self.resample_raster(
+                filled_dtm, transform, dtm_dst.crs, self.resolution
             )
 
-            if final_dsm:
+            if final_dsm is not None:
                 final_dsm, _ = self.resample_raster(
-                    final_dsm, new_transform, dtm_dst.crs, self.resolution
+                    final_dsm, transform, dtm_dst.crs, self.resolution
                 )
 
-        # --- Write outputs ---
-        write_output(dtm_dst, self.crs, filled_dtm, new_transform, f"{self.output_dir}/final_dtm.tif")
-        write_output(dtm_dst, self.crs, final_dsm, new_transform, f"{self.output_dir}/final_dsm_over.tif")
+            transform = resamp_transform
 
-        return filled_dtm, final_dsm, new_transform
+        # --- Crop the arrays to the bounding box after interpolation ---
+        cropped_dtm, transform = self.crop_to_bbox(filled_dtm, transform)
+
+        if final_dsm is not None:
+            cropped_dsm, _ = self.crop_to_bbox(final_dsm, transform)
+
+        # --- Write outputs ---
+        write_output(dtm_dst, self.crs, cropped_dtm, transform, f"{self.output_dir}/final_dtm.tif")
+
+        if final_dsm is not None:
+            write_output(dtm_dst, self.crs, cropped_dsm, transform, f"{self.output_dir}/final_dsm_over.tif")
+
+        return cropped_dtm, cropped_dsm if final_dsm is not None else cropped_dtm, transform
 
     def remove_buildings(self, remove_list, remove_user_list, building_data, user_building_data, user_buildings_higher=None):
         remove_set = set(remove_list)
@@ -711,16 +760,28 @@ class DEMS:
 
 
 class CHM:
-    def __init__(self, bbox, dtm, trunk_height, output_folder, input_folder, output_folder_chm, merged_output='pointcloud.las'):
+    def __init__(self, bbox, dtm, dsm, trunk_height, output_folder, input_folder, output_folder_chm, resolution=0.5, merged_output='pointcloud.las'):
         self.bbox = bbox
+        self.bufferedbbox = edit_bounds(bbox, 2)
         self.crs = (CRS.from_epsg(28992))
         self.dtm = dtm
+        self.dsm = dsm
         self.output_folder_chm = output_folder_chm
         self.gdf = gpd.read_file("geotiles/AHN_lookup.geojson")
-        self.chm, self.tree_polygons, self.transform = self.init_chm(bbox, output_folder=output_folder, input_folder=input_folder, merged_output=merged_output)
+        self.chm, self.tree_polygons, self.transform = self.init_chm(bbox, output_folder=output_folder, input_folder=input_folder, merged_output=merged_output, resolution=resolution)
         self.trunk_array = self.chm * trunk_height
         self.original_chm, self.og_polygons, self.original_trunk = self.chm, self.tree_polygons, self.trunk_array
 
+    def save_las(self, merged_las, veg_points, output_name="veg_points.las"):
+        # Create a new LasData object with the same header and filtered points
+        vegetation_las = laspy.LasData(merged_las.header)
+        vegetation_las.points = veg_points.points.copy()
+
+        # Save to file
+        output_path = os.path.join(self.output_folder_chm, output_name)
+        os.makedirs(self.output_folder_chm, exist_ok=True)
+        vegetation_las.write(output_path)
+        print(f"Saved vegetation points to {output_path}")
 
 
     def find_tiles(self, x_min, y_min, x_max, y_max):
@@ -739,8 +800,8 @@ class CHM:
         )
         return las_data[mask]
 
-    @staticmethod
-    def extract_vegetation_points(LasData, ndvi_threshold=0.1, pre_filter=False):
+    # @staticmethod
+    def extract_vegetation_points(self, LasData, ndvi_threshold=0.1, pre_filter=False):
         """
         Extract vegetation points based on classification and NDVI threshold.
         ------
@@ -777,6 +838,9 @@ class CHM:
             # Filter out points with heights between the minimum height and 1.5 meters
             filtered_veg_points = veg_points[(heights <= min_height) | (heights > 1.5)]
             return filtered_veg_points
+
+        self.save_las(LasData, veg_points)
+
         return veg_points
 
     @staticmethod
@@ -823,7 +887,7 @@ class CHM:
         padded_chm = np.pad(chm_array, pad_width, mode='constant', constant_values=nodata_value)
 
         # Apply median filter to padded data
-        filtered_padded = median_filter(padded_chm.astype(np.float32), size=size)
+        filtered_padded = median_filter(padded_chm.astype(np.float32), size=size) # median_filter(padded_chm.astype(np.float32), size=size)
 
         # Remove padding
         smoothed_chm = filtered_padded[pad_width:-pad_width, pad_width:-pad_width]
@@ -833,12 +897,11 @@ class CHM:
 
         return smoothed_chm
 
-    def interpolation_vegetation(self, LasData, veg_points, resolution, no_data_value=-9999):
+    def interpolation_vegetation(self, veg_points, resolution, no_data_value=-9999):
         """
         Create a vegetation raster using Laplace interpolation.
 
         InpurL
-        - LasData (laspy.LasData):          Input LiDAR point cloud data.
         - veg_points (laspy.LasData):       Vegetation points to be interpolated.
         - resolution (float):               Resolution of the raster.
         - no_data_value (int, optional):    Value for no data
@@ -847,10 +910,8 @@ class CHM:
         - interpolated_grid (np.ndarray): Generated raster for vegetation.
         - grid_center_xy (tuple): Grid of x, y center coordinates for each raster cell.
         """
-
-        # Extents of the pc
-        min_x, max_x = round(LasData.x.min()), round(LasData.x.max())
-        min_y, max_y = round(LasData.y.min()), round(LasData.y.max())
+        # bounding box extents minus 0.5 resolution of AHN dataset
+        min_x, min_y, max_x, max_y = self.bbox
 
         # Define size of the region
         x_length = max_x - min_x
@@ -1000,7 +1061,8 @@ class CHM:
         return las_merged
 
     @staticmethod
-    def chm_finish(chm_array, dtm_array, transform, min_height=2, max_height=40):
+    def chm_finish(chm_array, dtm_array,
+                   dsm_array, min_height=2, max_height=40):
         """
         Finish the CHM file by first removing the ground height. Then remove vegetation height
         below and above a certain range to ensure effective shade and remove noise.
@@ -1014,16 +1076,14 @@ class CHM:
 
         Output:
         - result_array (2d numpy array):    Array of the CHM with normalized height and min and max heights removed.
-        - new_transform (rasterio transform): affine transform matrix reflecting the one column one row removal shift.
         """
 
-        result_array = chm_array[1:-1, 1:-1] - dtm_array
+        result_array = chm_array - dtm_array
+        result_array[(chm_array - dsm_array) < 0.0] = 0
         result_array[(result_array < min_height) | (result_array > max_height)] = 0
         result_array[np.isnan(result_array)] = 0
 
-        new_transform = transform * Affine.translation(1, 1)
-
-        return result_array, new_transform
+        return result_array
 
     def chm_creation(self, LasData, vegetation_data, output_filename, resolution=0.5, smooth=False, nodata_value=-9999,
                      filter_size=3):
@@ -1046,7 +1106,6 @@ class CHM:
         Output:
         - None: The function saves the CHM as a raster file (.tif) to the specified output path.
         """
-        print(resolution)
         veg_raster = vegetation_data[0]
         grid_centers = vegetation_data[1]
         top_left_x = grid_centers[0][0, 0] - resolution / 2
@@ -1056,14 +1115,16 @@ class CHM:
 
         if smooth:
             veg_raster = self.median_filter_chm(veg_raster, nodata_value=nodata_value, size=filter_size)
+        print(veg_raster.shape)
 
-        veg_raster, new_transform = self.chm_finish(veg_raster, self.dtm, transform)
+        veg_raster = self.chm_finish(veg_raster, self.dtm, self.dsm)
 
-        write_output(LasData, self.crs, veg_raster, new_transform, output_filename, True)
+
+        write_output(LasData, self.crs, veg_raster, transform, output_filename, True)
 
         # create the polygons
         labeled_array, num_clusters = label(veg_raster > 0)
-        shapes_gen = shapes(labeled_array.astype(np.uint8), mask=(labeled_array > 0), transform=new_transform)
+        shapes_gen = shapes(labeled_array.astype(np.uint8), mask=(labeled_array > 0), transform=transform)
         polygons = [
             {"geometry": shape(geom), "polygon_id": int(value)}
             for geom, value in shapes_gen if value > 0
@@ -1072,12 +1133,12 @@ class CHM:
         # gdf = gpd.GeoDataFrame(geometry=polygons, crs=CRS.from_epsg(28992))
         # gdf.to_file("output/tree_clusters.geojson", driver="GeoJSON")
 
-        return veg_raster, polygons, new_transform
+        return veg_raster, polygons, transform
 
     def init_chm(self, bbox, output_folder="output", input_folder="temp",  merged_output="output/pointcloud.las",  smooth_chm=True, resolution=0.5, ndvi_threshold=0.05, filter_size=3):
 
 
-        matching_tiles = self.find_tiles(*bbox)
+        matching_tiles = self.find_tiles(*self.bufferedbbox)
         print("Tiles covering the area:", matching_tiles)
 
         existing_tiles = {
@@ -1102,7 +1163,7 @@ class CHM:
         if not laz_files:
             print("No relevant LAZ files found in the input folder or its subfolders.")
             return None, None, None
-        las_data = self.merge_las_files(laz_files, bbox, merged_output)
+        las_data = self.merge_las_files(laz_files, self.bufferedbbox, merged_output)
 
         if las_data is None:
             print("No valid points found in the given boundary.")
@@ -1111,7 +1172,7 @@ class CHM:
         # Extract vegetation points
         veg_points = self.extract_vegetation_points(las_data, ndvi_threshold=ndvi_threshold, pre_filter=False)
 
-        vegetation_data = self.interpolation_vegetation(las_data, veg_points, 0.5)
+        vegetation_data = self.interpolation_vegetation(veg_points, resolution)
         output_filename = os.path.join(self.output_folder_chm, f"CHM.TIF")
 
         # Create the CHM and save it
@@ -1300,12 +1361,23 @@ def load_buildings(buildings_path, layer):
 
 
 if __name__ == "__main__":
-    bbox = (111000, 400000, 111351, 400351)
-    "D:/Geomatics/thesis/__newgaptesting/option1"
-    output_dir= "D:/Geomatics/thesis/__newgaptesting/option1"
+    # bbox = (120570, 487570, 120970, 487870)
+    bbox = (121116, 492813, 121986, 493213)
+    # "D:/Geomatics/thesis/__newgaptesting/option1"
+    res = 0.5
+    output_dir= f"D:/Geomatics/thesis/__newres/otherplace"
     buildings = Buildings(bbox, output_folder=output_dir).building_geometries
-    dems = DEMS(bbox, buildings, bridge=True, output_dir=output_dir)
+    dems = DEMS(bbox, buildings, bridge=True, output_dir=output_dir, resolution=res)
     dtm = dems.dtm
+    dsm = dems.dsm
+    merged_output= f'D:/Geomatics/thesis/__newres/otherplacepointcloud.las'
+    chm = CHM(bbox, dtm, dsm,0.25, "output", "temp2", output_dir, merged_output=merged_output, resolution=res).chm
+
+    output = f"{output_dir}/landcover.tif"
+    dataset = f"{output_dir}/final_dtm.tif"
+    landcover = LandCover(bbox,  resolution = 1, building_data=buildings, dataset_path=dataset)
+    landcover.save_raster(output, False)
+
     # bbox_list = [(120000, 485700, 120126, 485826), (120000, 485700, 120251, 485951), (120000, 485700, 120501, 486201), (120000, 485700, 120751, 486451), (120000, 485700, 121001, 486701), (120000, 485700, 121501, 487201) ]
     # folder_list = ['250', '500', '1000', '1500', '2000', '3000']
     # folder = '250',

@@ -278,7 +278,6 @@ if __name__ == "__main__":
     #         ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
     #                                          INPUT_DTM=INPUT_DTM).processAlgorithm()
 
-    D = 'D'
     # folder_list = ['3000']
     #
     # for folder in folder_list:
@@ -307,11 +306,13 @@ if __name__ == "__main__":
     #         stats.sort_stats('cumulative')
     #         stats.print_stats(20)
 
-    folder_list = ['2000', '3000']
+    folder_list = ['0.5', '1', '2']
+    D = 'D'
 
+    start = 'D:/Geomatics/thesis/__newres'
     for folder in folder_list:
-        INPUT_DSM = f"{D}:/Geomatics/optimization_tests/{folder}/final_dsm_over.tif"
-        INPUT_CDSM = None
+        INPUT_DSM = f"{start}/{folder}/final_dsm_over.tif"
+        INPUT_CDSM = f"{start}/{folder}/CHM.tif"
         OUTPUT_DIR = f"{D}:/Geomatics/optimization_tests_laptop/{folder}/svf_umep"
         OUTPUT_FILE = f"{D}:/Geomatics/optimization_tests_laptop/{folder}/output.tif"
 
@@ -334,3 +335,31 @@ if __name__ == "__main__":
             stats = pstats.Stats(profiler, stream=f)
             stats.sort_stats('cumulative')
             stats.print_stats(20)
+
+    # folder_list = ['2000', '3000']
+    #
+    # for folder in folder_list:
+    #     INPUT_DSM = f"{D}:/Geomatics/optimization_tests/{folder}/final_dsm_over.tif"
+    #     INPUT_CDSM = None
+    #     OUTPUT_DIR = f"{D}:/Geomatics/optimization_tests_laptop/{folder}/svf_umep"
+    #     OUTPUT_FILE = f"{D}:/Geomatics/optimization_tests_laptop/{folder}/output.tif"
+    #
+    #     dump_stats = f"{D}:/Geomatics/optimization_tests_laptop/{folder}/svf_profile_results_umep.prof"
+    #
+    #     test = ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE)
+    #
+    #     with cProfile.Profile() as profiler:
+    #         test.processAlgorithm()
+    #
+    #     # Print profiling results
+    #     stats = pstats.Stats(profiler)
+    #     stats.sort_stats('cumulative')
+    #     stats.print_stats(20)
+    #
+    #     stats.dump_stats(dump_stats)
+    #
+    #     txt_output = f"{D}:/Geomatics/optimization_tests_laptop/{folder}/svf_profile_results_umep.txt"
+    #     with open(txt_output, "w") as f:
+    #         stats = pstats.Stats(profiler, stream=f)
+    #         stats.sort_stats('cumulative')
+    #         stats.print_stats(20)

@@ -1012,56 +1012,57 @@ class SOLWEIGAlgorithm():
 
 
 D = 'D'
-folder_list = ['250', '500', '1000', '1500', '2000', '3000']
-front = "D:/SA/JESS/optimization_tests"
-INPUT_MET = f"{front}/UMEPclimate_oneday.txt"
+# folder_list = ['2000']
+front = "D:/Geomatics/optimization_tests"
+front2 = "D:/Geomatics/optimization_tests_laptop"
+INPUT_MET = f"{D}:/Geomatics/thesis/heattryout/preprocess/climatedata/UMEPclimate_oneday.txt"
+#
+# # f"{D}:/Geomatics/optimization_tests/
+# for folder in folder_list:
+#     INPUT_DSM = f"{front}/{folder}/final_dsm_over.tif"
+#     INPUT_SVF = f"{front}/{folder}/svf_umep_trees/svfs.zip"
+#     INPUT_ANISO = f"{front}/{folder}/svf_umep_trees/shadowmats.npz"
+#     INPUT_LC = f"{front}/{folder}/landcover.tif"
+#     INPUT_CDSM = f"{front}/{folder}/CHM.tif"
+#     INPUT_HEIGHT = f"{front}/{folder}/wallheight.tif"
+#     INPUT_ASPECT = f"{front}/{folder}/wallaspect.tif"
+#     UTC = 0
+#     OUTPUT_DIR =f"{front2}/{folder}/solweig_umep_chm"
+#
+#     dump_stats = f"{front2}/profile_results_umep_chm.prof"
+#
+#     test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET, INPUT_LC=INPUT_LC, INPUT_ANISO=INPUT_ANISO)
+#
+#     with cProfile.Profile() as profiler:
+#         test.processAlgorithm()
+#
+#     # Print profiling results
+#     stats = pstats.Stats(profiler)
+#     stats.sort_stats('cumulative')
+#     stats.print_stats(20)
+#
+#     stats.dump_stats(dump_stats)
+#
+#     txt_output = f"{front2}/{folder}/profile_results_umep_chm.txt"
+#     with open(txt_output, "w") as f:
+#         stats = pstats.Stats(profiler, stream=f)
+#         stats.sort_stats('cumulative')
+#         stats.print_stats(20)
 
-# f"{D}:/Geomatics/optimization_tests/
+folder_list = ['2000', '3000']
+
 for folder in folder_list:
     INPUT_DSM = f"{front}/{folder}/final_dsm_over.tif"
-    INPUT_SVF = f"{front}/{folder}/svf_umep_trees/svfs.zip"
-    INPUT_ANISO = f"{front}/{folder}/svf_umep_trees/shadowmats.npz"
-    INPUT_LC = f"{front}/{folder}/landcover.tif"
-    INPUT_CDSM = f"{front}/{folder}/CHM.tif"
-    INPUT_HEIGHT = f"{front}/{folder}/wallheight.tif"
-    INPUT_ASPECT = f"{front}/{folder}/wallaspect.tif"
-    UTC = 0
-    OUTPUT_DIR =f"{front}/{folder}/solweig_umep_chm"
-
-    dump_stats = f"{front}/profile_results_umep_chm.prof"
-
-    test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET, INPUT_LC=INPUT_LC, INPUT_ANISO=INPUT_ANISO)
-
-    with cProfile.Profile() as profiler:
-        test.processAlgorithm()
-
-    # Print profiling results
-    stats = pstats.Stats(profiler)
-    stats.sort_stats('cumulative')
-    stats.print_stats(20)
-
-    stats.dump_stats(dump_stats)
-
-    txt_output = f"{front}/{folder}/profile_results_umep_chm.txt"
-    with open(txt_output, "w") as f:
-        stats = pstats.Stats(profiler, stream=f)
-        stats.sort_stats('cumulative')
-        stats.print_stats(20)
-
-folder_list = ['250', '500', '1000']
-
-for folder in folder_list:
-    INPUT_DSM = f"{front}/{folder}/final_dsm_over.tif"
-    INPUT_SVF =f"{front}/{folder}/svf_umep/svfs.zip"
-    INPUT_ANISO = f"{front}/{folder}/svf_umep/shadowmats.npz"
+    INPUT_SVF =f"{front2}/{folder}/svf_umep/svfs.zip"
+    INPUT_ANISO = f"{front2}/{folder}/svf_umep/shadowmats.npz"
     INPUT_LC = f"{front}/{folder}/landcover.tif"
     INPUT_CDSM = None
     INPUT_HEIGHT =f"{front}/{folder}/wallheight.tif"
     INPUT_ASPECT = f"{front}/{folder}/wallaspect.tif"
     UTC = 0
-    OUTPUT_DIR =f"{front}/{folder}/solweig_umep"
+    OUTPUT_DIR =f"{front2}/{folder}/solweig_umep"
 
-    dump_stats = f"{front}/{folder}/profile_results_umep.prof"
+    dump_stats = f"{front2}/{folder}/profile_results_umep.prof"
 
     test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET, INPUT_LC=INPUT_LC, INPUT_ANISO=INPUT_ANISO)
 
@@ -1075,7 +1076,7 @@ for folder in folder_list:
 
     stats.dump_stats(dump_stats)
 
-    txt_output = f"{front}/{folder}/profile_results_umep.txt"
+    txt_output = f"{front2}/{folder}/profile_results_umep.txt"
     with open(txt_output, "w") as f:
         stats = pstats.Stats(profiler, stream=f)
         stats.sort_stats('cumulative')

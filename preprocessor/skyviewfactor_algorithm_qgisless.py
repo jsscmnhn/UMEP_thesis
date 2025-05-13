@@ -435,31 +435,49 @@ class ProcessingSkyViewFactorAlgorithm():
         return {self.OUTPUT_DIR: outputDir, self.OUTPUT_FILE: outputFile}
 
 if __name__ == "__main__":
-    gap = 1
-    begin = "D:/Geomatics/thesis/__newgaptesting/example"
-    mult = f"{begin}/examplecomb.tif"
-    INPUT_DSM = f"{begin}/{gap}gap_0.tif"
-    INPUT_CDSM =  None
-    OUTPUT_DIR =  f"{begin}/svfs{gap}"
-    OUTPUT_FILE = f"profiling/wcstest"
 
-    dump_stats =f"{begin}/profile/{gap}gap.prof"
+    folder_list = ['0.5', '1', '2']
+    D = 'D'
 
-    with cProfile.Profile() as profiler:
-        ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
-                                          INPUT_MULT_DSMS=mult).processAlgorithm_3d()
+    start = 'D:/Geomatics/thesis/__newres'
+    for folder in folder_list:
+        INPUT_DSM = f"{start}/res{folder}/final_dsm_over.tif"
+        INPUT_CDSM = f"{start}/res{folder}/CHM.tif"
+        OUTPUT_DIR = f"{start}/res{folder}/svf"
+        OUTPUT_FILE = f"{start}/res{folder}/output.tif"
 
-    stats = pstats.Stats(profiler)
-    stats.sort_stats('cumulative')
-    stats.print_stats(20)
+        # dump_stats = f"{D}:/Geomatics/optimization_tests_laptop/{folder}/svf_profile_results_umep.prof"
 
-    stats.dump_stats(dump_stats)
+        test = ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE)
 
-    txt_output = f"{begin}/profile/{gap}gap.txt"
-    with open(txt_output, "w") as f:
-        stats = pstats.Stats(profiler, stream=f)
-        stats.sort_stats('cumulative')
-        stats.print_stats(20)
+        with cProfile.Profile() as profiler:
+            test.processAlgorithm()
+
+    # gap = 1
+    # begin = "D:/Geomatics/thesis/__newgaptesting/example"
+    # mult = f"{begin}/examplecomb.tif"
+    # INPUT_DSM = f"{begin}/{gap}gap_0.tif"
+    # INPUT_CDSM =  None
+    # OUTPUT_DIR =  f"{begin}/svfs{gap}"
+    # OUTPUT_FILE = f"profiling/wcstest"
+    #
+    # dump_stats =f"{begin}/profile/{gap}gap.prof"
+    #
+    # with cProfile.Profile() as profiler:
+    #     ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
+    #                                       INPUT_MULT_DSMS=mult).processAlgorithm_3d()
+    #
+    # stats = pstats.Stats(profiler)
+    # stats.sort_stats('cumulative')
+    # stats.print_stats(20)
+    #
+    # stats.dump_stats(dump_stats)
+    #
+    # txt_output = f"{begin}/profile/{gap}gap.txt"
+    # with open(txt_output, "w") as f:
+    #     stats = pstats.Stats(profiler, stream=f)
+    #     stats.sort_stats('cumulative')
+    #     stats.print_stats(20)
 
     # ===================== normal test case ==============================
     #     INPUT_DSM = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dsm.tif"
