@@ -435,25 +435,45 @@ class ProcessingSkyViewFactorAlgorithm():
         return {self.OUTPUT_DIR: outputDir, self.OUTPUT_FILE: outputFile}
 
 if __name__ == "__main__":
+    d = "D"
+    # d = "G"
 
-    folder_list = ['0.5', '1', '2']
-    D = 'D'
+    input_mets = ["../j_dataprep/climate/avgday_30plus_qgis.txt"]
+    # # "../j_dataprep/climate/avgday_30plus_qgis.txt"
+    # ['historisch', 'tuindorp', 'vinex', 'volkswijk', 'bloemkool']
+    folders_end = ['ext', 'avg']
+    start = 'D:/Geomatics/thesis/_analysisfinalfurther'
+    i = 0
 
-    start = 'D:/Geomatics/thesis/__newres'
-    for folder in folder_list:
-        INPUT_DSM = f"{start}/res{folder}/final_dsm_over.tif"
-        INPUT_CDSM = f"{start}/res{folder}/CHM.tif"
-        OUTPUT_DIR = f"{start}/res{folder}/svf"
-        OUTPUT_FILE = f"{start}/res{folder}/output.tif"
+    nbh_type = "chmfix"
+    INPUT_DSM = f"{start}//{nbh_type}/dsm.tif"
+    OUTPUT_DIR = f"{start}//{nbh_type}/svf"
+    OUTPUT_FILE = f"profiling/wcstest"
+    INPUT_DTM = f"{start}//{nbh_type}/dtm.tif"
+    INPUT_CDSM = f"{start}//{nbh_type}/chm.tif"
 
-        # dump_stats = f"{D}:/Geomatics/optimization_tests_laptop/{folder}/svf_profile_results_umep.prof"
+    # INPUT_ANISO=INPUT_ANISO
+    ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
+                                     INPUT_DTM=INPUT_DTM).processAlgorithm()
 
-        test = ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE)
-
-        with cProfile.Profile() as profiler:
-            test.processAlgorithm()
-
-    # gap = 1
+    # folder_list = ['0.5', '1', '2']
+    # D = 'D'
+    #
+    # start = 'D:/Geomatics/thesis/__newres'
+    # for folder in folder_list:
+    #     INPUT_DSM = f"{start}/res{folder}/final_dsm_over.tif"
+    #     INPUT_CDSM = f"{start}/res{folder}/CHM.tif"
+    #     OUTPUT_DIR = f"{start}/res{folder}/svf"
+    #     OUTPUT_FILE = f"{start}/res{folder}/output.tif"
+    #
+    #     # dump_stats = f"{D}:/Geomatics/optimization_tests_laptop/{folder}/svf_profile_results_umep.prof"
+    #
+    #     test = ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE)
+    #
+    #     with cProfile.Profile() as profiler:
+    #         test.processAlgorithm()
+    #
+    # # gap = 1
     # begin = "D:/Geomatics/thesis/__newgaptesting/example"
     # mult = f"{begin}/examplecomb.tif"
     # INPUT_DSM = f"{begin}/{gap}gap_0.tif"
