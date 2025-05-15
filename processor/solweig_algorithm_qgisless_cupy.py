@@ -579,6 +579,7 @@ class SOLWEIGAlgorithm():
             # Elevation vegdsms if buildingDEM includes ground heights
             # TO DO: CHANGE THIS TO DTM!!!
             if dtm is not None:
+                dtm += dsmraise
                 vegdsm = vegdsm + dtm
                 vegdsm[vegdsm == dtm] = 0
                 vegdsm2 = vegdsm2 + dtm
@@ -1325,6 +1326,7 @@ class SOLWEIGAlgorithm():
 
             # Elevation vegdsms if buildingDEM includes ground heights
             if dtm is not None:
+                dtm += dsmraise
                 vegdsm = vegdsm + dtm
                 vegdsm[vegdsm == dtm] = 0
                 vegdsm2 = vegdsm2 + dtm
@@ -1772,116 +1774,116 @@ if __name__ == "__main__":
     d = "D"
     # d = "G"
 
-    input_mets = ["../j_dataprep/climate/avgday_30plus_qgis.txt"]
-    # # "../j_dataprep/climate/avgday_30plus_qgis.txt"
+    input_mets = ["../j_dataprep/climate/extday_30plus_qgis.txt", "../j_dataprep/climate/avgday_30plus_qgis.txt"]
+
     # ['historisch', 'tuindorp', 'vinex', 'volkswijk', 'bloemkool']
     folders_end = ['ext', 'avg']
-    start = 'D:/Geomatics/thesis/_analysisfinalfurther'
-    i = 0
-
-    nbh_type = "chmfix"
-    INPUT_DSM = f"{start}//{nbh_type}/dsm.tif"
-    OUTPUT_DIR = f"{start}//{nbh_type}/solweig_green_TEST"
-    OUTPUT_FILE = f"profiling/wcstest"
-    INPUT_DTM = f"{start}//{nbh_type}/dtm.tif"
-    INPUT_CDSM = f"{start}//{nbh_type}/chm.tif"
-
-    INPUT_SVF = f"{start}//{nbh_type}/svf/svfs"
-    INPUT_ANISO = f"{start}//{nbh_type}/svf/shadowmats.npz"
-    INPUT_LC = f"{start}//{nbh_type}/landcover.tif"
-    INPUT_HEIGHT = f"{start}//{nbh_type}/height.tif"
-    INPUT_ASPECT = f"{start}//{nbh_type}/aspect.tif"
-    UTC = 0
-    INPUT_MET = "../j_dataprep/climate/avgday_30plus_qgis.txt"
-
-    # INPUT_ANISO=INPUT_ANISO
-    test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,
-                            INPUT_ANISO=INPUT_ANISO, INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM)
-    test.processAlgorithm()
+    start = 'E:/Geomatics/thesis/_analysisfinalfurther'
+    j = 0
     #
-    # for met in input_mets:
-    #     input_met = met
-    #     end = folders_end[1]
-        #
-        # for nbh_type in ['historisch', 'tuindorp', 'vinex', 'volkswijk', 'bloemkool']:
-        #     for i in [0, 1, 2, 3, 4, 5]:
-        #         INPUT_DSM = f"{start}/{nbh_type}/loc_{i}/final_dsm_over.tif"
-        #         OUTPUT_DIR = f"{start}//{nbh_type}/loc_{i}/solweig_{end}"
-        #         OUTPUT_FILE = f"profiling/wcstest"
-        #         INPUT_DTM = f"{start}/{nbh_type}/loc_{i}/final_dtm.tif"
-        #         INPUT_CDSM = None # f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/CHM.tif"
-        #
-        #         INPUT_SVF = f"{start}//{nbh_type}/loc_{i}/svf_build/svfs"
-        #         INPUT_ANISO = f"{start}//{nbh_type}/loc_{i}/svf_build/shadowmats.npz"
-        #         INPUT_LC = f"{start}//{nbh_type}/loc_{i}/landcover_stone.tif"
-        #         INPUT_HEIGHT =f"{start}//{nbh_type}/loc_{i}/height.tif"
-        #         INPUT_ASPECT = f"{start}//{nbh_type}/loc_{i}/aspect.tif"
-        #         UTC = 0
-        #         INPUT_MET = input_met
-        #
-        #         #INPUT_ANISO=INPUT_ANISO
-        #         test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,  INPUT_ANISO=INPUT_ANISO, INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM)
-        #         test.processAlgorithm()
+    # nbh_type = "chmfix"
+    # INPUT_DSM = f"{start}//{nbh_type}/dsm.tif"
+    # OUTPUT_DIR = f"{start}//{nbh_type}/solweig_green_TEST"
+    # OUTPUT_FILE = f"profiling/wcstest"
+    # INPUT_DTM = f"{start}//{nbh_type}/dtm.tif"
+    # INPUT_CDSM = f"{start}//{nbh_type}/chm.tif"
+    #
+    # INPUT_SVF = f"{start}//{nbh_type}/svf/svfs"
+    # INPUT_ANISO = f"{start}//{nbh_type}/svf/shadowmats.npz"
+    # INPUT_LC = f"{start}//{nbh_type}/landcover.tif"
+    # INPUT_HEIGHT = f"{start}//{nbh_type}/height.tif"
+    # INPUT_ASPECT = f"{start}//{nbh_type}/aspect.tif"
+    # UTC = 0
+    # INPUT_MET = "../j_dataprep/climate/avgday_30plus_qgis.txt"
+    #
+    # # INPUT_ANISO=INPUT_ANISO
+    # test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,
+    #                         INPUT_ANISO=INPUT_ANISO, INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM)
+    # test.processAlgorithm()
+    #
+    for met in input_mets:
+        input_met = met
+        end = folders_end[j]
 
-        # for nbh_type in ['historisch', 'tuindorp', 'vinex', 'volkswijk', 'bloemkool']:
-        #     for i in [0, 1, 2, 3, 4, 5]:
-        #         INPUT_DSM = f"{start}//{nbh_type}/loc_{i}/final_dsm_over.tif"
-        #         OUTPUT_DIR = f"{start}//{nbh_type}/loc_{i}/solweig_green_TEST{end}"
-        #         OUTPUT_FILE = f"profiling/wcstest"
-        #         INPUT_DTM = f"{start}//{nbh_type}/loc_{i}/final_dtm.tif"
-        #         INPUT_CDSM = f"{start}//{nbh_type}/loc_{i}/CHM.tif"
-        #
-        #         INPUT_SVF = f"{start}//{nbh_type}/loc_{i}/svf/svfs"
-        #         INPUT_ANISO = f"{start}//{nbh_type}/loc_{i}/svf/shadowmats.npz"
-        #         INPUT_LC = f"{start}//{nbh_type}/loc_{i}/landcover_stone.tif"
-        #         INPUT_HEIGHT =f"{start}//{nbh_type}/loc_{i}/height.tif"
-        #         INPUT_ASPECT = f"{start}//{nbh_type}/loc_{i}/aspect.tif"
-        #         UTC = 0
-        #         INPUT_MET = input_met
-        #
-        #         #INPUT_ANISO=INPUT_ANISO
-        #         test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,  INPUT_ANISO=INPUT_ANISO, INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM)
-        #         test.processAlgorithm()
+        for nbh_type in ['historisch', 'tuindorp', 'vinex', 'volkswijk', 'bloemkool']:
+            for i in [0, 1, 2, 3, 4, 5]:
+                INPUT_DSM = f"{start}/{nbh_type}/loc_{i}/final_dsm_over.tif"
+                OUTPUT_DIR = f"{start}//{nbh_type}/loc_{i}/solweig_{end}"
+                OUTPUT_FILE = f"profiling/wcstest"
+                INPUT_DTM = f"{start}/{nbh_type}/loc_{i}/final_dtm.tif"
+                INPUT_CDSM = None # f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/CHM.tif"
+
+                INPUT_SVF = f"{start}//{nbh_type}/loc_{i}/svf_build/svfs"
+                INPUT_ANISO = f"{start}//{nbh_type}/loc_{i}/svf_build/shadowmats.npz"
+                INPUT_LC = f"{start}//{nbh_type}/loc_{i}/landcover_stone.tif"
+                INPUT_HEIGHT =f"{start}//{nbh_type}/loc_{i}/height.tif"
+                INPUT_ASPECT = f"{start}//{nbh_type}/loc_{i}/aspect.tif"
+                UTC = 0
+                INPUT_MET = input_met
+
+                #INPUT_ANISO=INPUT_ANISO
+                test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,  INPUT_ANISO=INPUT_ANISO, INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM)
+                test.processAlgorithm()
+
+        for nbh_type in ['historisch', 'tuindorp', 'vinex', 'volkswijk', 'bloemkool']:
+            for i in [0, 1, 2, 3, 4, 5]:
+                INPUT_DSM = f"{start}//{nbh_type}/loc_{i}/final_dsm_over.tif"
+                OUTPUT_DIR = f"{start}//{nbh_type}/loc_{i}/solweig_green_{end}"
+                OUTPUT_FILE = f"profiling/wcstest"
+                INPUT_DTM = f"{start}//{nbh_type}/loc_{i}/final_dtm.tif"
+                INPUT_CDSM = f"{start}//{nbh_type}/loc_{i}/CHM.tif"
+
+                INPUT_SVF = f"{start}//{nbh_type}/loc_{i}/svf/svfs"
+                INPUT_ANISO = f"{start}//{nbh_type}/loc_{i}/svf/shadowmats.npz"
+                INPUT_LC = f"{start}//{nbh_type}/loc_{i}/landcover_stone.tif"
+                INPUT_HEIGHT =f"{start}//{nbh_type}/loc_{i}/height.tif"
+                INPUT_ASPECT = f"{start}//{nbh_type}/loc_{i}/aspect.tif"
+                UTC = 0
+                INPUT_MET = input_met
+
+                #INPUT_ANISO=INPUT_ANISO
+                test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,  INPUT_ANISO=INPUT_ANISO, INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM)
+                test.processAlgorithm()
 
 
-        # for nbh_type in ['stedelijk']:
-        #     for i in [0, 1, 2, 3]:
-        #         INPUT_DSM = f"{start}/{nbh_type}/loc_{i}/final_dsm_over.tif"
-        #         OUTPUT_DIR = f"{start}//{nbh_type}/loc_{i}/solweig_{end}"
-        #         OUTPUT_FILE = f"profiling/wcstest"
-        #         INPUT_DTM = f"{start}/{nbh_type}/loc_{i}/final_dtm.tif"
-        #         INPUT_CDSM = None  # f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/CHM.tif"
-        #
-        #         INPUT_SVF = f"{start}//{nbh_type}/loc_{i}/svf_build/svfs"
-        #         INPUT_ANISO = f"{start}//{nbh_type}/loc_{i}/svf_build/shadowmats.npz"
-        #         INPUT_LC = f"{start}//{nbh_type}/loc_{i}/landcover_stone.tif"
-        #         INPUT_HEIGHT = f"{start}//{nbh_type}/loc_{i}/height.tif"
-        #         INPUT_ASPECT = f"{start}//{nbh_type}/loc_{i}/aspect.tif"
-        #         UTC = 0
-        #         INPUT_MET = input_met
-        #
-        #         #INPUT_ANISO=INPUT_ANISO
-        #         test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,  INPUT_ANISO=INPUT_ANISO, INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM)
-        #         test.processAlgorithm()
-        #
-        # for nbh_type in ['stedelijk']:
-        #     for i in [0, 1, 2, 3]:
-        #         INPUT_DSM = f"{start}//{nbh_type}/loc_{i}/final_dsm_over.tif"
-        #         OUTPUT_DIR = f"{start}//{nbh_type}/loc_{i}/solweig_green_{end}"
-        #         OUTPUT_FILE = f"profiling/wcstest"
-        #         INPUT_DTM = f"{start}//{nbh_type}/loc_{i}/final_dtm.tif"
-        #         INPUT_CDSM = f"{start}//{nbh_type}/loc_{i}/CHM.tif"
-        #
-        #         INPUT_SVF = f"{start}//{nbh_type}/loc_{i}/svf/svfs"
-        #         INPUT_ANISO = f"{start}//{nbh_type}/loc_{i}/svf/shadowmats.npz"
-        #         INPUT_LC = f"{start}//{nbh_type}/loc_{i}/landcover_stone.tif"
-        #         INPUT_HEIGHT =f"{start}//{nbh_type}/loc_{i}/height.tif"
-        #         INPUT_ASPECT = f"{start}//{nbh_type}/loc_{i}/aspect.tif"
-        #         UTC = 0
-        #         INPUT_MET = input_met
-        #
-        #         #INPUT_ANISO=INPUT_ANISO
-        #         test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,  INPUT_ANISO=INPUT_ANISO, INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM)
-        #         test.processAlgorithm()
-        # i += 1
+        for nbh_type in ['stedelijk']:
+            for i in [0, 1, 2, 3]:
+                INPUT_DSM = f"{start}/{nbh_type}/loc_{i}/final_dsm_over.tif"
+                OUTPUT_DIR = f"{start}//{nbh_type}/loc_{i}/solweig_{end}"
+                OUTPUT_FILE = f"profiling/wcstest"
+                INPUT_DTM = f"{start}/{nbh_type}/loc_{i}/final_dtm.tif"
+                INPUT_CDSM = None  # f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/CHM.tif"
+
+                INPUT_SVF = f"{start}//{nbh_type}/loc_{i}/svf_build/svfs"
+                INPUT_ANISO = f"{start}//{nbh_type}/loc_{i}/svf_build/shadowmats.npz"
+                INPUT_LC = f"{start}//{nbh_type}/loc_{i}/landcover_stone.tif"
+                INPUT_HEIGHT = f"{start}//{nbh_type}/loc_{i}/height.tif"
+                INPUT_ASPECT = f"{start}//{nbh_type}/loc_{i}/aspect.tif"
+                UTC = 0
+                INPUT_MET = input_met
+
+                #INPUT_ANISO=INPUT_ANISO
+                test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,  INPUT_ANISO=INPUT_ANISO, INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM)
+                test.processAlgorithm()
+
+        for nbh_type in ['stedelijk']:
+            for i in [0, 1, 2, 3]:
+                INPUT_DSM = f"{start}//{nbh_type}/loc_{i}/final_dsm_over.tif"
+                OUTPUT_DIR = f"{start}//{nbh_type}/loc_{i}/solweig_green_{end}"
+                OUTPUT_FILE = f"profiling/wcstest"
+                INPUT_DTM = f"{start}//{nbh_type}/loc_{i}/final_dtm.tif"
+                INPUT_CDSM = f"{start}//{nbh_type}/loc_{i}/CHM.tif"
+
+                INPUT_SVF = f"{start}//{nbh_type}/loc_{i}/svf/svfs"
+                INPUT_ANISO = f"{start}//{nbh_type}/loc_{i}/svf/shadowmats.npz"
+                INPUT_LC = f"{start}//{nbh_type}/loc_{i}/landcover_stone.tif"
+                INPUT_HEIGHT =f"{start}//{nbh_type}/loc_{i}/height.tif"
+                INPUT_ASPECT = f"{start}//{nbh_type}/loc_{i}/aspect.tif"
+                UTC = 0
+                INPUT_MET = input_met
+
+                #INPUT_ANISO=INPUT_ANISO
+                test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET,  INPUT_ANISO=INPUT_ANISO, INPUT_LC=INPUT_LC, INPUT_DTM=INPUT_DTM)
+                test.processAlgorithm()
+        j += 1
 
