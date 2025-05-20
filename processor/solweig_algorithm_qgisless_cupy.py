@@ -9,6 +9,11 @@
         begin                : 2020-04-02
         copyright            : (C) 2020 by Fredrik Lindberg
         email                : fredrikl@gvc.gu.se
+
+
+Modifications by:
+        Jessica Monahan 2025
+        Modified so code can run without QGIS, with CuPy
  ***************************************************************************/
 
 /***************************************************************************
@@ -25,29 +30,21 @@ __author__ = 'Fredrik Lindberg'
 __date__ = '2020-04-02'
 __copyright__ = '(C) 2020 by Fredrik Lindberg'
 
-from logging import exception
 import cProfile
 import pstats
 import numpy as np
 from osgeo import gdal, osr
 # import rasterio
 import os
-# from qgis.PyQt.QtGui import QIcon
-import inspect
 from pathlib import Path
 
-# from functions.SOLWEIGpython.COMFA.radiationfunctionsCOMFA import day_of_year
 from util.misc import saveraster
-import zipfile
 from functions.SOLWEIGpython.UTIL.Solweig_v2015_metdata_noload import Solweig_2015a_metdata_noload
 from functions.SOLWEIGpython.UTIL.clearnessindex_2013b import clearnessindex_2013b
 from functions.SOLWEIGpython.Tgmaps_v1_cupy import Tgmaps_v1
 from functions.SOLWEIGpython import Solweig_2022a_calc_forprocessing_cupy as so
 from functions.SOLWEIGpython import Solweig_2022a_calc_forprocessing_cupy_3d as so_3d
 from functions.SOLWEIGpython import WriteMetadataSOLWEIG
-from functions.SOLWEIGpython import PET_calculations as p
-from functions.SOLWEIGpython import UTCI_calculations as utci
-from functions.SOLWEIGpython.CirclePlotBar import PolarBarPlot
 import matplotlib.pyplot as plt
 from shutil import rmtree
 import string
@@ -57,15 +54,13 @@ import cupy as cp
 import gc
 
 
-
-
 class SOLWEIGAlgorithm():
     """
     A class to process the SOLWEIG algorithm inputs.
 
     Parameters:
     - INPUT_DSM:        Digital Surface Model (DSM) input file.
-    - INPUT_SVF:        ZIP Sky View Factor (SVF) input files.
+    - INPUT_SVF:        Sky View Factor (SVF) directory.
     - INPUT_CDSM:       Canopy DSM input file.
     - INPUT_TDSM:       Trunk zone DSM input file.
     - INPUT_HEIGHT:
@@ -81,6 +76,10 @@ class SOLWEIGAlgorithm():
     - SAVE_BUILD:       Boolean indicating whether to save the processed building footprint.
     - INPUT_ANISO:      Anisotropic input data or parameter.
     - ALBEDO_WALLS:     ETC.
+
+    NEW:
+    - INPUT_EXTRAHEIGHT:    Highest possible height of the z-component of the solar vector, dependent on max solar height for location.
+    - INPUT_DTM:            Digital Terrain Model (DTM) input file.
     """
 
     def __init__(self, INPUT_DSM, INPUT_SVF, INPUT_CDSM,  INPUT_HEIGHT, INPUT_ASPECT,
@@ -222,6 +221,7 @@ class SOLWEIGAlgorithm():
         if not (os.path.isdir(outputDir)):
             os.mkdir(outputDir)
 
+        # Open the DSM and optional DTM file
         gdal_dsm = gdal.Open(filepath_dsm)
         dsm =  cp.array(gdal_dsm.ReadAsArray().astype(float), dtype=cp.float32)
 
@@ -236,10 +236,7 @@ class SOLWEIGAlgorithm():
         rows = dsm.shape[0]
         cols = dsm.shape[1]
 
-        # response to issue #85
-        # nd = gdal_dsm.GetRasterBand(1).GetNoDataValue()
-        # dsm[dsm == nd] = 0.
-        # dsmcopy = np.copy(dsm)
+        # Find the lowest value in the DSM and raise to ensure no heights beneath 0
         dsm_min = dsm.min()
         if 0 <= dsm_min < self.INPUT_EXTRAHEIGHT:
             dsmraise = self.INPUT_EXTRAHEIGHT - dsm_min
@@ -485,11 +482,8 @@ class SOLWEIGAlgorithm():
         if not (vasizex == sizex) & (vasizey == sizey):
             raise Exception("Error in Wall aspect raster: All rasters must be of same extent and resolution")
 
-        voxelheight = geotransform[1]  # float
-
         # Metdata
         headernum = 1
-        delim = ' '
         Twater = []
 
         try:
@@ -576,8 +570,7 @@ class SOLWEIGAlgorithm():
             amaxvalue_dsm = dsm.max() - dsm.min()
             amaxvalue = np.maximum(amaxvalue_dsm, vegmax)
 
-            # Elevation vegdsms if buildingDEM includes ground heights
-            # TO DO: CHANGE THIS TO DTM!!!
+            # Elevation vegdsms, use DTM if given, otherwise raise with DSM
             if dtm is not None:
                 dtm += dsmraise
                 vegdsm = vegdsm + dtm
@@ -586,13 +579,10 @@ class SOLWEIGAlgorithm():
                 vegdsm2[vegdsm2 == dtm] = 0
 
             else:
-                # % Elevation vegdems if no DTM
                 vegdsm = vegdsm + dsm
                 vegdsm[vegdsm == dsm] = 0
                 vegdsm2 = vegdsm2 + dsm
                 vegdsm2[vegdsm2 == dsm] = 0
-            # % Bush separation
-            bush = cp.logical_not((vegdsm2 * vegdsm)) * vegdsm
 
             # % Bush separation
             bush = cp.logical_not((vegdsm2 * vegdsm)) * vegdsm
@@ -614,7 +604,6 @@ class SOLWEIGAlgorithm():
         Tgmap1N = cp.zeros((rows, cols))
         
         # building grid and land cover preparation
-        # TO DO: MAYBE NOT HAVE HARD CODED?
         sitein = "landcoverclasses_2016a.txt"
         f = open(sitein)
         lin = f.readlines()
@@ -741,9 +730,6 @@ class SOLWEIGAlgorithm():
         else:
             first_unique_day = DOY.copy()
             I0_array = np.zeros((DOY.shape[0]))
-
-        #numformat = '%d %d %d %d %.5f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f ' \
-        #            '%.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f'
 
         numformat = '%d %d %d %d %.5f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f ' \
                     '%.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f ' \
@@ -1232,8 +1218,6 @@ class SOLWEIGAlgorithm():
         if nodata_value_walls is not None:
             wallheight = cp.where(wallheight == nodata_value_walls, 0, wallheight)
             wallaspect = cp.where(wallheight == nodata_value_walls, 0, wallaspect)
-
-        voxelheight = geotransform[1]  # float
 
         # Metdata
         headernum = 1

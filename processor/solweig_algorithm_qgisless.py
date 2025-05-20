@@ -9,6 +9,10 @@
         begin                : 2020-04-02
         copyright            : (C) 2020 by Fredrik Lindberg
         email                : fredrikl@gvc.gu.se
+
+Modifications by:
+    Jessica Monahan 2025
+    Modified so code can run without QGIS
  ***************************************************************************/
 
 /***************************************************************************
@@ -42,9 +46,6 @@ from functions.SOLWEIGpython.UTIL.clearnessindex_2013b import clearnessindex_201
 from functions.SOLWEIGpython.Tgmaps_v1 import Tgmaps_v1
 from functions.SOLWEIGpython import Solweig_2022a_calc_forprocessing as so
 from functions.SOLWEIGpython import WriteMetadataSOLWEIG
-from functions.SOLWEIGpython import PET_calculations as p
-from functions.SOLWEIGpython import UTCI_calculations as utci
-from functions.SOLWEIGpython.CirclePlotBar import PolarBarPlot
 import matplotlib.pyplot as plt
 from shutil import rmtree
 import string
@@ -127,95 +128,6 @@ class SOLWEIGAlgorithm():
         self.OUTPUT_TREEPLANTER = OUTPUT_TREEPLANTER
 
         self.CYL = CYL
-
-    #PET parameters
-    # AGE = 'AGE'
-    # ACTIVITY = 'ACTIVITY'
-    # CLO = 'CLO'
-    # WEIGHT = 'WEIGHT'
-    # HEIGHT = 'HEIGHT'
-    # SEX = 'SEX'
-    # SENSOR_HEIGHT = 'SENSOR_HEIGHT'
-    #
-    # #Optional settings
-    # # POI = 'POI'
-    # POI_FILE = 'POI_FILE'
-    # POI_FIELD = 'POI_FIELD'
-    # CYL = 'CYL'
-
-
-
-   # def initAlgorithm(self, config):
-        #ADVANCED PARAMETERS
-        #POIs for thermal comfort estimations
-        # poi = QgsProcessingParameterBoolean(self.POI,
-        #     self.tr("Include Point of Interest(s) for thermal comfort calculations (PET and UTCI)"), defaultValue=False)
-        # poi.setFlags(poi.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        # self.addParameter(poi)
-        # poifile = QgsProcessingParameterFeatureSource(self.POI_FILE,
-        #     self.tr('Vector point file including Point of Interest(s) for thermal comfort calculations (PET and UTCI)'), [QgsProcessing.TypeVectorPoint], optional=True)
-        # poifile.setFlags(poifile.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        # self.addParameter(poifile)
-        # poi_field = QgsProcessingParameterField(self.POI_FIELD,
-        #     self.tr('ID field'),'', self.POI_FILE, QgsProcessingParameterField.Numeric, optional=True)
-        # poi_field.setFlags(poi_field.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        # self.addParameter(poi_field)
-        #
-        # #PET parameters
-        # age = QgsProcessingParameterNumber(self.AGE, self.tr('Age (yy)'),
-        #         QgsProcessingParameterNumber.Integer,
-        #         QVariant(35), optional=True, minValue=0, maxValue=120)
-        # age.setFlags(age.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        # self.addParameter(age)
-        # act = QgsProcessingParameterNumber(self.ACTIVITY, self.tr('Activity (W)'),
-        #         QgsProcessingParameterNumber.Double,
-        #         QVariant(80), optional=True, minValue=0, maxValue=1000)
-        # act.setFlags(act.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        # self.addParameter(act)
-        # clo = QgsProcessingParameterNumber(self.CLO, self.tr('Clothing (clo)'),
-        #         QgsProcessingParameterNumber.Double,
-        #         QVariant(0.9), optional=True, minValue=0, maxValue=10)
-        # clo.setFlags(clo.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        # self.addParameter(clo)
-        # wei = QgsProcessingParameterNumber(self.WEIGHT, self.tr('Weight (kg)'),
-        #         QgsProcessingParameterNumber.Integer,
-        #         QVariant(75), optional=True, minValue=0, maxValue=500)
-        # wei.setFlags(wei.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        # self.addParameter(wei)
-        # hei = QgsProcessingParameterNumber(self.HEIGHT, self.tr('Height (cm)'),
-        #         QgsProcessingParameterNumber.Integer,
-        #         QVariant(180), optional=True, minValue=0, maxValue=250)
-        # hei.setFlags(hei.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        # self.addParameter(hei)
-        # sex = QgsProcessingParameterEnum(
-        #     self.SEX, self.tr('Sex'), ['Male', 'Female'], optional=True, defaultValue=0)
-        # sex.setFlags(sex.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        # self.addParameter(sex)
-        # shei = QgsProcessingParameterNumber(self.SENSOR_HEIGHT, self.tr('Height of wind sensor (m agl)'),
-        #         QgsProcessingParameterNumber.Double,
-        #         QVariant(10), optional=True, minValue=0, maxValue=250)
-        # shei.setFlags(shei.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        # self.addParameter(shei)
-        #
-        # #OUTPUT
-        # self.addParameter(QgsProcessingParameterBoolean(self.OUTPUT_TMRT,
-        #     self.tr("Save Mean Radiant Temperature raster(s)"), defaultValue=True))
-        # self.addParameter(QgsProcessingParameterBoolean(self.OUTPUT_KDOWN,
-        #     self.tr("Save Incoming shortwave radiation raster(s)"), defaultValue=False))
-        # self.addParameter(QgsProcessingParameterBoolean(self.OUTPUT_KUP,
-        #     self.tr("Save Outgoing shortwave radiation raster(s)"), defaultValue=False))
-        # self.addParameter(QgsProcessingParameterBoolean(self.OUTPUT_LDOWN,
-        #     self.tr("Save Incoming longwave radiation raster(s)"), defaultValue=False))
-        # self.addParameter(QgsProcessingParameterBoolean(self.OUTPUT_LUP,
-        #     self.tr("Save Outgoing longwave radiation raster(s)"), defaultValue=False))
-        # self.addParameter(QgsProcessingParameterBoolean(self.OUTPUT_SH,
-        #     self.tr("Save shadow raster(s)"), defaultValue=False))
-        # self.addParameter(QgsProcessingParameterBoolean(self.OUTPUT_TREEPLANTER,
-        #     self.tr("Save necessary raster(s) for the TreePlanter and Spatial TC tools"), defaultValue=False))
-        # self.addParameter(QgsProcessingParameterFolderDestination(self.OUTPUT_DIR,
-        #                                              'Output folder'))
-        #
-        # self.plugin_dir = os.path.dirname(__file__)
 
         # TO DO: THIS IS NOW AN ABSOLUTE PATH
         temp_dir_name = 'temp-' + ''.join(random.choice(string.ascii_uppercase) for _ in range(8))
@@ -768,29 +680,6 @@ class SOLWEIGAlgorithm():
 
         print("Writing settings for this model run to specified output folder (Filename: RunInfoSOLWEIG_YYYY_DOY_HHMM.txt)")
 
-        # Save svf
-        # if anisotropic_sky:
-        #     if not poisxy is None:
-        #             patch_characteristics = np.zeros((shmat.shape[2], poisxy.shape[0]))
-        #             for idx in range(poisxy.shape[0]):
-        #                 for idy in range(shmat.shape[2]):
-        #                     # Calculations for patches on sky, shmat = 1 = sky is visible
-        #                     temp_sky = ((shmat[:,:,idy] == 1) & (vegshmat[:,:,idy] == 1))
-        #                     # Calculations for patches that are vegetation, vegshmat = 0 = shade from vegetation
-        #                     temp_vegsh = ((vegshmat[:,:,idy] == 0) | (vbshvegshmat[:,:,idy] == 0))
-        #                     # Calculations for patches that are buildings, shmat = 0 = shade from buildings
-        #                     temp_vbsh = (1 - shmat[:,:,idy]) * vbshvegshmat[:,:,idy]
-        #                     temp_sh = (temp_vbsh == 1)
-        #                     # Sky patch
-        #                     if temp_sky[int(poisxy[idx, 2]), int(poisxy[idx, 1])]:
-        #                         patch_characteristics[idy,idx] = 1.8
-        #                     # Vegetation patch
-        #                     elif (temp_vegsh[int(poisxy[idx, 2]), int(poisxy[idx, 1])]):
-        #                         patch_characteristics[idy,idx] = 2.5
-        #                     # Building patch
-        #                     elif (temp_sh[int(poisxy[idx, 2]), int(poisxy[idx, 1])]):
-        #                         patch_characteristics[idy,idx] = 4.5
-
         #  If metfile starts at night
         CI = 1.
 
@@ -808,9 +697,6 @@ class SOLWEIGAlgorithm():
         else:
             first_unique_day = DOY.copy()
             I0_array = np.zeros((DOY.shape[0]))
-
-        #numformat = '%d %d %d %d %.5f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f ' \
-        #            '%.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f'
 
         numformat = '%d %d %d %d %.5f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f ' \
                     '%.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f ' \
@@ -846,7 +732,7 @@ class SOLWEIGAlgorithm():
                     Lside, Lsky_patch_characteristics, CI_Tg, CI_TgG, KsideD, \
                         dRad, Kside = so.Solweig_2022a_calc(
                         i, dsm, scale, rows, cols, svf, svfN, svfW, svfE, svfS, svfveg,
-                        svfNveg, svfEveg, svfSveg, svfWveg, svfaveg, svfEaveg, svfSaveg, svfWaveg, svfNaveg, \
+                        svfNveg, svfEveg, svfSveg, svfWveg, svfaveg, svfEaveg, svfSaveg, svfWaveg, svfNaveg,
                         vegdsm, vegdsm2, albedo_b, absK, absL, ewall, Fside, Fup, Fcyl, altitude[0][i],
                         azimuth[0][i], zen[0][i], jday[0][i], usevegdem, onlyglobal, buildings, location,
                         psi[0][i], landcover, lcgrid, dectime[i], altmax[0][i], wallaspect,
@@ -866,64 +752,6 @@ class SOLWEIGAlgorithm():
                 w = 'D'
             else:
                 w = 'N'
-
-            # Write to POIs
-            # if not poisxy is None:
-            #     for k in range(0, poisxy.shape[0]):
-            #         poi_save = np.zeros((1, 41))
-            #         poi_save[0, 0] = YYYY[0][i]
-            #         poi_save[0, 1] = jday[0][i]
-            #         poi_save[0, 2] = hours[i]
-            #         poi_save[0, 3] = minu[i]
-            #         poi_save[0, 4] = dectime[i]
-            #         poi_save[0, 5] = altitude[0][i]
-            #         poi_save[0, 6] = azimuth[0][i]
-            #         poi_save[0, 7] = radIout
-            #         poi_save[0, 8] = radDout
-            #         poi_save[0, 9] = radG[i]
-            #         poi_save[0, 10] = Kdown[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 11] = Kup[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 12] = Keast[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 13] = Ksouth[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 14] = Kwest[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 15] = Knorth[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 16] = Ldown[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 17] = Lup[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 18] = Least[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 19] = Lsouth[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 20] = Lwest[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 21] = Lnorth[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 22] = Ta[i]
-            #         poi_save[0, 23] = TgOut[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 24] = RH[i]
-            #         poi_save[0, 25] = esky
-            #         poi_save[0, 26] = Tmrt[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 27] = I0
-            #         poi_save[0, 28] = CI
-            #         poi_save[0, 29] = shadow[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 30] = svf[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 31] = svfbuveg[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 32] = KsideI[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         # Recalculating wind speed based on powerlaw
-            #         WsPET = (1.1 / sensorheight) ** 0.2 * Ws[i]
-            #         WsUTCI = (10. / sensorheight) ** 0.2 * Ws[i]
-            #         resultPET = p._PET(Ta[i], RH[i], Tmrt[int(poisxy[k, 2]), int(poisxy[k, 1])], WsPET,
-            #                             mbody, age, ht, activity, clo, sex)
-            #         poi_save[0, 33] = resultPET
-            #         resultUTCI = utci.utci_calculator(Ta[i], RH[i], Tmrt[int(poisxy[k, 2]), int(poisxy[k, 1])],
-            #                                             WsUTCI)
-            #         poi_save[0, 34] = resultUTCI
-            #         poi_save[0, 35] = CI_Tg
-            #         poi_save[0, 36] = CI_TgG
-            #         poi_save[0, 37] = KsideD[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 38] = Lside[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 39] = dRad[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         poi_save[0, 40] = Kside[int(poisxy[k, 2]), int(poisxy[k, 1])]
-            #         data_out = outputDir + '/POI_' + str(poiname[k]) + '.txt'
-            #         # f_handle = file(data_out, 'a')
-            #         f_handle = open(data_out, 'ab')
-            #         np.savetxt(f_handle, poi_save, fmt=numformat)
-            #         f_handle.close()
 
             if hours[i] < 10:
                 XH = '0'
@@ -956,17 +784,6 @@ class SOLWEIGAlgorithm():
             if outputKdiff:
                 saveraster(gdal_dsm, outputDir + '/Kdiff_' + str(int(YYYY[0, i])) + '_' + str(int(DOY[i]))
                                 + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', dRad)
-
-            # if outputSstr:
-            #     saveraster(gdal_dsm, outputDir + '/Sstr_' + str(int(YYYY[0, i])) + '_' + str(int(DOY[i]))
-            #                     + '_' + XH + str(int(hours[i])) + XM + str(int(minu[i])) + w + '.tif', Sstr)
-
-            # Sky view image of patches
-            # if ((anisotropic_sky == 1) & (i == 0) & (not poisxy is None)):
-            #         for k in range(poisxy.shape[0]):
-            #             Lsky_patch_characteristics[:,2] = patch_characteristics[:,k]
-            #             skyviewimage_out = outputDir + '/POI_' + str(poiname[k]) + '.png'
-            #             PolarBarPlot(Lsky_patch_characteristics, altitude[0][i], azimuth[0][i], 'Hemisphere partitioning', skyviewimage_out, 0, 5, 0)
 
         # Save files for Tree Planter
         if outputTreeplanter:
@@ -1011,73 +828,74 @@ class SOLWEIGAlgorithm():
         return {self.OUTPUT_DIR: outputDir}
 
 
-D = 'D'
-# folder_list = ['2000']
-front = "D:/Geomatics/optimization_tests"
-front2 = "D:/Geomatics/optimization_tests_laptop"
-INPUT_MET = f"{D}:/Geomatics/thesis/heattryout/preprocess/climatedata/UMEPclimate_oneday.txt"
-#
-# # f"{D}:/Geomatics/optimization_tests/
-# for folder in folder_list:
-#     INPUT_DSM = f"{front}/{folder}/final_dsm_over.tif"
-#     INPUT_SVF = f"{front}/{folder}/svf_umep_trees/svfs.zip"
-#     INPUT_ANISO = f"{front}/{folder}/svf_umep_trees/shadowmats.npz"
-#     INPUT_LC = f"{front}/{folder}/landcover.tif"
-#     INPUT_CDSM = f"{front}/{folder}/CHM.tif"
-#     INPUT_HEIGHT = f"{front}/{folder}/wallheight.tif"
-#     INPUT_ASPECT = f"{front}/{folder}/wallaspect.tif"
-#     UTC = 0
-#     OUTPUT_DIR =f"{front2}/{folder}/solweig_umep_chm"
-#
-#     dump_stats = f"{front2}/profile_results_umep_chm.prof"
-#
-#     test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET, INPUT_LC=INPUT_LC, INPUT_ANISO=INPUT_ANISO)
-#
-#     with cProfile.Profile() as profiler:
-#         test.processAlgorithm()
-#
-#     # Print profiling results
-#     stats = pstats.Stats(profiler)
-#     stats.sort_stats('cumulative')
-#     stats.print_stats(20)
-#
-#     stats.dump_stats(dump_stats)
-#
-#     txt_output = f"{front2}/{folder}/profile_results_umep_chm.txt"
-#     with open(txt_output, "w") as f:
-#         stats = pstats.Stats(profiler, stream=f)
-#         stats.sort_stats('cumulative')
-#         stats.print_stats(20)
+if __name__ == "__main__":
+    D = 'D'
+    # folder_list = ['2000']
+    front = "D:/Geomatics/optimization_tests"
+    front2 = "D:/Geomatics/optimization_tests_laptop"
+    INPUT_MET = f"{D}:/Geomatics/thesis/heattryout/preprocess/climatedata/UMEPclimate_oneday.txt"
+    #
+    # # f"{D}:/Geomatics/optimization_tests/
+    # for folder in folder_list:
+    #     INPUT_DSM = f"{front}/{folder}/final_dsm_over.tif"
+    #     INPUT_SVF = f"{front}/{folder}/svf_umep_trees/svfs.zip"
+    #     INPUT_ANISO = f"{front}/{folder}/svf_umep_trees/shadowmats.npz"
+    #     INPUT_LC = f"{front}/{folder}/landcover.tif"
+    #     INPUT_CDSM = f"{front}/{folder}/CHM.tif"
+    #     INPUT_HEIGHT = f"{front}/{folder}/wallheight.tif"
+    #     INPUT_ASPECT = f"{front}/{folder}/wallaspect.tif"
+    #     UTC = 0
+    #     OUTPUT_DIR =f"{front2}/{folder}/solweig_umep_chm"
+    #
+    #     dump_stats = f"{front2}/profile_results_umep_chm.prof"
+    #
+    #     test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET, INPUT_LC=INPUT_LC, INPUT_ANISO=INPUT_ANISO)
+    #
+    #     with cProfile.Profile() as profiler:
+    #         test.processAlgorithm()
+    #
+    #     # Print profiling results
+    #     stats = pstats.Stats(profiler)
+    #     stats.sort_stats('cumulative')
+    #     stats.print_stats(20)
+    #
+    #     stats.dump_stats(dump_stats)
+    #
+    #     txt_output = f"{front2}/{folder}/profile_results_umep_chm.txt"
+    #     with open(txt_output, "w") as f:
+    #         stats = pstats.Stats(profiler, stream=f)
+    #         stats.sort_stats('cumulative')
+    #         stats.print_stats(20)
 
-folder_list = ['2000', '3000']
+    folder_list = ['2000', '3000']
 
-for folder in folder_list:
-    INPUT_DSM = f"{front}/{folder}/final_dsm_over.tif"
-    INPUT_SVF =f"{front2}/{folder}/svf_umep/svfs.zip"
-    INPUT_ANISO = f"{front2}/{folder}/svf_umep/shadowmats.npz"
-    INPUT_LC = f"{front}/{folder}/landcover.tif"
-    INPUT_CDSM = None
-    INPUT_HEIGHT =f"{front}/{folder}/wallheight.tif"
-    INPUT_ASPECT = f"{front}/{folder}/wallaspect.tif"
-    UTC = 0
-    OUTPUT_DIR =f"{front2}/{folder}/solweig_umep"
+    for folder in folder_list:
+        INPUT_DSM = f"{front}/{folder}/final_dsm_over.tif"
+        INPUT_SVF =f"{front2}/{folder}/svf_umep/svfs.zip"
+        INPUT_ANISO = f"{front2}/{folder}/svf_umep/shadowmats.npz"
+        INPUT_LC = f"{front}/{folder}/landcover.tif"
+        INPUT_CDSM = None
+        INPUT_HEIGHT =f"{front}/{folder}/wallheight.tif"
+        INPUT_ASPECT = f"{front}/{folder}/wallaspect.tif"
+        UTC = 0
+        OUTPUT_DIR =f"{front2}/{folder}/solweig_umep"
 
-    dump_stats = f"{front2}/{folder}/profile_results_umep.prof"
+        dump_stats = f"{front2}/{folder}/profile_results_umep.prof"
 
-    test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET, INPUT_LC=INPUT_LC, INPUT_ANISO=INPUT_ANISO)
+        test = SOLWEIGAlgorithm(INPUT_DSM, INPUT_SVF, INPUT_CDSM, INPUT_HEIGHT, INPUT_ASPECT, UTC, OUTPUT_DIR, INPUT_MET, INPUT_LC=INPUT_LC, INPUT_ANISO=INPUT_ANISO)
 
-    with cProfile.Profile() as profiler:
-        test.processAlgorithm()
+        with cProfile.Profile() as profiler:
+            test.processAlgorithm()
 
-    # Print profiling results
-    stats = pstats.Stats(profiler)
-    stats.sort_stats('cumulative')
-    stats.print_stats(20)
-
-    stats.dump_stats(dump_stats)
-
-    txt_output = f"{front2}/{folder}/profile_results_umep.txt"
-    with open(txt_output, "w") as f:
-        stats = pstats.Stats(profiler, stream=f)
+        # Print profiling results
+        stats = pstats.Stats(profiler)
         stats.sort_stats('cumulative')
         stats.print_stats(20)
+
+        stats.dump_stats(dump_stats)
+
+        txt_output = f"{front2}/{folder}/profile_results_umep.txt"
+        with open(txt_output, "w") as f:
+            stats = pstats.Stats(profiler, stream=f)
+            stats.sort_stats('cumulative')
+            stats.print_stats(20)
