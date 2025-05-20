@@ -43,7 +43,7 @@ class Building3d_input:
         layers = num_gaps * 2 + 1
 
         if layers > len(arrays) + 1:
-            f"Amount of gaps is too high for the given input. "
+            print("Amount of gaps is too high for the given input. ")
             return
 
         dsms = np.full((layers, arrays[0].shape[0], arrays[0].shape[1]), np.nan)
@@ -105,6 +105,17 @@ class Building3d_input:
                 dsms[layers - 1][direct_gaps_valid] = arrays[0][direct_gaps_valid]
                 dsms[layers - 1][both_masks_valid] = arrays[0][both_masks_valid]
 
+                # Post-process to ensure no empty layers before filled ones (starting from DSM 2), this is done bc a mismatch can happen when the amount of grounded gap layers is lower than the amount of direct
+                for i in range(3, dsms.shape[0]):
+                    j = i
+                    while j > 3:
+                        empty_below = np.isnan(dsms[j - 1]) & ~np.isnan(dsms[j])
+                        if not np.any(empty_below):
+                            break
+                        dsms[j - 1][empty_below] = dsms[j][empty_below]
+                        dsms[j][empty_below] = np.nan
+                        j -= 1
+
                 return dsms, arrays[0]
             elif len(arrays) == 4:
                 dsms[1][direct_gaps] = arrays[1][direct_gaps]
@@ -123,66 +134,10 @@ class Building3d_input:
 
                 return dsms, arrays[0]
 
-    @staticmethod
-    def buildings_direct_input(arrays, num_gaps):
-        if num_gaps == 0:
-            return arrays[0], arrays[0]
-
-        layers = num_gaps * 2 + 1
-
-        if layers > len(arrays) + 1:
-            f"Amount of gaps is too high for the given input. "
-            return
-
-        dsms = np.full((layers, arrays[0].shape[0], arrays[0].shape[1]), np.nan)
-        arrays = [np.where(arr == -9999, np.nan, arr) for arr in arrays]
-        grounded_mask = arrays[1] == 0
-        direct_gaps = ~grounded_mask
-
-        dsms[0][grounded_mask] = arrays[0][grounded_mask]
-
-        if num_gaps == 1:
-            dsms[1][direct_gaps] = arrays[1][direct_gaps]
-            dsms[2][direct_gaps] = arrays[0][direct_gaps]
-            return dsms, arrays[0]
-
-        if num_gaps > 1:
-            # layer 1
-            dsms[1][direct_gaps] = arrays[1][direct_gaps]
-
-            # check if there is
-
-
-            direct_gaps_valid = direct_gaps & ~np.isnan(arrays[2])
-            direct_gaps_fallback = direct_gaps & np.isnan(arrays[2])
-
-            for i in range(1, num_gaps):
-                j = 2 * i
-                new_direct_valid = direct_gaps_valid & ~np.isnan(arrays[j])
-                new_direct_fallback = direct_gaps_valid & np.isnan(arrays[j])
-
-                dsms[j][new_direct_valid] = arrays[j][new_direct_valid]
-                dsms[j][new_direct_fallback] = arrays[0][new_direct_fallback]
-
-                if j + 1 < len(arrays):
-                    dsms[j + 1][new_direct_valid] = arrays[j + 1][new_direct_valid]
-
-                # Update masks for next iteration
-                direct_gaps_valid = new_direct_valid
-
-            # final layer
-            dsms[layers - 1][direct_gaps_valid] = arrays[0][direct_gaps_valid]
-
-            return dsms, arrays[0]
-
-
-    def rasterize_3dbuilding(self, obj_path, num_gaps, direct_gaps):
+    def rasterize_3dbuilding(self, obj_path, num_gaps):
         input_arrays = rasterize_from_python(obj_path, self.cols, self.rows, self.res, [0, 0], -9999)
 
-        if direct_gaps:
-            dsms, highest_array = self.buildings_direct_input(input_arrays, num_gaps)
-        else:
-            dsms, highest_array = self.buildings_input(input_arrays, num_gaps)
+        dsms, highest_array = self.buildings_input(input_arrays, num_gaps)
 
         return dsms, highest_array, input_arrays
 
@@ -286,11 +241,10 @@ def update_dsm(dsm, dtm, user_buildings, transform, user_array=None, user_arrays
     return dsm
 
 if __name__ == "__main__":
-    data = Building3d_input(200, 200, 0.5)
-    path = "D:/Geomatics/thesis/__newgaptesting/example/building.obj"
+    data = Building3d_input(200, 200, 1)
     tiff = "D:/Geomatics/thesis/_3drust/testing.tif"
     geodataset = gdal.Open(tiff)
-    output = "D:/Geomatics/thesis/_3drust/input"
+    output = "D:/Geomatics/thesis/__newgaptesting/debug"
 
     # path = "D:/Geomatics/thesis/__newgaptesting/example/building.obj"
     # tiff =  "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dsm.tif"
@@ -298,14 +252,22 @@ if __name__ == "__main__":
     # geodataset = gdal.Open(tiff)
     # output_file = "D:/Geomatics/thesis/oldwallvsnewwallmethod/userinput/examplecomb.tif"
     #
-    obj_path = "D:/Geomatics/thesis/objtryouts/3dobj.obj"
-    dsm, highest, input_arrays = data.rasterize_3dbuilding(obj_path, 1, 1)
+    obj_path = "D:/Geomatics/thesis/__newgaptesting/example/option3.obj"
+    dsm, highest, input_arrays = data.rasterize_3dbuilding(obj_path, 4)
 
     i = 0
     for array in input_arrays:
         if i == 0:
             array[np.isnan(array)] = 0
-        saveraster(geodataset, f"{output}/input_test_{i}.tiff", array)
+        saveraster(geodataset, f"{output}/new_input_test_{i}.tiff", array)
+        i += 1
+
+    i=0
+
+    for array in dsm:
+        if i == 0:
+            array[np.isnan(array)] = 0
+        saveraster(geodataset, f"{output}/new_dsm_{i}.tiff", array)
         i += 1
 
     i=0

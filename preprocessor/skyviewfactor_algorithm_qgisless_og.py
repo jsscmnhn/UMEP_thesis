@@ -267,7 +267,7 @@ class ProcessingSkyViewFactorAlgorithm():
 
 if __name__ == "__main__":
 
-
+    pass
 
     # ===================== normal test case ==============================
     #     INPUT_DSM = "D:/Geomatics/thesis/oldwallvsnewwallmethod/option2/final_dsm.tif"
