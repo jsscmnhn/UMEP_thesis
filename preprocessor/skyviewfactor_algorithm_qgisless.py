@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# TO DO: CREATE DIR IF DOESNT EXIST YET
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -18,6 +17,10 @@ from rasterio import Affine
         begin                : 2020-04-02
         copyright            : (C) 2020 by Fredrik Lindberg
         email                : fredrikl@gvc.gu.se
+        
+Modifications by:
+    Jessica Monahan 2025
+    Modified so code can run without QGIS, and can have 3D input
  ***************************************************************************/
 
 /***************************************************************************
@@ -52,8 +55,25 @@ from functions import svf_functions as svf
 
 class ProcessingSkyViewFactorAlgorithm():
     """
-    This algorithm is a processing version of SkyViewFactor
+    A class to process the SkyViewFactor (SVF) algorithm inputs.
+
+    Parameters:
+    - INPUT_DSM:        Digital Surface Model (DSM) input file.
+    - INPUT_CDSM:       Canopy DSM input file.
+    - INPUT_TDSM:       Trunk zone DSM input file.
+    - OUTPUT_DIR:       Output directory.
+    - OUTPUT_FILE:      Output file.
+    - TRANS_VEG:        Vegetation transmissivity value or input file.
+    - INPUT_THEIGHT:    Trunk height (percentage, if no trunk zone DSM)
+    - use_veg:          Boolean: create SVF with trees.
+    - tdsm_exist:       Boolean: does the trunkdsm exist.
+    - ANISO:            Boolean: create output for anisotropic sky.
+
+    - INPUT_EXTRAHEIGHT:    Highest possible height of the z-component of the solar vector, dependent on max solar height for location.
+    - INPUT_DTM:            Digital Terrain Model (DTM) input file.
+    - MULT_DSMS:            For 3D SOLWEIG: input of layered DSM file.
     """
+
     def __init__(self, INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_DTM=None, INPUT_EXTRAHEIGHT=6, INPUT_MULT_DSMS = None, INPUT_TDSM=None, USE_VEG=True, TRANS_VEG=3,
                  TSDM_EXIST=False, INPUT_THEIGHT=25.0, ANISO=True,
                  ):
@@ -73,6 +93,9 @@ class ProcessingSkyViewFactorAlgorithm():
 
 
     def processAlgorithm(self):
+        """
+        This algorithm is a processing version of SkyViewFactor
+        """
         # InputParameters
         outputDir = self.OUTPUT_DIR
         outputFile = self.OUTPUT_FILE
@@ -117,7 +140,6 @@ class ProcessingSkyViewFactorAlgorithm():
         sizex = dsm.shape[0]
         sizey = dsm.shape[1]
 
-        geotransform = gdal_dsm.GetGeoTransform()
         geotransform = gdal_dsm.GetGeoTransform()
         scale = 1 / geotransform[1]
         
@@ -252,6 +274,9 @@ class ProcessingSkyViewFactorAlgorithm():
         return {self.OUTPUT_DIR: outputDir, self.OUTPUT_FILE: outputFile}
 
     def processAlgorithm_3d(self):
+        """
+        This algorithm is a 3D processing version of SkyViewFactor
+        """
         # InputParameters
         outputDir = self.OUTPUT_DIR
         outputFile = self.OUTPUT_FILE
@@ -291,15 +316,6 @@ class ProcessingSkyViewFactorAlgorithm():
         if dtm_path is not None:
             dtm += dsmraise
 
-            # dsm2 += np.abs(dsm.min())
-            # dsm3 += np.abs(dsm.min())
-            # dsm4 += np.abs(dsm.min())
-            # dsm5 += np.abs(dsm.min())
-            # dsm6 += np.abs(dsm.min())
-            # dsm7 += np.abs(dsm.min())
-            # dsm8 += np.abs(dsm.min())
-            # dsm9 += np.abs(dsm.min())
-
         sizex = dsms[0].shape[0]
         sizey = dsms[0].shape[1]
 
@@ -311,9 +327,6 @@ class ProcessingSkyViewFactorAlgorithm():
         if vegdsm_path is not None:
             usevegdem = 1
             print('Vegetation scheme activated')
-            # vegdsm = self.parameterAsRasterLayer(parameters, self.INPUT_CDSM, context)
-            # if vegdsm is None:
-            # raise QgsProcessingException("Error: No valid vegetation DSM selected")
 
             # load raster
             gdal_vegdsm = gdal.Open(vegdsm_path)
@@ -327,9 +340,6 @@ class ProcessingSkyViewFactorAlgorithm():
                 raise Exception("Error in Vegetation Canopy DSM: All rasters must be of same extent and resolution")
 
             if vegdsm2_path:
-                # vegdsm2 = self.parameterAsRasterLayer(parameters, self.INPUT_TDSM, context)
-                # if vegdsm2 is None:
-                # raise QgsProcessingException("Error: No valid Trunk zone DSM selected")
 
                 # load raster
                 gdal_vegdsm2 = gdal.Open(vegdsm2_path)
@@ -418,7 +428,6 @@ class ProcessingSkyViewFactorAlgorithm():
                 vegshmat = ret["vegshmat"].get()
                 vbshvegshmat = ret["vbshvegshmat"].get()
 
-                # TO DO: SOMETHING WITH THIS
                 np.savez_compressed(outputDir + '/' + "shadowmats.npz", shadowmat=shmat, vegshadowmat=vegshmat,
                                     vbshmat=vbshvegshmat)  # ,
                 # vbshvegshmat=vbshvegshmat, wallshmat=wallshmat, wallsunmat=wallsunmat,

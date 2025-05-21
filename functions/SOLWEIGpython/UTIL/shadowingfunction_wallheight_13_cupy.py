@@ -4,97 +4,48 @@ import numpy as np
 from math import radians
 import cupy as cp
 
-from rasterio import CRS, Affine
-import rasterio
-
-
-
-def write_output(output, name):
-    """
-    Write grid to .tiff file.
-    ----
-    Input:
-    - dataset: Can be either a rasterio dataset (for rasters) or laspy dataset (for point clouds)
-    - output (Array): the output grid, a numpy grid.
-    - name (String): the name of the output file.
-    - transform:
-      a user defined rasterio Affine object, used for the transforming the pixel coordinates
-      to spatial coordinates.
-    - change_nodata (Boolean): true: use a no data value of -9999, false: use the datasets no data value
-    """
-    output_file = name
-
-    output = np.squeeze(output)
-    # Set the nodata value: use -9999 if nodata_value is True or dataset does not have nodata.
-    crs = CRS.from_epsg(28992)
-    nodata_value = -9999
-    # transform = Affine(0.50, 0.00, 119300.00,
-    #                    0.00, -0.50, 486500.00)
-    transform = Affine(0.50, 0.00, 153100.0,
-                       0.00, -0.50,  471200.0)
-
-    # output the dataset
-    with rasterio.open(output_file, 'w',
-                       driver='GTiff',
-                       height=output.shape[0],  # Assuming output is (rows, cols)
-                       width=output.shape[1],
-                       count=1,
-                       dtype=np.float32,
-                       crs=crs,
-                       nodata=nodata_value,
-                       transform=transform) as dst:
-        dst.write(output, 1)
-    print("File written to '%s'" % output_file)
-
 def shadowingfunction_wallheight_13(amaxvalue, a, azimuth, altitude, scale, walls, aspect):
-    """
-    This m.file calculates shadows on a DSM and shadow height on building
-    walls.
-    
-    INPUTS:
-    a = DSM
-    azimuth and altitude = sun position
-    scale= scale of DSM (1 meter pixels=1, 2 meter pixels=0.5)
-    walls= pixel row 'outside' buildings. will be calculated if empty
-    aspect = normal aspect of buildings walls
-    
-    OUTPUT:
-    sh=ground and roof shadow
-    wallsh = height of wall that is in shadow
-    wallsun = hieght of wall that is in sun
-    
-    Fredrik Lindberg 2012-03-19
-    fredrikl@gvc.gu.se
-    
-     Utdate 2013-03-13 - bugfix for walls alinged with sun azimuths
+    '''
+    Computes shadow masks for buildings on a terrain, and shadow height for on building walls, using a stepped
+    projection method, based on sun position (azimuth, altitude) and elevation data. This is a CuPy-accelerated
+    version optimized for GPU use.
 
-    :param a:
-    :param azimuth:
-    :param altitude:
-    :param scale:
-    :param walls:
-    :param aspect:
-    :return:
-    """
+    The function simulates shadow casting by iteratively stepping through the DSM grid
+    along the direction of the sun, lowering the sun's ray with each step, and comparing
+    it to terrain heights to determine shadowed pixels.
 
-    # conversion
-    # degrees = np.pi/180
-    azimuth = radians(azimuth)
-    altitude = radians(altitude)
+    Parameters:
+        a (cp.ndarray):         DSM.
+        azimuth (float):        Sun azimuth in degrees (clockwise from north).
+        altitude (float):       Sun altitude in degrees  (0° = horizon, 90° = zenith).
+        scale (float):          Scale factor (pixel size in meters)
+        amaxvalue (float):      Maximum vertical height to simulate in the shadow projection.
+        walls (cp.ndarray):     DSM layer representing wall heights [m].
+        aspect (cp.ndarray):    Aspect (orientation) of building walls [radians].
 
-    # measure the size of the image
-    sizex = cp.shape(a)[0]
-    sizey = cp.shape(a)[1]
+    Returns:
+        sh (cp.ndarray):         Shadow map of ground and roof (1 = shadow, 0 = sunlit).
+        wallsh (cp.ndarray):     Shadow height on walls [m].
+        wallsun (cp.ndarray):    Sunlit height of walls [m].
+        facesh (cp.ndarray):     Shadow mask from wall self-shadowing (1 = shadow, 0 = sunlit).
+        facesun (cp.ndarray):    Sunlit mask of walls (1 = sunlit, 0 = shadow).
+    '''
+
+    # Conversion
+    degrees = np.pi/180.
+    azimuth *= degrees
+    altitude *= degrees
+    # Grid size
+    sizex = a.shape[0]
+    sizey = a.shape[1]
 
     # initialise parameters
     f = cp.copy(a)
-    dx = 0
-    dy = 0
-    dz = 0
+    dx = dy = dz = 0.0
     temp = cp.zeros((sizex, sizey))
     wallbol = (walls > 0).astype(float)
     
-    # other loop parameters
+    # Precompute trigonometric values
     pibyfour = np.pi/4
     threetimespibyfour = 3 * pibyfour
     fivetimespibyfour = 5 * pibyfour
@@ -110,15 +61,16 @@ def shadowingfunction_wallheight_13(amaxvalue, a, azimuth, altitude, scale, wall
 
     index = 1
 
+    # Determine the stepping direction based on azimuth (sun direction)
     isVert = ((pibyfour <= azimuth) & (azimuth < threetimespibyfour)) | \
              ((fivetimespibyfour <= azimuth) & (azimuth < seventimespibyfour))
-    if isVert:
-        ds = dssin
-    else:
-        ds = dscos
 
-    # main loop
-    while (amaxvalue >= dz) and (np.abs(dx) < sizex) and (np.abs(dy) < sizey):
+    # Vertical shadow step increment (altitude controls vertical displacement per step)
+    ds = dssin * tanaltitudebyscale if isVert else dscos * tanaltitudebyscale
+
+    # Stepwise projection loop: simulate sunlight travel across terrain
+    while (amaxvalue >= dz and np.abs(dx) < sizex and np.abs(dy) < sizey):
+        # Determine horizontal steps along sun vector
         if isVert:
             dy = signsinazimuth * index
             dx = -1 * signcosazimuth * np.abs(np.round(index / tanazimuth))
@@ -126,23 +78,25 @@ def shadowingfunction_wallheight_13(amaxvalue, a, azimuth, altitude, scale, wall
             dy = signsinazimuth * np.abs(np.round(index * tanazimuth))
             dx = -1 * signcosazimuth * index
 
-        # note: dx and dy represent absolute values while ds is an incremental value
-        dz = ds * index * tanaltitudebyscale
-        temp[0:sizex, 0:sizey] = 0
+        #  Vertical height offset per step
+        dz = ds * index
 
+        # Reset temporary working arrays
+        temp[0:sizex, 0:sizey] = 0
         absdx = np.abs(dx)
         absdy = np.abs(dy)
 
+        # Compute shifted indices for stepping
         xc1 = int((dx+absdx)/2)
         xc2 = int(sizex+(dx-absdx)/2)
         yc1 = int((dy+absdy)/2)
         yc2 = int(sizey+(dy-absdy)/2)
-
         xp1 = int(-((dx-absdx)/2))
         xp2 = int(sizex-(dx+absdx)/2)
         yp1 = int(-((dy-absdy)/2))
         yp2 = int(sizey-(dy+absdy)/2)
 
+        # Offset terrain height by dz for shadow test, save highest: previous step or this step.
         temp[xp1:xp2, yp1:yp2] = a[xc1:xc2, yc1:yc2] - dz
         f = cp.fmax(f, temp) #Moving building shadow
 
@@ -173,28 +127,49 @@ def shadowingfunction_wallheight_13(amaxvalue, a, azimuth, altitude, scale, wall
 
     return sh, wallsh, wallsun, facesh, facesun
 
-
-# TO DO: UPDATE THIS FUNCTION
 def shadowingfunction_wallheight_13_3d(amaxvalue, a, azimuth, altitude, scale, walls, aspect):
-    # conversion
-    degrees = np.pi / 180.
-    # if azimuth == 0.0:
-    # azimuth = 0.000000000001
+    '''
+    Computes 3D building shadows based on sun position using stepped projection.
+
+    This CuPy-accelerated method calculates shadow masks from a layered DSM (building & gap heights), and
+    calculates shadow height for on building walls. It simulates how shadows are cast given sun azimuth and
+    altitude. Works on a 3D stack of DSM layers.
+
+    Parameters:
+        a (cp.ndarray):         3D Layered DSM.
+        azimuth (float):        Sun azimuth in degrees (clockwise from north).
+        altitude (float):       Sun altitude in degrees  (0° = horizon, 90° = zenith).
+        scale (float):          Scale factor (pixel size in meters)
+        amaxvalue (float):      Maximum vertical height to simulate in the shadow projection.
+        walls (cp.ndarray):     DSM layer representing wall heights at base layer [m].
+        aspect (cp.ndarray):    Aspect (orientation) of building walls at base layer[radians].
+
+    Returns:
+        sh (cp.ndarray):         Shadow map of ground and roof at base layer (1 = shadow, 0 = sunlit).
+        wallsh (cp.ndarray):     Shadow height on walls at base layer [m].
+        wallsun (cp.ndarray):    Sunlit height of walls at base layer [m].
+        facesh (cp.ndarray):     Shadow mask from wall self-shadowing at base layer (1 = shadow, 0 = sunlit).
+        facesun (cp.ndarray):    Sunlit mask of walls at base layer (1 = sunlit, 0 = shadow).
+    '''
+
+    # Conversion
+    degrees = np.pi / 180.0
     azimuth *= degrees
     altitude *= degrees
-    # % measure the size of the image
+    # Grid size
     sizex, sizey = a[0].shape[0], a[0].shape[1]
 
+    # Initialize parameters
     dx = dy = dz = 0.0
-
     num_layers = len(a)
+    num_combinations = (num_layers - 1) // 2
+
+    # Copy DSM to working float array
+    dsm_ground = a[0]
+    # Initialize shadow result masks
     temp = cp.zeros((sizex, sizey), dtype=cp.float32)
     temp_layers = cp.full((num_layers - 1, sizex, sizey), np.nan, dtype=cp.float32)
-    dsm_ground = a[0]
-
     sh = cp.zeros((sizex, sizey), dtype=cp.float32)  # shadows from buildings
-
-    num_combinations = (num_layers - 1) // 2
     sh_stack = cp.full((num_combinations, sizex, sizey), np.nan, dtype=cp.float32)
 
     wallbol = cp.array((walls > 0), dtype=cp.float32)
@@ -213,18 +188,20 @@ def shadowingfunction_wallheight_13_3d(amaxvalue, a, azimuth, altitude, scale, w
     dscos = np.abs(1.0 / cosazimuth)
     tanaltitudebyscale = np.tan(altitude) / scale
 
+    # Determine the stepping direction based on azimuth (sun direction)
     isVert = ((pibyfour <= azimuth) & (azimuth < threetimespibyfour)) | \
              ((fivetimespibyfour <= azimuth) & (azimuth < seventimespibyfour))
-    if isVert:
-        ds = dssin
-    else:
-        ds = dscos
 
-    preva = a[0] - ds * tanaltitudebyscale
+    # Vertical shadow step increment (altitude controls vertical displacement per step)
+    ds = dssin * tanaltitudebyscale if isVert else dscos * tanaltitudebyscale
 
+    # For comparison with what the height difference would have been with the previous step
+    preva = a[0] - ds
     index = 0.0
     # % main loop
+    # Stepwise projection loop: simulate sunlight travel across terrain
     while (amaxvalue >= dz) and (np.abs(dx) < sizex) and (np.abs(dy) < sizey):
+        # Determine horizontal steps along sun vector
         if isVert:
             dy = signsinazimuth * index
             dx = -signcosazimuth * np.abs(np.round(index / tanazimuth))
@@ -232,14 +209,15 @@ def shadowingfunction_wallheight_13_3d(amaxvalue, a, azimuth, altitude, scale, w
             dy = signsinazimuth * np.abs(np.round(index * tanazimuth))
             dx = -signcosazimuth * index
 
-        dz = (ds * index) * tanaltitudebyscale
+        dz = ds * index
+
+        # Reset temporary working arrays
         temp.fill(0.0)
-
         temp_layers[:] = np.nan
-
         absdx = np.abs(dx)
         absdy = np.abs(dy)
 
+        # Compute shifted indices for stepping
         xc1 = int((dx + absdx) / 2.)
         xc2 = int(sizex + (dx - absdx) / 2.)
         yc1 = int((dy + absdy) / 2.)
@@ -249,14 +227,14 @@ def shadowingfunction_wallheight_13_3d(amaxvalue, a, azimuth, altitude, scale, w
         yp1 = int(-((dy - absdy) / 2.))
         yp2 = int(sizey - (dy + absdy) / 2.)
 
-        # Building Part
+
         temp[xp1:xp2, yp1:yp2] = a[0][xc1:xc2, yc1:yc2] - dz
         temp_layers[:, xp1:xp2, yp1:yp2] = a[1:num_layers, xc1:xc2, yc1:yc2] - dz
 
         dsm_ground = cp.fmax(dsm_ground, temp)
-
         sh = (dsm_ground > a[0]).astype(cp.float32)
 
+        #  Project shadows for each (gap, layer) pair
         for i in range(0, num_layers - 1, 2):
             # first gap part
             gap_layer_index = i
@@ -268,23 +246,20 @@ def shadowingfunction_wallheight_13_3d(amaxvalue, a, azimuth, altitude, scale, w
             prevgapabovea = temp_layers[gap_layer_index] > preva
             prevlayerabovea = temp_layers[layer_index] > preva
 
+            # Combine all conditions where building part casts shadow
             sh_temp = cp.add(cp.add(cp.add(layerabovea, gapabovea, dtype=float), prevgapabovea, dtype=float),
                              prevlayerabovea, dtype=float)
 
-            # for i in range(0, num_layers - 1):
-            #     name = f"D:/Geomatics/3D_solweig/add_check_{i}_{index}" + str(
-            #         round(azimuth, 2)) + "_" + str(round(altitude, 2)) + ".tif"
-            #     write_output(sh_temp.get(), name)
-
+            # Remove cases where all four conditions are true (fully lit area)
             sh_temp = cp.where(sh_temp == 4.0, 0.0, sh_temp)
             sh_temp = cp.where(sh_temp > 0.0, 1.0, sh_temp)
 
-
-
+            # Save highest height in stack
             sh_stack[i // 2] = cp.fmax(sh_stack[i // 2], sh_temp)
 
         index += 1.
 
+    # Combine all shadow layers
     sh_combined = sh_stack[0]
 
     for i in range(1, num_combinations):

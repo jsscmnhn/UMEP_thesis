@@ -1,14 +1,26 @@
 import numpy as np
 import cupy as cp
 
-def cylindric_wedge(zen, svfalfa, rows, cols):
+def cylindric_wedge_cupy(zen, svfalfa, rows, cols):
+    """
+    Function has been updated to use CuPy. Function Computes the fraction of sunlit wall surface based on
+    the solar zenith angle and a sky-view-factor-related wall angle using the cylindric wedge model.
+
+    This model estimates how much of a wall is sunlit based on urban canyon geometry.
+    It assumes the canyon walls form a cylindrical wedge and calculates the projected
+    sunlit fraction analytically.
+
+    Parameters:
+        zen (float):                    Solar zenith angle in radians (angle between the sun and the vertical).
+        svfalfa (float or cp.ndarray):  Scalar or 2D CuPy array representing the SVF-weighted building wall inclination angle (in radians).
+        rows (int):                     Number of rows in the output grid.
+        cols (int):                     Number of columns in the output grid.
+
+    Returns:
+        F_sh (cp.ndarray):            Array representing the fraction of the wall surface that is directly sunlit for each grid cell.
+    """
 
     np.seterr(divide='ignore', invalid='ignore')
-
-    # Fraction of sunlit walls based on sun altitude and svf wieghted building angles
-    # input: 
-    # sun zenith angle "beta"
-    # svf related angle "alfa"
 
     beta=zen
     # alfa=svfalfa

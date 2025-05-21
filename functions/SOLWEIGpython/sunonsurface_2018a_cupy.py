@@ -1,12 +1,42 @@
 import numpy as np
 import cupy as cp
 
-def sunonsurface_2018a(azimuthA, scale, buildings, shadow, sunwall, first, second, aspect, walls, Tg, Tgwall, Ta,
+def sunonsurface_2018a_cupy(azimuthA, scale, buildings, shadow, sunwall, first, second, aspect, walls, Tg, Tgwall, Ta,
                        emis_grid, ewall, alb_grid, SBC, albedo_b, Twater, lc_grid, landcover):
-    # This version of sunonsurfce goes with SOLWEIG 2015a. It also simulates
-    # Lup and albedo based on landcover information and shadow patterns.
-    # Fredrik Lindberg, fredrikl@gvc.gu.se
+    '''
+    Calculates surface and wall sun/shadow and radiation interactions based on building geometry and sun position.
+    This CuPy-accelerated implementation simulates sunlit and shadowed surfaces on buildings and ground,
+    including longwave upwelling radiation (Lup) and albedo effects modulated by landcover and shadow patterns.
 
+    Parameters:
+        azimuthA (float):            Search directions for Ground View Factors (clockwise from north).
+        scale (float):               Scale factor converting units to pixels.
+        buildings (cp.ndarray):      2D array representing building heights.
+        shadow (cp.ndarray):         2D binary shadow mask (1 = shadowed, 0 = sunlit).
+        sunwall (cp.ndarray):        2D array marking sunlit building walls.
+        first (float):               First height (sensor height) for Radiative surface influence
+        second (float):              Second height (sensor height * 20) for Radiative surface influence
+        aspect (cp.ndarray):         2D array of building wall aspect (orientation in radians).
+        walls (cp.ndarray):          2D array of wall heights.
+        Tg (cp.ndarray):             2D grid of ground temperatures [°C].
+        Tgwall (cp.ndarray):         2D grid of wall temperatures [°C].
+        Ta (float):                  Air temperature [°C].
+        emis_grid (cp.ndarray):      Emissivity grid for surfaces.
+        ewall (float):               Wall emissivity.
+        alb_grid (cp.ndarray):       Albedo grid for surfaces.
+        SBC (float):                 Stefan-Boltzmann constant.
+        albedo_b (float):            Building wall albedo.
+        Twater (float):              Water temperature [°C].
+        lc_grid (cp.ndarray):        Landcover classification grid.
+        landcover (int):             Landcover type indicator.
+
+    Returns:
+        gvf (cp.ndarray):            Grid of combined sun/shadow view factors on surfaces.
+        gvfLup (cp.ndarray):         Grid of longwave upwelling radiation view factors.
+        gvfalb (cp.ndarray):         Grid of albedo-weighted view factors including shadows.
+        gvfalbnosh (cp.ndarray):     Grid of albedo-weighted view factors excluding shadows.
+        gvf2 (cp.ndarray):           Grid of secondary view factors combining wall and surface shadows.
+    '''
     sizex = walls.shape[0]
     sizey = walls.shape[1]
 

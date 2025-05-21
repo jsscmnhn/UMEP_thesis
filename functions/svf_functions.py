@@ -2,7 +2,6 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import numpy as np
-import numpy.ma as ma
 from util import shadowingfunctions as shadow
 from functions.SOLWEIGpython.UTIL.create_patches import create_patches
 import cupy as cp
@@ -49,7 +48,20 @@ def svf_angles_100121():
 
 
 def svfForProcessing153(dsm, dtm, vegdem, vegdem2, scale, usevegdem):
-    """main processing function calculating SVF using 153 patch divisions."""
+    """
+    Calculates sky view factor (SVF) and directional SVFs using 153 sky patch divisions.
+
+    Parameters:
+        dsm (cp.ndarray):      Digital Surface Model containing building + ground elevations.
+        dtm (cp.ndarray):      Digital terrain model, containing only ground elevations. If None, DSM is used as base elevation.
+        vegdem (cp.ndarray):   Vegetation height layer (CHM)
+        vegdem2 (cp.ndarray):  Secondary vegetation layer, containing trunk heights.
+        scale (float):         Pixel resolution in meters.
+        usevegdem (int):       If 1, include vegetation in SVF calculation; if 0, ignore it.
+
+    Returns:
+        dict: Contains SVF arrays for total, directional (E/S/W/N), vegetation, and shadow matrices.
+    """
     dsm = cp.array(dsm, dtype=cp.float32)
     vegdem = cp.array(vegdem, dtype=cp.float32)
     vegdem2 = cp.array(vegdem2, dtype=cp.float32)
@@ -143,7 +155,7 @@ def svfForProcessing153(dsm, dtm, vegdem, vegdem2, scale, usevegdem):
                 if altitude == 90:
                     sh = cp.full((rows, cols), 1.0, dtype=cp.float32)
                 else:
-                    sh = shadow.shadowingfunctionglobalradiation_cupy(dsm, amaxvalueinput, azimuth, altitude, scale,1)
+                    sh = shadow.shadowingfunctionglobalradiation_cupy(dsm, amaxvalueinput, azimuth, altitude, scale)
 
             shmat[:, :, index] = sh
 
@@ -217,14 +229,24 @@ def svfForProcessing153(dsm, dtm, vegdem, vegdem2, scale, usevegdem):
                     'svfveg': svfveg, 'svfEveg': svfEveg, 'svfSveg': svfSveg, 'svfWveg': svfWveg,
                     'svfNveg': svfNveg, 'svfaveg': svfaveg, 'svfEaveg': svfEaveg, 'svfSaveg': svfSaveg,
                     'svfWaveg': svfWaveg, 'svfNaveg': svfNaveg, 'shmat': shmat, 'vegshmat': vegshmat, 'vbshvegshmat': vbshvegshmat}
-                    # ,
-                    # 'vbshvegshmat': vbshvegshmat, 'wallshmat': wallshmat, 'wallsunmat': wallsunmat,
-                    # 'wallshvemat': wallshvemat, 'facesunmat': facesunmat}
     return svfresult
 
 
 def svfForProcessing153_3d(dsms, dtm, vegdem, vegdem2, scale, usevegdem):
-    """main processing function calculating SVF using 153 patch divisions."""
+    """
+    Calculates sky view factor (SVF) and directional SVFs using 153 sky patch divisions for 3D input.
+
+    Parameters:
+        dsms (cp.ndarray):     3D-layered Digital Surface Model containing building + ground elevations, and gap layers.
+        dtm (cp.ndarray):      Digital terrain model, containing only ground elevations. If None, DSM is used as base elevation.
+        vegdem (cp.ndarray):   Vegetation height layer (CHM)
+        vegdem2 (cp.ndarray):  Secondary vegetation layer, containing trunk heights.
+        scale (float):         Pixel resolution in meters.
+        usevegdem (int):       If 1, include vegetation in SVF calculation; if 0, ignore it.
+
+    Returns:
+        dict: Contains SVF arrays for total, directional (E/S/W/N), vegetation, and shadow matrices at base layer.
+    """
     rows = dsms[0].shape[0]
     cols = dsms[0].shape[1]
     svf = cp.zeros([rows, cols])
@@ -261,7 +283,6 @@ def svfForProcessing153_3d(dsms, dtm, vegdem, vegdem2, scale, usevegdem):
         vegdem2 = vegdem2 + dsms[0]
         vegdem2[vegdem2 == dsms[0]] = 0
     # % Bush separation
-    # % Bush separation
     bush = cp.logical_not((vegdem2 * vegdem)) * vegdem
     index = int(0)
 
@@ -269,6 +290,7 @@ def svfForProcessing153_3d(dsms, dtm, vegdem, vegdem2, scale, usevegdem):
     patch_option = 2  # 153 patches
     # patch_option = 3 # 306 patches
     # patch_option = 4 # 612 patches
+
     # Create patches based on patch_option
     skyvaultalt, skyvaultazi, annulino, skyvaultaltint, aziinterval, skyvaultaziint, azistart = create_patches(
         patch_option)
@@ -305,7 +327,7 @@ def svfForProcessing153_3d(dsms, dtm, vegdem, vegdem2, scale, usevegdem):
 
                 else:
                     shadowresult = shadow.shadowingfunction_20_3d(dsms, vegdem, vegdem2, azimuth, altitude,
-                                                            scale, amaxvalue, bush, 1)
+                                                            scale, amaxvalue, bush)
 
                 vegsh = shadowresult["vegsh"]
                 vbshvegsh = shadowresult["vbshvegsh"]
@@ -398,7 +420,20 @@ def svfForProcessing153_3d(dsms, dtm, vegdem, vegdem2, scale, usevegdem):
 
 
 def svfForProcessing655(dsm, dtm, vegdem, vegdem2, scale, usevegdem):
-    """main processing function calculatting SVF using 655 patch divisions."""
+    """
+    Calculates sky view factor (SVF) and directional SVFs using 153 sky patch divisions.
+
+    Parameters:
+        dsm (cp.ndarray):      Digital Surface Model containing building + ground elevations.
+        dtm (cp.ndarray):      Digital terrain model, containing only ground elevations. If None, DSM is used as base elevation.
+        vegdem (cp.ndarray):   Vegetation height layer (CHM)
+        vegdem2 (cp.ndarray):  Secondary vegetation layer, containing trunk heights.
+        scale (float):         Pixel resolution in meters.
+        usevegdem (int):       If 1, include vegetation in SVF calculation; if 0, ignore it.
+
+    Returns:
+        dict: Contains SVF arrays for total, directional (E/S/W/N), vegetation, and shadow matrices.
+    """
     dsm = cp.array(dsm, dtype=cp.float32)
     vegdem = cp.array(vegdem, dtype=cp.float32)
     vegdem2 = cp.array(vegdem2, dtype=cp.float32)
@@ -479,7 +514,7 @@ def svfForProcessing655(dsm, dtm, vegdem, vegdem2, scale, usevegdem):
                 if altitude == 90:
                     sh = cp.full((rows, cols), 1.0, dtype=cp.float32)
                 else:
-                    sh = shadow.shadowingfunctionglobalradiation_cupy(dsm, amaxvalueinput, azimuth, altitude, scale, 1)
+                    sh = shadow.shadowingfunctionglobalradiation_cupy(dsm, amaxvalueinput, azimuth, altitude, scale)
 
 
             # Calculate svfs
@@ -557,7 +592,20 @@ def svfForProcessing655(dsm, dtm, vegdem, vegdem2, scale, usevegdem):
 
 
 def svfForProcessing655_3d(dsms, dtm, vegdem, vegdem2, scale, usevegdem):
-    """main processing function calculatting SVF using 655 patch divisions."""
+    """
+    Calculates sky view factor (SVF) and directional SVFs using 655 sky patch divisions for 3D input.
+
+    Parameters:
+        dsms (cp.ndarray):     3D-layered Digital Surface Model containing building + ground elevations, and gap layers.
+        dtm (cp.ndarray):      Digital terrain model, containing only ground elevations. If None, DSM is used as base elevation.
+        vegdem (cp.ndarray):   Vegetation height layer (CHM)
+        vegdem2 (cp.ndarray):  Secondary vegetation layer, containing trunk heights.
+        scale (float):         Pixel resolution in meters.
+        usevegdem (int):       If 1, include vegetation in SVF calculation; if 0, ignore it.
+
+    Returns:
+        dict: Contains SVF arrays for total, directional (E/S/W/N), vegetation, and shadow matrices at base layer.
+    """
     rows = dsms[0].shape[0]
     cols = dsms[0].shape[1]
 
@@ -631,7 +679,7 @@ def svfForProcessing655_3d(dsms, dtm, vegdem, vegdem2, scale, usevegdem):
                 if altitude == 90:
                     sh = shadow.shadowingfunctionglobalradiation_3d_90(dsms)
                 else:
-                    sh = shadow.shadowingfunctionglobalradiation_3d(dsms, amaxvalue, azimuth, altitude, scale, 1)
+                    sh = shadow.shadowingfunctionglobalradiation_3d(dsms, amaxvalue, azimuth, altitude, scale)
 
             # Calculate svfs
             for k in np.arange(annulino[int(i)] + 1, (annulino[int(i + 1.)]) + 1):

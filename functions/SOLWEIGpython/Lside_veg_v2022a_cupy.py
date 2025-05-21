@@ -3,10 +3,42 @@ import numpy as np
 import cupy as cp
 from .Lvikt_veg import Lvikt_veg
 
-def Lside_veg_v2022a(svfS,svfW,svfN,svfE,svfEveg,svfSveg,svfWveg,svfNveg,svfEaveg,svfSaveg,svfWaveg,svfNaveg,azimuth,altitude,Ta,Tw,SBC,ewall,Ldown,esky,t,F_sh,CI,LupE,LupS,LupW,LupN,anisotropic_longwave):
+def Lside_veg_v2022a_cupy(svfS,svfW,svfN,svfE,svfEveg,svfSveg,svfWveg,svfNveg,svfEaveg,svfSaveg,svfWaveg,svfNaveg,azimuth,altitude,Ta,Tw,SBC,ewall,Ldown,esky,t,F_sh,CI,LupE,LupS,LupW,LupN,anisotropic_longwave):
+    '''
+    Function updated to use CuPy. Function computes directional longwave radiation fluxes from east, south, west, and
+    north walls, accounting for shadowing, vegetation, and anisotropic sky contributions using a modified
+    cylindrical wedge model.
 
-    # This m-file is the current one that estimates L from the four cardinal points 20100414
-    
+    This function estimates the longwave radiation received from each cardinal wall direction,
+    considering vegetation cover, sky view factors, and diurnal sun position. The output is
+    directionally separated fluxes that can be summed to get total wall irradiance.
+
+    Parameters:
+          svfX (cp.ndarray):        Directional Sky View Factors (SVFs) (X = E, S, W, N).
+          svfXveg (cp.ndarray):     Vegetation-blocked SVFs.
+          svfXa_veg (cp.ndarray):   Vegetation SVFs blocking buildings (all directions).
+          azimuth (float):          Solar azimuth angle in degrees.
+          altitude (float):         Solar altitude angle in degrees.
+          Ta (float):               Air temperature in °C.
+          Tw (float):               Wall surface temperature offset component.
+          SBC (float):              Stefan–Boltzmann constant.
+          ewall (float):            Emissivity of wall surfaces.
+          Ldown (cp.ndarray):       Downwelling longwave radiation from the sky.
+          esky (float):             Sky emissivity.
+          t (float):                Time correction factor (in degrees) to shift solar angles.
+          F_sh (cp.ndarray):        Fraction of the wall in direct sunlight (scaled 0–1).
+          CI (float):               Cloud index (0 = overcast, 1 = clear).
+
+          LupX (cp.ndarray):            Upwelling longwave radiation from ground for each direction (X = E, S, W, N).
+          anisotropic_longwave (bool):  If True, anisotropic scheme is used.
+
+    Returns:
+          tuple of cp.ndarray:
+              - Least: Longwave radiation received from the east-facing wall.
+              - Lsouth: Longwave radiation received from the south-facing wall.
+              - Lwest: Longwave radiation received from the west-facing wall.
+              - Lnorth: Longwave radiation received from the north-facing wall.
+    '''
     #Building height angle from svf
     svfalfaE=cp.arcsin(cp.exp((cp.log(1-svfE))/2))
     svfalfaS=cp.arcsin(cp.exp((cp.log(1-svfS))/2))

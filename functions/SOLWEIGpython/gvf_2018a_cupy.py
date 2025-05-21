@@ -1,13 +1,57 @@
 import numpy as np
-from .sunonsurface_2018a_cupy import sunonsurface_2018a
-# import matplotlib.pyplot as plt
+from .sunonsurface_2018a_cupy import sunonsurface_2018a_cupy as sunonsurface_2018a
 import cupy as cp
 
 
-def gvf_2018a(wallsun, walls, buildings, scale, shadow, first, second, dirwalls, Tg, Tgwall, Ta, emis_grid, ewall,
+def gvf_2018a_cupy(wallsun, walls, buildings, scale, shadow, first, second, dirwalls, Tg, Tgwall, Ta, emis_grid, ewall,
               alb_grid, SBC, albedo_b, rows, cols, Twater, lc_grid, landcover):
-    azimuthA = np.arange(5, 359, 20)  # Search directions for Ground View Factors (GVF)
+    '''
+    Calculates ground view factors for longwave and shortwave radiation from urban surfaces
+    using GPU-accelerated computation with CuPy, based on directional azimuths.
 
+    Parameters:
+          wallsun (cp.ndarray):        Array representing sunlit portions of walls.
+          walls (cp.ndarray):          Array of wall heights.
+          buildings (cp.ndarray):      2D array representing building heights.
+          scale (float):               Scale factor converting units to pixels.
+          shadow (cp.ndarray):         2D binary shadow mask (1 = shadowed, 0 = sunlit).
+          first (float):               First sensor height for radiative surface influence.
+          second (float):              Second sensor height (usually first * 20) for radiative surface influence.
+          dirwalls (float):            Direction of building walls in degrees.
+          Tg (cp.ndarray):             2D grid of ground temperatures [°C].
+          Tgwall (cp.ndarray):         2D grid of wall temperatures [°C].
+          Ta (float):                  Air temperature [°C].
+          emis_grid (cp.ndarray):      Emissivity grid for surfaces.
+          ewall (float):               Wall emissivity.
+          alb_grid (cp.ndarray):       Albedo grid for surfaces.
+          SBC (float):                 Stefan-Boltzmann constant.
+          albedo_b (float):            Building wall albedo.
+          rows (int):                  Number of rows in grids.
+          cols (int):                  Number of columns in grids.
+          Twater (float):              Water temperature [°C].
+          lc_grid (cp.ndarray):        Landcover classification grid.
+          landcover (int):             Landcover type indicator.
+
+    Returns:
+          gvfLup (cp.ndarray):         Grid of longwave upwelling radiation view factors (averaged over azimuths).
+          gvfalb (cp.ndarray):         Grid of albedo-weighted view factors including shadows (averaged over azimuths).
+          gvfalbnosh (cp.ndarray):     Grid of albedo-weighted view factors excluding shadows (averaged over azimuths).
+          gvfLupE (cp.ndarray):        East-facing longwave upwelling radiation view factors.
+          gvfalbE (cp.ndarray):        East-facing albedo-weighted view factors including shadows.
+          gvfalbnoshE (cp.ndarray):    East-facing albedo-weighted view factors excluding shadows.
+          gvfLupS (cp.ndarray):        South-facing longwave upwelling radiation view factors.
+          gvfalbS (cp.ndarray):        South-facing albedo-weighted view factors including shadows.
+          gvfalbnoshS (cp.ndarray):    South-facing albedo-weighted view factors excluding shadows.
+          gvfLupW (cp.ndarray):        West-facing longwave upwelling radiation view factors.
+          gvfalbW (cp.ndarray):        West-facing albedo-weighted view factors including shadows.
+          gvfalbnoshW (cp.ndarray):    West-facing albedo-weighted view factors excluding shadows.
+          gvfLupN (cp.ndarray):        North-facing longwave upwelling radiation view factors.
+          gvfalbN (cp.ndarray):        North-facing albedo-weighted view factors including shadows.
+          gvfalbnoshN (cp.ndarray):    North-facing albedo-weighted view factors excluding shadows.
+          gvfSum (cp.ndarray):         Sum of combined sun/shadow view factors across all azimuth directions.
+          gvfNorm (cp.ndarray):        Normalized view factor grid where non-building areas are set to 1.
+    '''
+    azimuthA = np.arange(5, 359, 20)
     #### Ground View Factors ####
     gvfLup = cp.zeros((rows, cols))
     gvfalb = cp.zeros((rows, cols))

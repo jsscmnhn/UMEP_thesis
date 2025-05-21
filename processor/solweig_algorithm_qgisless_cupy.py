@@ -42,8 +42,8 @@ from util.misc import saveraster
 from functions.SOLWEIGpython.UTIL.Solweig_v2015_metdata_noload import Solweig_2015a_metdata_noload
 from functions.SOLWEIGpython.UTIL.clearnessindex_2013b import clearnessindex_2013b
 from functions.SOLWEIGpython.Tgmaps_v1_cupy import Tgmaps_v1
-from functions.SOLWEIGpython import Solweig_2022a_calc_forprocessing_cupy as so
-from functions.SOLWEIGpython import Solweig_2022a_calc_forprocessing_cupy_3d as so_3d
+from functions.SOLWEIGpython.Solweig_2022a_calc_forprocessing_cupy import Solweig_2022a_calc as so
+from functions.SOLWEIGpython.Solweig_2022a_calc_forprocessing_cupy import Solweig_2022a_calc_3d as so_3d
 from functions.SOLWEIGpython import WriteMetadataSOLWEIG
 import matplotlib.pyplot as plt
 from shutil import rmtree
@@ -80,6 +80,7 @@ class SOLWEIGAlgorithm():
     NEW:
     - INPUT_EXTRAHEIGHT:    Highest possible height of the z-component of the solar vector, dependent on max solar height for location.
     - INPUT_DTM:            Digital Terrain Model (DTM) input file.
+    - MULT_DSMS:            For 3D SOLWEIG: input of layered DSM file.
     """
 
     def __init__(self, INPUT_DSM, INPUT_SVF, INPUT_CDSM,  INPUT_HEIGHT, INPUT_ASPECT,
@@ -143,6 +144,7 @@ class SOLWEIGAlgorithm():
         self.temp_dir = os.path.join("D:/Geomatics/", temp_dir_name)
 
     def processAlgorithm(self):
+        ''' Function to process the SOLWEIG algorithm '''
         np.seterr(divide='ignore', invalid='ignore')
  
         # InputParameters
@@ -867,6 +869,7 @@ class SOLWEIGAlgorithm():
         return {self.OUTPUT_DIR: outputDir}
 
     def processAlgorithm_3d(self):
+        ''' Function to process the SOLWEIG algorithm in 3D '''
         np.seterr(divide='ignore', invalid='ignore')
 
         # InputParameters
@@ -1104,9 +1107,6 @@ class SOLWEIGAlgorithm():
             if not (demsizex == sizex) & (demsizey == sizey):
                 raise Exception("Error in DEM: All grids must be of same extent and resolution")
 
-            # response to issue and #230
-            # nd = dataSet.GetRasterBand(1).GetNoDataValue()
-            # dem[dem == nd] = 0.
             dem_min = dem.min()
             if 0 <= dem_min < self.INPUT_EXTRAHEIGHT:
                 demraise = self.INPUT_EXTRAHEIGHT - dem_min
@@ -1468,8 +1468,6 @@ class SOLWEIGAlgorithm():
             first_unique_day = DOY.copy()
             I0_array = np.zeros((DOY.shape[0]))
 
-        # numformat = '%d %d %d %d %.5f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f ' \
-        #            '%.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f'
 
         numformat = '%d %d %d %d %.5f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f ' \
                     '%.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f ' \

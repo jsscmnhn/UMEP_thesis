@@ -3,17 +3,19 @@ import numpy as np
 
 def diffusefraction(radG,altitude,Kt,Ta,RH):
     """
-    This function estimates diffuse and directbeam radiation according to
-    Reindl et al (1990), Solar Energy 45:1
+    Unchanged function: Estimate diffuse and direct beam solar radiation using the Reindl et al. (1990) model.
 
-    :param radG:
-    :param altitude:
-    :param Kt: # radiation at the top of the atmosphere
-    :param Ta:
-    :param RH:
-    :return:
+    Parameters:
+        radG (float):     Global horizontal irradiance [W/m²].
+        altitude (float): Solar altitude angle [degrees].
+        Kt (float):       Clearness index (ratio of global radiation at surface to that at the top of atmosphere).
+        Ta (float):       Air temperature [°C].
+        RH (float):       Relative humidity [%].
+
+    Returns:
+        radI (float):     Direct beam radiation [W/m²].
+        radD (float):     Diffuse radiation [W/m²].
     """
-
     alfa = altitude*(np.pi/180)
 
     if Ta <= -999.00 or RH <= -999.00 or np.isnan(Ta) or np.isnan(RH):

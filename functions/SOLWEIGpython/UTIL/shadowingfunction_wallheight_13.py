@@ -5,7 +5,7 @@ from math import radians
 # from scipy.ndimage.filters import median_filter
 
 
-def shadowingfunction_wallheight_13(a, azimuth, altitude, scale, walls, aspect):
+def shadowingfunction_wallheight_13_original(a, azimuth, altitude, scale, walls, aspect):
     """
     This m.file calculates shadows on a DSM and shadow height on building
     walls.

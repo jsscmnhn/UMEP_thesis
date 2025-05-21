@@ -4,8 +4,8 @@ import numpy as np
 from .daylen import daylen
 from functions.SOLWEIGpython.UTIL.clearnessindex_2013b import clearnessindex_2013b
 from functions.SOLWEIGpython.UTIL.diffusefraction import diffusefraction
-from functions.SOLWEIGpython.UTIL.shadowingfunction_wallheight_13 import shadowingfunction_wallheight_13
-from functions.SOLWEIGpython.UTIL.shadowingfunction_wallheight_23 import shadowingfunction_wallheight_23
+from functions.SOLWEIGpython.UTIL.shadowingfunction_wallheight_13 import shadowingfunction_wallheight_13_original as shadowingfunction_wallheight_13
+from functions.SOLWEIGpython.UTIL.shadowingfunction_wallheight_23 import shadowingfunction_wallheight_23_original as shadowingfunction_wallheight_23
 from .gvf_2018a import gvf_2018a
 from .cylindric_wedge import cylindric_wedge
 from .TsWaveDelay_2015a import TsWaveDelay_2015a

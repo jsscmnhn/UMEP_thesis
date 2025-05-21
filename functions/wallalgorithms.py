@@ -98,7 +98,7 @@ def filter_aspect_sobel(walls, a, sigma=0):
 
 def filter1Goodwin_as_aspect_v3(walls, scale, a):
     """
-    tThis function applies the filter processing presented in Goodwin et al (2010) but instead for removing
+    This function applies the filter processing presented in Goodwin et al (2010) but instead for removing
     linear fetures it calculates wall aspect based on a wall pixels grid, a dsm (a) and a scale factor
 
     Fredrik Lindberg, 2012-02-14

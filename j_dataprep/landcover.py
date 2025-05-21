@@ -20,13 +20,35 @@ import json
 from shapely.affinity import translate
 
 class LandCover:
-    def __init__(self, bbox, crs="http://www.opengis.net/def/crs/EPSG/0/28992", main_roadtype=0, resolution=0.5,building_data=None, dataset_path=None, buildings_path=None, layer=None, landcover_path="landcover.json"):
+    """
+    A class to process and rasterize land cover data from the PDOK Top10NL API, building geometries, and a DTM raster,
+     producing a land cover classification raster.
+
+    Attributes:
+        bbox (tuple):                           Bounding box (xmin, ymin, xmax, ymax) in EPSG:28992.
+        crs (str):                              CRS for requests and raster alignment, default is EPSG:28992.
+        resolution (float):                     Output raster resolution in meters.
+        main_road (int):                        Default landcover code for hardened roads.
+        dtm_dataset (rasterio.open):            DTM as rasterio dataset for alignment and dimensions.
+        base_url (str):                         Base URL for the PDOK Top10NL API.
+        water_mask, building_mask (ndarray):    Optional binary masks.
+        buildings_path (str):                   Optional path to building vector data.
+        layer (str):                            Layer name if using GPKG for building data.
+        building_data (list):                   Optional preloaded building geometries.
+        landcover_path (str):                   Path to JSON file mapping landcover codes.
+        landcover_mapping (dict):               Mapping of landcover types to codes.
+        buildings, water, roads, terrains (list): Extracted vector features.
+        array (ndarray):                        Output raster array of landcover values.
+        og_landcover (ndarray):                 Original unmodified landcover array.
+        landcover_withoutbuild (ndarray):       Landcover array before building insertion.
+        transform:                              Raster transform from DTM dataset.
+    """
+    def __init__(self, bbox, crs="http://www.opengis.net/def/crs/EPSG/0/28992", main_roadtype=0, resolution=0.5, building_data=None, dataset=None,
+                 dataset_path=None, buildings_path=None, layer=None, landcover_path="landcover.json"):
         self.bbox = bbox
         self.crs = crs
         self.resolution = resolution
         self.main_road = main_roadtype
-        # TO DO: change dataset path to dataset instance itself
-        # TO DO: change dataset path to dataset instance itself
         self.dtm_dataset = dataset_path
         self.base_url = "https://api.pdok.nl/brt/top10nl/ogc/v1"
 
@@ -50,20 +72,62 @@ class LandCover:
         self.landcover_withoutbuild = None
         self.transform = None
 
+    def dtm_dataset_prep(self, dataset_path, dataset):
+        """
+        Prepare and return a DTM rasterio dataset object.
 
+        Parameters:
+            dataset_path (str or Path, optional): File path to the DTM raster.
+            existing_dataset (rasterio.io.DatasetReader, optional): An already-open rasterio dataset.
 
+        Returns:
+            rasterio.io.DatasetReader: The prepared DTM dataset.
+        """
+        if dataset is not None:
+            return dataset
+        elif dataset_path is not None:
+            return rasterio.open(dataset_path)
 
     def load_landcover_mapping(self):
-        """Load land cover mappings from a JSON file with explicit UTF-8 encoding."""
+        """
+        Load land cover mappings from a JSON file with explicit UTF-8 encoding.
+
+        Returns:
+            dict: A dictionary representing land cover categories and their
+            corresponding code mappings. For example:
+            {
+                "terrain": {"grasland": 5, "akker": 6, ...},
+                "road": {"onverhard": 3, "halfverhard": 4, ...}
+            }
+        """
         with open(self.landcover_path, "r", encoding="utf-8", errors="replace") as f:
             return json.load(f)
 
     def get_landcover_code(self, land_type, isroad=False):
-        """Retrieve land cover code by type."""
+        """
+        Retrieve the numeric land cover code for a given land type.
+
+        Parameters:
+            land_type (str):            The land type string to look up .
+            isroad (bool, optional):    Whether to look up in the "road" category (True) or "terrain" category (False). Defaults to False.
+
+        Returns:
+            int:                        The land cover code for the given land type.
+                                        Returns -1 if the land type is not found in the specified category.
+        """
         category = "road" if isroad else "terrain"
         return self.landcover_mapping.get(category, {}).get(land_type.lower(), -1)
 
     def get_top10nl(self, item_type):
+        """
+        Retrieve features from the TOP10NL API for the specified item type within the bounding box.
+
+        Parameters:
+            item_type (str): The name of the TOP10NL collection to query (e.g., "waterdeel_vlak", "wegdeel_vlak", "terrein_vlak").
+
+        Returns:
+            dict:   A GeoJSON-like dictionary with key "features" containing a list of feature dictionaries as returned by the API.
+        """
         features = []
         url = f"{self.base_url}/collections/{item_type}/items?bbox={self.bbox[0]},{self.bbox[1]},{self.bbox[2]},{self.bbox[3]}&bbox-crs={self.crs}&crs={self.crs}&limit=1000&f=json"
 
@@ -86,6 +150,13 @@ class LandCover:
         return {"features": features}
 
     def process_water_features(self):
+        """
+        Process and filter water features from TOP10NL data.
+        Filters out features with 'hoogteniveau' == -1 and keeps only Polygon or MultiPolygon geometries (line geometries are buffered).
+
+        Returns:
+            list: A list of GeoJSON-like feature dictionaries representing water areas. Each feature has keys "type", "geometry", and "properties".
+        """
         waterdata_vlak = self.get_top10nl("waterdeel_vlak")
         waterdata_lijn = self.get_top10nl("waterdeel_lijn")
         water_features = []
@@ -105,6 +176,12 @@ class LandCover:
         return water_features
 
     def process_terrain_features(self):
+        """
+        Process terrain features from TOP10NL data and map land use types to codes.
+
+        Returns:
+            list: A list of GeoJSON-like feature dictionaries representing terrain areas. Each feature contains "geometry" and "properties" with a "landuse" code.
+        """
         terreindata = self.get_top10nl("terrein_vlak")
         terrain_features = []
 
@@ -124,12 +201,15 @@ class LandCover:
                     "geometry": mapping(geom),
                     "properties": new_properties
                 })
-
-
-
         return terrain_features
 
     def process_road_features(self):
+        """
+        Process road features from TOP10NL data and map road surface types to codes.
+
+        Returns:
+            list: A list of GeoJSON-like feature dictionaries representing roads. Each feature contains "geometry" and "properties" with a "landuse" code.
+        """
         wegdata = self.get_top10nl("wegdeel_vlak")
         road_features = []
 
@@ -166,6 +246,15 @@ class LandCover:
 
 
     def load_buildings(self):
+        """
+        Load building features from a GeoPackage or use preloaded data if available.
+
+        Returns:
+            list: A list of dictionaries with keys:
+                - "geometry": GeoJSON-like geometry dictionary of the building footprint
+                - "parcel_id": The building parcel identifier string
+            Returns an empty list if no building data or path is provided.
+        """
         if self.building_data is not None:
             return self.building_data
         elif not self.buildings_path or not self.layer:
@@ -175,6 +264,14 @@ class LandCover:
                 zip(buildings_gdf.geometry, buildings_gdf["identificatie"])]
 
     def visualize_raster(self, raster_array):
+        """
+        Visualize the landcover raster.
+
+        Parameters:
+            raster_array (ndarray):     Array of the landcover raster.
+        Returns:
+            None, shows a Matplotlib plot for the raster array
+        """
         cmap = ListedColormap(["purple", "grey", "black", "brown", "tan", "yellow", "green", "tan", "cyan"])
         categories = [-9999, 0, 1, 2, 3, 4, 5, 6, 7, 8]
         norm = BoundaryNorm(categories, cmap.N)
@@ -186,10 +283,17 @@ class LandCover:
         plt.show()
 
     def convert_to_raster(self):
-        with rasterio.open(self.dtm_dataset) as dst:
-            array = dst.read(1)
-            transform = dst.transform
-            self.transform = transform
+        """
+        Rasterize terrain, road, water, and building features onto the DTM grid. Applies land cover codes to a numpy
+        array according to feature geometries.
+
+        Returns:
+            np.ndarray:         A 2D numpy array with land cover codes assigned per grid cell.
+                                The array uses -9999 for nodata values where no features are present.
+        """
+        array = self.dtm_dataset.read(1)
+        transform = self.dtm_dataset.transform
+        self.transform = transform
 
         array.fill(-9999)
 
@@ -231,10 +335,18 @@ class LandCover:
         return array
 
     def save_raster(self, name, change_nodata):
-        with rasterio.open(self.dtm_dataset) as dst:
-            transform = dst.transform
-            crs = dst.crs
-            nodata = dst.nodata
+        """
+        Save the current raster array to a GeoTIFF file.
+
+        Parameters:
+            name (str):             The output file path.
+            change_nodata (bool):   If True, nodata value is forced to -9999. Otherwise, uses the nodata value from the original dataset if present.
+
+        Returns:
+            None
+        """
+        crs = self.dtm_dataset.crs
+        nodata = self.dtm_dataset.nodata
 
         output_file = name
         output = self.array
@@ -244,7 +356,6 @@ class LandCover:
             nodata_value = -9999
         else:
             try:
-                # TO DO: CHANGE THIS TO JUST INPUTTING A NODATA VALUE, NO NEED FOR THE WHOLE DATASET IN THIS FUNCTION
                 nodata_value = nodata
                 if nodata_value is None:
                     raise AttributeError("No no data value found in dataset.")
@@ -261,11 +372,20 @@ class LandCover:
                            dtype=np.float32,
                            crs=crs,
                            nodata=nodata_value,
-                           transform=transform) as dst:
+                           transform=self.transform) as dst:
             dst.write(output, 1)
         print("File written to '%s'" % output_file)
 
     def update_build_landcover(self, new_building_data):
+        """
+        Update the raster array by rasterizing new building geometries with landcover code 2.
+
+        Parameters:
+            new_building_data (list):   List of building feature dictionaries with "geometry".
+
+        Returns:
+            None
+        """
         building_geometries = [shape(building['geometry']) for building in new_building_data]
         if not building_geometries:
             print("No valid building geometries found. Skipping building rasterization.")
@@ -274,12 +394,32 @@ class LandCover:
                                           out_shape=self.array.shape)
             self.array = np.where(building_mask, self.array, 2)
 
-    def update_landcover(self, type, input_array):
+    def update_landcover(self, land_type, input_array):
+        """
+        Update the raster array for cells where input_array > -1 with the given land type code.
+
+        Parameters:
+            land_type (int):            The land cover code to set.
+            input_array (np.ndarray):   Boolean or integer mask array indicating which cells to update.
+
+        Returns:
+            None
+        """
         to_update = input_array > -1
-        self.array[to_update] = type
+        self.array[to_update] = land_type
 
 
     def export_context(self, file_name, export_format="dxf"):
+        """
+        Export the current land cover and building context to a file in specified format.
+
+        Parameters:
+            file_name (str): The output file path.
+            export_format (str, optional): Format of the export. Options are "json", "csv", or "dxf". Defaults to "dxf".
+
+        Returns:
+            None
+        """
 
         bbox = np.array(self.bbox) + np.array([self.resolution, self.resolution, -self.resolution, -self.resolution])
         xmin, ymin, xmax, ymax = bbox

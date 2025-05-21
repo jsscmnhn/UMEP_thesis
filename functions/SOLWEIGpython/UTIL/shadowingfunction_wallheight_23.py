@@ -10,7 +10,7 @@ def plot_array(array, title):
     plt.axis('off')
     plt.show()
 
-def shadowingfunction_wallheight_23(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, bush, walls, aspect):
+def shadowingfunction_wallheight_23_original(a, vegdem, vegdem2, azimuth, altitude, scale, amaxvalue, bush, walls, aspect):
     """
     This function calculates shadows on a DSM and shadow height on building
     walls including both buildings and vegetion units.

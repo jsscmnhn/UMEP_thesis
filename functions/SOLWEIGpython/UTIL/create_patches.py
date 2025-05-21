@@ -1,13 +1,28 @@
 import numpy as np
 
 def create_patches(patch_option):
+    '''
+    Unchanged function generating a discretized sky vault with altitude and azimuth angles corresponding to a
+    specific patch configuration.  Patch configurations divide the hemisphere into discrete sky segments (patches)
+    according to different established or experimental schemes.
 
-    deg2rad = np.pi/180
+    Parameters:
+        patch_option (int):
+            Patch discretization scheme:
+              - 1: 145 patches (Robinson & Stone, 2004 based on Tregenza, 1987)
+              - 2: 153 patches (Wallenberg et al., 2022 modification)
+              - 3: 306 patches (experimental: doubling patch count of option 2)
+              - 4: 612 patches (experimental: finer resolution using 15 annuli)
 
-    # patch_option = 1 = 145 patches (Robinson & Stone, 2004)
-    # patch_option = 2 = 153 patches (Wallenberg et al., 2022)
-    # patch_option = 3 = 306 patches -> test 
-    # patch_option = 4 = 612 patches -> test
+    Returns:
+        skyvaultalt (np.ndarray):       1D array of patch center altitudes (in degrees).
+        skyvaultazi (np.ndarray):       1D array of patch center azimuths (in degrees).
+        annulino (np.ndarray):          Altitude angles (in degrees) marking the annular boundaries from zenith to horizon.
+        skyvaultaltint (np.ndarray):    Altitude angles (in degrees) for patch center positions in each annulus.
+        patches_in_band (np.ndarray):   Number of azimuthal patches per annular band.
+        skyvaultaziint (np.ndarray):    Angular width of each patch in azimuth (degrees).
+        azistart (np.ndarray):          Azimuth offset for each band, used to rotate starting position to avoid patch alignment across bands.
+    '''
 
     skyvaultalt = np.atleast_2d([])
     skyvaultazi = np.atleast_2d([])
@@ -45,8 +60,5 @@ def create_patches(patch_option):
             skyvaultalt = np.append(skyvaultalt, skyvaultaltint[j])
             skyvaultazi = np.append(skyvaultazi, k*skyvaultaziint[j] + azistart[j])
 
-    # skyvaultzen = (90 - skyvaultalt) * deg2rad
-    # skyvaultalt = skyvaultalt * deg2rad
-    # skyvaultazi = skyvaultazi * deg2rad
 
     return skyvaultalt, skyvaultazi, annulino, skyvaultaltint, patches_in_band, skyvaultaziint, azistart

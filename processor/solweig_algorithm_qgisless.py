@@ -61,7 +61,7 @@ class SOLWEIGAlgorithm():
     - INPUT_SVF:        ZIP Sky View Factor (SVF) input files.
     - INPUT_CDSM:       Canopy DSM input file.
     - INPUT_TDSM:       Trunk zone DSM input file.
-    - INPUT_HEIGHT:
+    - INPUT_HEIGHT:     Wall height input file.
     - INPUT_ASPECT:     Wall aspect input file.
     - TRANS_VEG:        Vegetation transmissivity value or input file.
     - LEAF_START:       Start of the leaf-on period (date or DOY).

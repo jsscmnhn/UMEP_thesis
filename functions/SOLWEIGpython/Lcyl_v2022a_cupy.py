@@ -3,12 +3,29 @@ from copy import deepcopy
 from . import emissivity_models
 from . import patch_characteristics_cupy
 
-''' This function combines the method to divide the sky vault into patches (Tregenza (1987) and Robinson & Stone (2004)) 
-    and the approach by Unsworth & Monteith or Martin & Berdahl (1984) or Bliss (1961) to calculate emissivities of the 
-    different parts of the sky vault. '''
+def Lcyl_v2022a_cupy(esky, sky_patches, Ta, Tgwall, ewall, Lup, shmat, vegshmat, vbshvegshmat, solar_altitude, solar_azimuth, rows, cols, asvf):
+    '''
+    Function updated to use CuPy.  This function combines the method to divide the sky vault into patches (Tregenza (1987) and Robinson & Stone (2004))
+    and the approach by Unsworth & Monteith or Martin & Berdahl (1984) or Bliss (1961) to calculate emissivities of the
+    different parts of the sky vault.
 
-def Lcyl_v2022a(esky, sky_patches, Ta, Tgwall, ewall, Lup, shmat, vegshmat, vbshvegshmat, solar_altitude, solar_azimuth, rows, cols, asvf):
+    Parameters:
+        esky (float):                               Effective hemispherical sky emissivity.
+        sky_patches (ndarray):                      Array  with patch altitude and azimuth in degrees.
+        Ta (float):                                 Air temperature in degrees Celsius.
+        Tgwall (ndarray):                           Wall surface temperatures (°C).
+        ewall (ndarray):                            Wall surface emissivities.
+        Lup (ndarray):                              Upward longwave radiation.
+        shmat, vegshmat, vbshvegshmat (cp.ndarray): c
+        solar_altitude (float):                     Solar altitude angle in degrees.
+        solar_azimuth (float):                      Solar azimuth angle in degrees.
+        rows (int):                                 Number of rows in the grid.
+        cols (int):                                 Number of columns in the grid.
+        asvf (ndarray):                             Anisotropic Sky View Factor.
 
+    Returns:
+        Ldown, Lside, Least etc. (cp.ndarray):      Longwave radiation from six directions.
+    '''
     # Stefan-Boltzmann's Constant
     SBC = 5.67051e-8
 
@@ -90,4 +107,3 @@ def Lcyl_v2022a(esky, sky_patches, Ta, Tgwall, ewall, Lup, shmat, vegshmat, vbsh
                                  rows, cols)
 
     return Ldown, Lside, Least_, Lwest_, Lnorth_, Lsouth_
-    # return Ldown, Lside, Lside_sky, Lside_veg, Lside_sh, Lside_sun, Lside_ref, Lsky_normal, Lsky_down, Lsky_side, Least_, Lwest_, Lnorth_, Lsouth_

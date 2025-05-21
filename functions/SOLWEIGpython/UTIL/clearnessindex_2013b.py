@@ -6,8 +6,7 @@ import numpy as np
 import math
 
 def clearnessindex_2013b(zen, jday, Ta, RH, radG, location, P):
-
-    """ Clearness Index at the Earth's surface calculated from Crawford and Duchon 1999
+    """ Unchanged function: Clearness Index at the Earth's surface calculated from Crawford and Duchon 1999
 
     :param zen: zenith angle in radians
     :param jday: day of year

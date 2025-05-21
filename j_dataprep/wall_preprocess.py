@@ -12,7 +12,11 @@ import cProfile
 import pstats
 import io
 
+
 def cart2pol(x, y, units='deg'):
+    '''
+    Convert Cartesian coordinates (x, y) to polar coordinates (theta, radius).
+    '''
     radius = np.sqrt(x ** 2 + y ** 2)
     theta = np.arctan2(y, x)
     if units in ['deg', 'degs']:
@@ -21,7 +25,9 @@ def cart2pol(x, y, units='deg'):
 
 
 def get_ders(dsm, scale):
-    # dem,_,_=read_dem_grid(dem_file)
+    '''
+    Calculate slope gradient and aspect from a digital surface model (DSM).
+    '''
     dx = 1 / scale
     # dx=0.5
     fy, fx = np.gradient(dsm, dx, dx)
@@ -31,39 +37,20 @@ def get_ders(dsm, scale):
     asp = asp + (asp < 0) * (np.pi * 2)
     return grad, asp
 
-
-def show_array(array, title="Array Visualization", cmap="viridis"):
-    """
-    Display a CuPy or NumPy array using Matplotlib.
-    If the input is a CuPy array, it is converted to a NumPy array.
-    """
-    if isinstance(array, cp.ndarray):
-        array = array.get()  # Transfer from GPU to CPU
-
-    plt.figure(figsize=(8, 6))
-    plt.imshow(array, cmap=cmap)
-    plt.colorbar()
-    plt.title(title)
-    plt.show()
-
 class WallData:
+    '''
+    A class to create the required wall inputs, wall aspect and wall height, from the DSM
+
+    Attributes:
+        minheight (float):          minimum height to be considered a wall
+        wall_height (cp.ndarray):   output wall height array in meters
+        wall_aspect (cp.ndarray):   output wall aspect array
+    '''
     def __init__(self, dsm, minheight):
         dsm_array = cp.array(dsm.GetRasterBand(1).ReadAsArray(), dtype=cp.float32)
-        np_dsm_array = np.array(dsm.GetRasterBand(1).ReadAsArray(), dtype=np.float32)
+        # np_dsm_array = np.array(dsm.GetRasterBand(1).ReadAsArray(), dtype=np.float32)
         self.minheight = minheight
-
-        profiler = cProfile.Profile()
-        profiler.enable()
-
         self.wall_height = self.findwalls(dsm_array)
-        profiler.disable()
-        s = io.StringIO()
-        ps = pstats.Stats(profiler, stream=s).sort_stats('cumtime')
-        ps.print_stats(20)  # top 20 functions
-        profiler.dump_stats("profiling/cupy_wall_aspect_profile.prof")
-        print(s.getvalue())
-
-
         self.wall_aspect = self.filter_aspect_sobel(dsm_array)
         #self.filter1Goodwin_as_aspect_v3(self.wall_height.get(), 0.5, np_dsm_array)
 
@@ -71,6 +58,16 @@ class WallData:
 
 
     def findwalls(self, dsm_array):
+        '''
+        Detect wall heights in the DSM using a cross-shaped maximum filter.
+
+        Parameters:
+              dsm_array (cupy.ndarray):  DSM array on GPU.
+
+        Returns:
+              walls (cupy.ndarray):      Array of wall heights.
+        '''
+
         # Create the domain mask
         domain = cp.array([[0, 1, 0], [1, 0, 1], [0, 1, 0]])
 
@@ -92,12 +89,16 @@ class WallData:
         return walls
 
     def filter_aspect_sobel(self, dsm_array, sigma=0):
-        """
-        Compute wall aspect using a Sobel filter.
-        This function computes the gradient of the DSM 'a' using Sobel,
-        derives the orientation (aspect) at each pixel, and then assigns that
-        orientation only to pixels where 'walls'==1.
-        """
+        '''
+             Compute wall aspect using Sobel filters on the DSM.
+
+             Parameters:
+                   dsm_array (cupy.ndarray):  DSM array on GPU.
+                   sigma (float):             Optional Gaussian smoothing sigma (default 0).
+
+             Returns:
+                   dirwalls (cupy.ndarray):  Wall aspect angles in degrees, zero outside wall pixels.
+             '''
         # Ensure walls are binary
         walls = cp.where(self.wall_height > 0, 1, 0)
         dsm = dsm_array
@@ -126,6 +127,16 @@ class WallData:
 
 
     def findwalls_np(self, a, walllimit):
+        '''
+        Detect walls using NumPy with a cross-shaped neighbor max filter.
+
+        Parameters:
+              a (ndarray):         Input 2D array.
+              walllimit (float):   Minimum height difference to be considered a wall.
+
+        Returns:
+              walls (ndarray):     Wall height differences with edges zeroed.
+        '''
         col = a.shape[0]
         row = a.shape[1]
         walls = np.zeros((col, row))
@@ -148,20 +159,17 @@ class WallData:
 
     @staticmethod
     def filter1Goodwin_as_aspect_v3(walls, scale, a):
-        """
-        tThis function applies the filter processing presented in Goodwin et al (2010) but instead for removing
-        linear fetures it calculates wall aspect based on a wall pixels grid, a dsm (a) and a scale factor
+        '''
+        Calculate wall aspect based on wall pixels grid, DSM, and scale using Goodwin et al (2010) method.
 
-        Fredrik Lindberg, 2012-02-14
-        fredrikl@gvc.gu.se
+        Parameters:
+              walls (ndarray):   Binary wall pixels grid.
+              scale (float):     Scale factor.
+              a (ndarray):       DSM array.
 
-        Translated: 2015-09-15
-
-        :param walls:
-        :param scale:
-        :param a:
-        :return: dirwalls
-        """
+        Returns:
+              dirwalls (ndarray): Wall aspect angles in degrees.
+        '''
 
         row = a.shape[0]
         col = a.shape[1]

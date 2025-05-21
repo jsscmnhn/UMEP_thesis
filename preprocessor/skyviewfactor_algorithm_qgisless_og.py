@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# TO DO: CREATE DIR IF DOESNT EXIST YET
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -17,6 +16,10 @@ from rasterio import Affine
         begin                : 2020-04-02
         copyright            : (C) 2020 by Fredrik Lindberg
         email                : fredrikl@gvc.gu.se
+        
+Modifications by:
+    Jessica Monahan 2025
+    Modified so code can run without QGIS
  ***************************************************************************/
 
 /***************************************************************************
