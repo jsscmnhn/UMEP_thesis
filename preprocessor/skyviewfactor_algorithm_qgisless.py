@@ -74,7 +74,7 @@ class ProcessingSkyViewFactorAlgorithm():
     - MULT_DSMS:            For 3D SOLWEIG: input of layered DSM file.
     """
 
-    def __init__(self, INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_DTM=None, INPUT_EXTRAHEIGHT=6, INPUT_MULT_DSMS = None, INPUT_TDSM=None, USE_VEG=True, TRANS_VEG=3,
+    def __init__(self, INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_DTM=None, INPUT_EXTRAHEIGHT=6, INPUT_MULT_DSMS = None, INPUT_TDSM=None, USE_VEG=True, TRANS_VEG=15,
                  TSDM_EXIST=False, INPUT_THEIGHT=25.0, ANISO=True,
                  ):
         self.INPUT_DSM = INPUT_DSM
@@ -444,26 +444,73 @@ class ProcessingSkyViewFactorAlgorithm():
         return {self.OUTPUT_DIR: outputDir, self.OUTPUT_FILE: outputFile}
 
 if __name__ == "__main__":
-    d = "D"
-    # d = "G"
+    # list = [1, 2, 6]
+    d = "E"
 
-    input_mets = ["../j_dataprep/climate/avgday_30plus_qgis.txt"]
-    # # "../j_dataprep/climate/avgday_30plus_qgis.txt"
-    # ['historisch', 'tuindorp', 'vinex', 'volkswijk', 'bloemkool']
-    folders_end = ['ext', 'avg']
-    start = 'D:/Geomatics/thesis/_analysisfinalfurther'
-    i = 0
+    list = [1, 2, 3, 4, 5, 6]
+    # fronti =f"{d}:/Geomatics/thesis/_amsterdamset/location"
 
-    nbh_type = "chmfix"
-    INPUT_DSM = f"{start}//{nbh_type}/dsm.tif"
-    OUTPUT_DIR = f"{start}//{nbh_type}/svf"
-    OUTPUT_FILE = f"profiling/wcstest"
-    INPUT_DTM = f"{start}//{nbh_type}/dtm.tif"
-    INPUT_CDSM = f"{start}//{nbh_type}/chm.tif"
+    # list = [3, 4, 5]
+    schiphol_file =  f"{d}:/Geomatics/thesis/_amsterdamset/23aug/aug23_schip_climate_qgis.txt" # f"{d}:/Geomatics/thesis/_amsterdamset/12sep/sep12_schip_climatebike_qgis.txt"
 
-    # INPUT_ANISO=INPUT_ANISO
-    ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
-                                     INPUT_DTM=INPUT_DTM).processAlgorithm()
+    for i in list:
+        loc = i
+
+        # new gap
+        INPUT_DSM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/dsm_0.tif"
+        INPUT_CDSM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
+        INPUT_DTM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
+        OUTPUT_FILE = 'output.tif'
+
+        #
+        OUTPUT_DIR = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_hole"
+        #
+        test = ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE)
+        test.processAlgorithm()
+
+        #     # bridging files
+        INPUT_DSM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dsm_over.tif"
+        INPUT_CDSM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
+        INPUT_DTM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
+
+        OUTPUT_DIR = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/svf_over"
+
+        test = ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE)
+        test.processAlgorithm()
+
+        # # 3d files
+        INPUT_DSM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dsm.tif"
+        INPUT_CDSM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/CHM.tif"
+        INPUT_DTM = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/original/final_dtm.tif"
+        mult = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/dsms.tif"
+        OUTPUT_DIR = f"{d}:/Geomatics/thesis/_amsterdamset/location_{loc}/3d/svf"
+
+        ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
+                                          INPUT_MULT_DSMS=mult).processAlgorithm_3d()
+
+
+
+
+    # d = "D"
+    # # d = "G"
+    #
+    # input_mets = ["../j_dataprep/climate/avgday_30plus_qgis.txt"]
+    # # # "../j_dataprep/climate/avgday_30plus_qgis.txt"
+    # # ['historisch', 'tuindorp', 'vinex', 'volkswijk', 'bloemkool']
+    # folders_end = ['ext', 'avg']
+    # start = 'D:/Geomatics/thesis/_analysisfinalfurther'
+    # i = 0
+    #
+    # nbh_type = "chmfix"
+    # INPUT_DSM = f"{start}//{nbh_type}/dsm.tif"
+    # OUTPUT_DIR = f"{start}//{nbh_type}/svf"
+    # OUTPUT_FILE = f"profiling/wcstest"
+    # INPUT_DTM = f"{start}//{nbh_type}/dtm.tif"
+    # INPUT_CDSM = f"{start}//{nbh_type}/chm.tif"
+    #
+    # # INPUT_ANISO=INPUT_ANISO
+    # ProcessingSkyViewFactorAlgorithm(INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE,
+    #                                  INPUT_DTM=INPUT_DTM).processAlgorithm()
 
     # folder_list = ['0.5', '1', '2']
     # D = 'D'
