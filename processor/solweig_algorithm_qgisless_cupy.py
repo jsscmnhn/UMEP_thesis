@@ -1608,14 +1608,14 @@ class SOLWEIGAlgorithm():
         return {self.OUTPUT_DIR: outputDir}
 
 if __name__ == "__main__":
-    # list = [1, 2, 6]
+    list = [1, 2, 6]
     d = "E"
 
     # list = [1, 2, 3, 4, 5, 6]
     # fronti =f"{d}:/Geomatics/thesis/_amsterdamset/location"
 
-    list = [3, 4, 5]
-    schiphol_file =  f"{d}:/Geomatics/thesis/_amsterdamset/23aug/aug23_schip_climate_qgis.txt" # f"{d}:/Geomatics/thesis/_amsterdamset/12sep/sep12_schip_climatebike_qgis.txt"
+    # list = [3, 4, 5]
+    schiphol_file = f"{d}:/Geomatics/thesis/_amsterdamset/12sep/sep12_schip_climatebike_qgis.txt"  # f"{d}:/Geomatics/thesis/_amsterdamset/23aug/aug23_schip_climate_qgis.txt"
 
     for i in list:
         loc = i
