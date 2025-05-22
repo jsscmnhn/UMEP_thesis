@@ -75,7 +75,7 @@ class ProcessingSkyViewFactorAlgorithm():
         transVeg = float(self.TRANS_VEG)
         vegdsm = self.INPUT_CDSM
         vegdsm2 = self.INPUT_TDSM
-        # tdsmExists = self.parameterAsBool(parameters, self.TSDM_EXIST, context)
+        # tdsmExists = self.parameterAsBool(parameters, self.TSDM_EXIST, context.dxf)
         trunkr = float(self.INPUT_THEIGHT)
         aniso = bool(self.ANISO)
         dtm_path = self.INPUT_DTM
@@ -100,7 +100,7 @@ class ProcessingSkyViewFactorAlgorithm():
 
         if vegdsm:
             usevegdem = 1
-            # vegdsm = self.parameterAsRasterLayer(parameters, self.INPUT_CDSM, context)
+            # vegdsm = self.parameterAsRasterLayer(parameters, self.INPUT_CDSM, context.dxf)
             # if vegdsm is None:
             # raise QgsProcessingException("Error: No valid vegetation DSM selected")
 
@@ -116,7 +116,7 @@ class ProcessingSkyViewFactorAlgorithm():
                     "Error in Vegetation Canopy DSM: All rasters must be of same extent and resolution")
 
             if vegdsm2:
-                # vegdsm2 = self.parameterAsRasterLayer(parameters, self.INPUT_TDSM, context)
+                # vegdsm2 = self.parameterAsRasterLayer(parameters, self.INPUT_TDSM, context.dxf)
                 # if vegdsm2 is None:
                 # raise QgsProcessingException("Error: No valid Trunk zone DSM selected")
 

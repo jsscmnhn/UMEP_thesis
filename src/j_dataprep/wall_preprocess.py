@@ -3,14 +3,10 @@ from cupyx.scipy.ndimage import maximum_filter
 import cupyx.scipy.ndimage as cnd
 from osgeo import gdal
 
-from src.util.misc import saveraster
-import matplotlib.pyplot as plt
+from ..util.misc import saveraster
 import numpy as np
 import math
 import scipy.ndimage.interpolation as sc
-import cProfile
-import pstats
-import io
 
 
 def cart2pol(x, y, units='deg'):
@@ -47,7 +43,19 @@ class WallData:
         wall_aspect (cp.ndarray):   output wall aspect array
     '''
     def __init__(self, dsm, minheight):
-        dsm_array = cp.array(dsm.GetRasterBand(1).ReadAsArray(), dtype=cp.float32)
+        if hasattr(dsm, 'GetRasterBand'):
+            np_array = dsm.GetRasterBand(1).ReadAsArray().astype(np.float32)
+            dsm_array = cp.array(np_array)
+        else:
+            # If input is a NumPy array, convert to CuPy array
+            if isinstance(dsm, np.ndarray):
+                dsm_array = cp.array(dsm, dtype=cp.float32)
+            # If input is already a CuPy array, just assign it
+            elif isinstance(dsm, cp.ndarray):
+                dsm_array = dsm
+            else:
+                raise TypeError(f"Unsupported DSM input type: {type(dsm)}")
+
         # np_dsm_array = np.array(dsm.GetRasterBand(1).ReadAsArray(), dtype=np.float32)
         self.minheight = minheight
         self.wall_height = self.findwalls(dsm_array)

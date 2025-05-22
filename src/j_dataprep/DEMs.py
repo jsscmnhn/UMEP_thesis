@@ -24,7 +24,7 @@ import json
 from shapely.affinity import translate
 from rasterio.enums import Resampling
 from rasterio.warp import reproject
-from landcover import LandCover
+# from landcover import LandCover
 
 def edit_bounds(bounds, buffer, shrink=False):
     '''
@@ -378,7 +378,7 @@ class DEMS:
         self.is3D = False
 
     @staticmethod
-    def fetch_ahn_wcs(bufferbbox, output_file="output/dtm.tif", coverage="dtm_05m", wcs_resolution=0.5):
+    def fetch_ahn_wcs(bufferbbox, output_file, coverage="dtm_05m", wcs_resolution=0.5):
         '''
         Fetch AHN WCS data for a given buffered bounding box and save as GeoTIFF.
 
@@ -678,7 +678,7 @@ class DEMS:
 
         # --- Fetch DTM ---
         dtm_dst, dtm_array = self.fetch_ahn_wcs(
-            bbox, self.bufferbbox, output_file="archive/outputs/outputs2/dtm.tif", coverage="dtm_05m", wcs_resolution=0.5
+            self.bufferbbox, output_file="output/dtm_fetched.tif", coverage="dtm_05m", wcs_resolution=0.5
         )
         transform = dtm_dst.transform
         filled_dtm  = self.fill_raster(dtm_array, dtm_dst.nodata, transform)
@@ -686,7 +686,7 @@ class DEMS:
         # --- Fetch DSM if buildings are used ---
         if self.building_data:
             dsm_dst, dsm_array = self.fetch_ahn_wcs(
-                bbox, self.bufferbbox, output_file="archive/outputs/outputs2/dsm.tif", coverage="dsm_05m", wcs_resolution=0.5
+                self.bufferbbox, output_file="output/dsm_fetched.tif", coverage="dsm_05m", wcs_resolution=0.5
             )
             filled_dsm = self.fill_raster(dsm_array, dsm_dst.nodata, transform)
             final_dsm = self.replace_buildings(
@@ -717,7 +717,7 @@ class DEMS:
         write_output(dtm_dst, self.crs, cropped_dtm, transform, f"{self.output_dir}/final_dtm.tif")
 
         if final_dsm is not None:
-            write_output(dtm_dst, self.crs, cropped_dsm, transform, f"{self.output_dir}/final_dsm_over.tif")
+            write_output(dtm_dst, self.crs, cropped_dsm, transform, f"{self.output_dir}/final_dsm.tif")
 
         return cropped_dtm, cropped_dsm if final_dsm is not None else cropped_dtm, transform
 
@@ -754,7 +754,7 @@ class DEMS:
                 else:
                     self.dsm[0][mask] = user_arrays[0][mask] + min_value
 
-                    if higher_buildings:
+                    if higher_buildings is not None:
                         new_build = next(
                             (b for b in higher_buildings if b['parcel_id'] == building['parcel_id']),
                             None
@@ -961,7 +961,7 @@ class CHM:
         og_polygons (geopandas.GeoDataFrame):           Copy of original tree polygons.
         original_trunk (numpy.ndarray):                 Copy of original trunk array.
     '''
-    def __init__(self, bbox, dtm, dsm, trunk_height, output_folder, input_folder, output_folder_chm, resolution=0.5, merged_output='pointcloud.las'):
+    def __init__(self, bbox, dtm, dsm, trunk_height, output_folder_chm='output', output_folder_las='temp', resolution=0.5, merged_output='pointcloud.las'):
         '''
         Initialize the CHM class with bounding box, DTM, DSM, trunk height and folder paths.
 
@@ -970,7 +970,7 @@ class CHM:
             dtm (numpy.ndarray or rasterio dataset):          Digital Terrain Model raster.
             dsm (numpy.ndarray or rasterio dataset):          Digital Surface Model raster.
             trunk_height (float):                             Factor or scalar to multiply the CHM for trunk height approximation.
-            output_folder (str):                              Folder path for output files.
+            output_folder_las (str):                          Folder path for output LAS files.
             input_folder (str):                               Folder path for input files.
             output_folder_chm (str):                          Folder path for CHM-specific output.
             resolution (float, optional):                     Resolution for raster grid cells. Defaults to 0.5.
@@ -981,9 +981,10 @@ class CHM:
         self.crs = (CRS.from_epsg(28992))
         self.dtm = dtm
         self.dsm = dsm
+        self.tree_mask = None
         self.output_folder_chm = output_folder_chm
-        self.gdf = gpd.read_file("geotiles/AHN_lookup.geojson")
-        self.chm, self.tree_polygons, self.transform = self.init_chm(bbox, output_folder=output_folder, input_folder=input_folder, merged_output=merged_output, resolution=resolution)
+        self.gdf = gpd.read_file("src/j_dataprep/geotiles/AHN_lookup.geojson")
+        self.chm, self.tree_polygons, self.transform = self.init_chm(bbox, output_folder=output_folder_las, input_folder=output_folder_las, merged_output=merged_output, resolution=resolution)
         self.trunk_array = self.chm * trunk_height
         self.original_chm, self.og_polygons, self.original_trunk = self.chm, self.tree_polygons, self.trunk_array
 
@@ -1473,7 +1474,7 @@ class CHM:
             invert=True,
             out_shape=self.chm.shape
         )
-
+        self.tree_mask = tree_mask
         self.chm = np.where(tree_mask, 0, self.chm)
         self.trunk_array = np.where(tree_mask, 0, self.trunk_array)
         write_output(None, self.crs, self.chm, self.transform, "output/updated_chm.tif")
@@ -1640,7 +1641,7 @@ class CHM:
         - ValueError: If no data exists for the specified tree age.
         '''
         # Find the tree data for the specified age
-        with open("fraxinus_growth.json") as f:
+        with open("src/j_dataprep/fraxinus_excelsior_database.json") as f:
             tree_db = json.load(f)
 
         tree_data = next((item for item in tree_db if item["age"] == age), None)
@@ -1709,8 +1710,8 @@ if __name__ == "__main__":
 
     output = f"{output_dir}/landcover.tif"
     dataset = f"{output_dir}/final_dtm.tif"
-    landcover = LandCover(bbox,  resolution = 1, building_data=buildings, dataset_path=dataset)
-    landcover.save_raster(output, False)
+    # landcover = LandCover(bbox,  resolution = 1, building_data=buildings, dataset_path=dataset)
+    # landcover.save_raster(output, False)
 
     # bbox_list = [(120000, 485700, 120126, 485826), (120000, 485700, 120251, 485951), (120000, 485700, 120501, 486201), (120000, 485700, 120751, 486451), (120000, 485700, 121001, 486701), (120000, 485700, 121501, 487201) ]
     # folder_list = ['250', '500', '1000', '1500', '2000', '3000']

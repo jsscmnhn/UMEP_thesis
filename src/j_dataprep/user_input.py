@@ -1,9 +1,8 @@
 import json
 from rusterizer_3d import rasterize_from_python
 import numpy as np
-
 from osgeo import gdal
-from src.util.misc import saveraster
+from ..util.misc import saveraster
 from scipy.ndimage import label
 
 class Surface_input:
@@ -18,15 +17,15 @@ class Surface_input:
     Attributes:
           dictionary (dict):    Loaded landcover category dictionary from 'landcover.json'.
           res (float):          Resolution of the raster grid cells.
-          cols (int):           Number of columns in the raster grid.
-          rows (int):           Number of rows in the raster grid.
+          ncols (int):           Number of columns in the raster grid.
+          nrows (int):           Number of rows in the raster grid.
     '''
 
     def __init__(self, ncols, nrows, resolution):
-        self.dictionary = json.load(open("landcover.json", "r", encoding="utf-8"))
+        self.dictionary = json.load(open("src/j_dataprep/landcover.json", "r", encoding="utf-8"))
         self.res = resolution
-        self.cols = ncols
-        self.rows = nrows
+        self.ncols = ncols
+        self.nrows = nrows
 
     def get_value(self, category, key) -> int | None:
         '''
@@ -105,6 +104,11 @@ class Building3d_input:
 
         dsms = np.full((layers, arrays[0].shape[0], arrays[0].shape[1]), np.nan)
         arrays = [np.where(arr == -9999, np.nan, arr) for arr in arrays]
+
+        while len(arrays) < 4:
+            dummy = np.full_like(arrays[0], np.nan)
+            arrays.append(dummy)
+
         grounded_mask = arrays[1] == 0
         direct_gaps = ~grounded_mask
         gaps = arrays[3] > 0

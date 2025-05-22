@@ -36,13 +36,13 @@ from osgeo import gdal, osr
 # import rasterio
 import os
 
-from src.util.misc import saveraster
-from functions.SOLWEIGpython.UTIL.Solweig_v2015_metdata_noload import Solweig_2015a_metdata_noload
-from src.functions.SOLWEIGpython.UTIL.clearnessindex_2013b import clearnessindex_2013b
-from src.functions.SOLWEIGpython.Tgmaps_v1_cupy import Tgmaps_v1
-from src.functions.SOLWEIGpython.Solweig_2022a_calc_forprocessing_cupy import Solweig_2022a_calc as so
-from src.functions.SOLWEIGpython.Solweig_2022a_calc_forprocessing_cupy import Solweig_2022a_calc_3d as so_3d
-from functions.SOLWEIGpython import WriteMetadataSOLWEIG
+from ..util.misc import saveraster
+from ..functions.SOLWEIGpython.UTIL.Solweig_v2015_metdata_noload import Solweig_2015a_metdata_noload
+from ..functions.SOLWEIGpython.UTIL.clearnessindex_2013b import clearnessindex_2013b
+from ..functions.SOLWEIGpython.Tgmaps_v1_cupy import (Tgmaps_v1)
+from ..functions.SOLWEIGpython.Solweig_2022a_calc_forprocessing_cupy import Solweig_2022a_calc as so
+from ..functions.SOLWEIGpython.Solweig_2022a_calc_forprocessing_cupy import Solweig_2022a_calc_3d as so_3d
+from ..functions.SOLWEIGpython import WriteMetadataSOLWEIG
 import matplotlib.pyplot as plt
 from shutil import rmtree
 import string
@@ -1342,7 +1342,7 @@ class SOLWEIGAlgorithm():
 
         # building grid and land cover preparation
         # TO DO: MAYBE NOT HAVE HARD CODED?
-        sitein = "landcoverclasses_2016a.txt"
+        sitein = "src/processor/landcoverclasses_2016a.txt"
         f = open(sitein)
         lin = f.readlines()
         lc_class = cp.zeros((lin.__len__() - 1, 6))

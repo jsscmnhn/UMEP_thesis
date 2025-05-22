@@ -44,12 +44,13 @@ class LandCover:
         transform:                              Raster transform from DTM dataset.
     """
     def __init__(self, bbox, crs="http://www.opengis.net/def/crs/EPSG/0/28992", main_roadtype=0, resolution=0.5, building_data=None, dataset=None,
-                 dataset_path=None, buildings_path=None, layer=None, landcover_path="landcover.json"):
+                 dataset_path=None, buildings_path=None, layer=None, landcover_path="src/j_dataprep/landcover.json"):
         self.bbox = bbox
+        self.transform = None
         self.crs = crs
         self.resolution = resolution
         self.main_road = main_roadtype
-        self.dtm_dataset = dataset_path
+        self.dtm_dataset = self.dtm_dataset_prep(dataset_path, dataset)
         self.base_url = "https://api.pdok.nl/brt/top10nl/ogc/v1"
 
         self.water_mask = None
@@ -70,7 +71,7 @@ class LandCover:
         self.array = self.convert_to_raster()
         self.og_landcover = self.array
         self.landcover_withoutbuild = None
-        self.transform = None
+
 
     def dtm_dataset_prep(self, dataset_path, dataset):
         """
@@ -411,7 +412,7 @@ class LandCover:
 
     def export_context(self, file_name, export_format="dxf"):
         """
-        Export the current land cover and building context to a file in specified format.
+        Export the current land cover and building context.dxf to a file in specified format.
 
         Parameters:
             file_name (str): The output file path.
