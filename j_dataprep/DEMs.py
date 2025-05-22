@@ -23,12 +23,21 @@ import ezdxf
 import json
 from shapely.affinity import translate
 from rasterio.enums import Resampling
-from rasterio.warp import calculate_default_transform, reproject
-from rasterio.windows import from_bounds
-
+from rasterio.warp import reproject
 from landcover import LandCover
 
 def edit_bounds(bounds, buffer, shrink=False):
+    '''
+    Expands or shrinks bounding box coordinates by a buffer amount.
+
+    Parameters:
+        bounds (tuple): Bounding box as (min_x, min_y, max_x, max_y).
+        buffer (float): Amount to expand or shrink the bounding box.
+        shrink (bool):  If True, shrink the bounds by buffer; else expand (default False).
+
+    Returns:
+        tuple: Modified bounding box as (min_x, min_y, max_x, max_y).
+    '''
     min_x, min_y, max_x, max_y = bounds
 
     if shrink:
@@ -48,18 +57,20 @@ def edit_bounds(bounds, buffer, shrink=False):
 
 
 def write_output(dataset, crs, output, transform, name, change_nodata=False):
-    """
-    Write grid to .tiff file.
-    ----
-    Input:
-    - dataset: Can be either a rasterio dataset (for rasters) or laspy dataset (for point clouds)
-    - output (Array): the output grid, a numpy grid.
-    - name (String): the name of the output file.
-    - transform:
-      a user defined rasterio Affine object, used for the transforming the pixel coordinates
-      to spatial coordinates.
-    - change_nodata (Boolean): true: use a no data value of -9999, false: use the datasets no data value
-    """
+    '''
+    Writes a numpy array to a GeoTIFF file using rasterio.
+
+    Parameters:
+        dataset        :        Rasterio or laspy dataset (for metadata).
+        crs            :        Coordinate Reference System for the output raster.
+        output (np.ndarray):    Output numpy array grid to write.
+        transform      :        Affine transform mapping pixel to spatial coordinates.
+        name (str)     :        Output filename (including path).
+        change_nodata (bool):   If True, use nodata value -9999; else use dataset's nodata.
+
+    Returns:
+        None
+    '''
     output_file = name
 
     output = np.squeeze(output)
@@ -91,7 +102,37 @@ def write_output(dataset, crs, output, transform, name, change_nodata=False):
 
 
 class Buildings:
+    '''
+    Manage 3D building data within a bounding box by downloading, loading,
+    and modifying building geometries from a WFS service.
+
+    Attributes:
+        bbox (tuple):                   Bounding box (min_x, min_y, max_x, max_y) for the area of interest.
+        bufferbbox (tuple):             Buffered bounding box expanded by 2 units.
+        wfs_url (str):                  URL of the WFS service to download building data.
+        layer_name (str):               WFS layer name to query.
+        data (GeoDataFrame):            Downloaded building data.
+        building_geometries (list):     List of building geometries with parcel IDs.
+        removed_buildings (list):       List of parcel IDs of removed buildings.
+        user_buildings (list):          List of user-inserted building geometries.
+        user_buildings_higher (list):   List of user buildings with height info.
+        removed_user_buildings (list):  List of user building IDs that are removed.
+        is3D (bool):                    Flag indicating if 3D building data is used.
+    '''
+
     def __init__(self, bbox, wfs_url="https://data.3dbag.nl/api/BAG3D/wfs", layer_name="BAG3D:lod13", gpkg_name="buildings", output_folder = "output", output_layer_name="buildings"):
+        '''
+        Initialize the Buildings object by setting bounding boxes, downloading,
+        and loading building data.
+
+        Parameters:
+            bbox (tuple):               Bounding box (min_x, min_y, max_x, max_y).
+            wfs_url (str):              URL for the WFS service. Default is 3dbag.nl API.
+            layer_name (str):           Name of the WFS layer to query. Default is "BAG3D:lod13".
+            gpkg_name (str):            Name of the GeoPackage output file (without extension).
+            output_folder (str):        Folder to save the downloaded data.
+            output_layer_name (str):    Layer name to save within the GeoPackage.
+        '''
         self.bbox = bbox
         self.bufferbbox = edit_bounds(bbox, 2)
         self.wfs_url = wfs_url
@@ -104,8 +145,19 @@ class Buildings:
         self.removed_user_buildings = []
         self.is3D = False
 
-
     def download_wfs_data(self, gpkg_name, output_folder, layer_name):
+        '''
+        Download building features from the WFS service within the buffered bounding box.
+        Saves the data as a GeoPackage file.
+
+        Parameters:
+            gpkg_name (str):        Filename for the GeoPackage (without extension).
+            output_folder (str):    Folder to save the GeoPackage.
+            layer_name (str):       Layer name to use inside the GeoPackage.
+
+        Returns:
+            GeoDataFrame:           Downloaded building features concatenated, or None if no features were downloaded.
+        '''
         all_features = []
         start_index = 0
         count = 10000
@@ -118,7 +170,6 @@ class Buildings:
                 "TYPENAMES": self.layer_name,
                 "SRSNAME": "urn:ogc:def:crs:EPSG::28992",
                 "BBOX": f"{self.bufferbbox[0]},{self.bufferbbox[1]},{self.bufferbbox[2]},{self.bufferbbox[3]},urn:ogc:def:crs:EPSG::28992",
-                "COUNT": count,
                 "COUNT": count,
                 "STARTINDEX": start_index
             }
@@ -156,6 +207,17 @@ class Buildings:
 
     @staticmethod
     def load_buildings(buildings_gdf, buildings_path=None, layer=None):
+        '''
+        Load building geometries from a GeoDataFrame or from a file.
+
+        Parameters:
+            buildings_gdf (GeoDataFrame or None):   Building data GeoDataFrame.
+            buildings_path (str or None):           Path to building file to load if GeoDataFrame is None.
+            layer (str or None):                    Layer name to read from file if applicable.
+
+        Returns:
+            list:   List of dicts with 'geometry' (GeoJSON mapping) and 'parcel_id'. None if no data could be loaded.
+        '''
         if buildings_gdf is None:
             if buildings_path is not None:
                 buildings_gdf = gpd.read_file(buildings_path, layer=layer)
@@ -165,12 +227,37 @@ class Buildings:
                 zip(buildings_gdf.geometry, buildings_gdf["identificatie"])]
 
     def remove_buildings(self, identification):
+        '''
+        Mark a building as removed by adding its parcel ID to the removed list.
+
+        Parameters:
+            identification (str):   Parcel ID of the building to remove.
+        '''
         self.removed_buildings.append(identification)
 
     def retrieve_buildings(self, identification):
+        '''
+        Undo the removal of a building by removing its parcel ID from the removed list.
+
+        Parameters:
+            identification (str):   Parcel ID of the building to retrieve.
+        '''
+
         self.removed_buildings.remove(identification)
 
     def insert_user_buildings(self, highest_array, transform, footprint_array=None):
+        '''
+        Insert user-defined buildings based on arrays of building heights and optional footprints.
+        Assigns unique parcel IDs and matches footprint buildings with highest buildings.
+
+        Parameters:
+            highest_array (np.ndarray):             Array representing the highest building heights.
+            transform (Affine):                     Rasterio affine transform for spatial referencing.
+            footprint_array (np.ndarray or None):   Optional array representing building footprints.
+
+        Effects:
+            Updates self.user_buildings, self.user_buildings_higher, and self.is3D.
+        '''
         self.is3D = footprint_array is not None
         self.removed_user_buildings = []
         self.user_buildings_higher = []
@@ -219,15 +306,63 @@ class Buildings:
             self.user_buildings = highest_buildings
 
     def remove_user_buildings(self, identification):
+        '''
+        Mark a user building as removed by adding its parcel ID to the removed list.
+
+        Parameters:
+            identification (str): Parcel ID of the user building to remove.
+        '''
         self.removed_user_buildings.append(identification)
 
     def retrieve_user_buildings(self, identification):
+        '''
+        Undo the removal of a user building by removing its parcel ID from the removed list.
+
+        Parameters:
+            identification (str): Parcel ID of the user building to retrieve.
+        '''
         self.removed_user_buildings.remove(identification)
 
 
-
 class DEMS:
+    '''
+    Class for handling Digital Elevation Models (DEM) including DTM and DSM,
+    fetching AHN data via WCS, filling missing data, resampling, cropping,
+    and integrating building footprints for urban terrain modeling.
+
+    Attributes:
+    - buffer (float):                           Buffer size in meters for bbox expansion.
+    - bbox (tuple):                             Bounding box coordinates (xmin, ymin, xmax, ymax).
+    - bufferbbox (tuple):                       Buffered bounding box expanded by buffer.
+    - building_data (list):                     List of building geometries and attributes.
+    - resolution (float):                       Desired output raster resolution in meters.
+    - user_building_data (list):                User-provided building data.
+    - output_dir (str):                         Directory to save output files.
+    - bridge (bool):                            Whether to include 'overbruggingsdeel' data in the DSM.
+    - resampling (rasterio.enums.Resampling):   Resampling method for raster operations.
+    - crs (CRS):                                Coordinate reference system, default EPSG:28992.
+    - dtm (np.ndarray):                     Digital Terrain Model raster data.
+    - dsm (np.ndarray):                     Digital Surface Model raster data.
+    - transform (Affine):                       Affine transform for the rasters.
+    - og_dtm (np.ndarray):                  Original DTM before modifications.
+    - og_dsm (np.ndarray):                  Original DSM before modifications.
+    - is3D (bool):                              Flag indicating if DSM is 3D.
+    '''
     def __init__(self, bbox, building_data, resolution=0.5, bridge=False, resampling=Resampling.cubic_spline, output_dir="output"):
+        '''
+        Initialize the DEM builder object.
+
+        Parameters:
+            bbox (tuple):                           Bounding box coordinates (xmin, ymin, xmax, ymax).
+            building_data (list):                   Building geometries and data.
+            resolution (float):                     Desired output resolution in meters (default 0.5).
+            bridge (bool):                          Whether to include  'overbruggingsdeel' geometries (default False).
+            resampling (rasterio.enums.Resampling): Resampling method (default cubic_spline).
+            output_dir (str):                       Directory for output files (default "output").
+
+        Returns:
+            None
+        '''
         self.buffer = 2
         self.bbox = bbox
         self.bufferbbox = edit_bounds(bbox, self.buffer)
@@ -243,7 +378,20 @@ class DEMS:
         self.is3D = False
 
     @staticmethod
-    def fetch_ahn_wcs(bbox, bufferbbox, output_file="output/dtm.tif", coverage="dtm_05m", wcs_resolution=0.5):
+    def fetch_ahn_wcs(bufferbbox, output_file="output/dtm.tif", coverage="dtm_05m", wcs_resolution=0.5):
+        '''
+        Fetch AHN WCS data for a given buffered bounding box and save as GeoTIFF.
+
+        Parameters:
+            bufferbbox (tuple):     Buffered bounding box (xmin, ymin, xmax, ymax).
+            output_file (str):      Output filepath for the GeoTIFF (default "output/dtm.tif").
+            coverage (str):         Coverage layer name, e.g. "dtm_05m" or "dsm_05m" (default "dtm_05m").
+            wcs_resolution (float): Resolution of WCS data in meters (default 0.5).
+
+        Returns:
+            tuple or None: (rasterio dataset object, numpy array of raster data) if successful, else None.
+        '''
+
         # Calculate width and height from bbox and resolution
         width = int((bufferbbox[2] - bufferbbox[0]) / wcs_resolution)
         height = int((bufferbbox[3] - bufferbbox[1]) / wcs_resolution)
@@ -304,18 +452,18 @@ class DEMS:
 
     @staticmethod
     def extract_center_cells(geo_array, no_data=-9999):
-        """
+        '''
         Extract the values of each cell in the input data and save these with the x and y (row and col)
         indices. Thereby, make sure that the corners of the dataset are filled for a full coverage triangulation
         in the next step.
-        ----
-        Input:
-        - (2d numpy array): raster data.
-        - no_data (int, optional): no_data value to replace source no data value with.
 
-        Output:
-        - xyz_filled (list): list containing x, y and z coordinates of the cells.
-        """
+        Parameters:
+            geo_array (np.ndarray):         Raster data array.
+            no_data (int):                  No data value to identify invalid cells (default -9999).
+
+        Returns:
+            list:                           List of [x, y, z] cell values with corners interpolated if no data.
+        '''
         # Get the indices of the rows and columns
         rows, cols = np.indices(geo_array.shape)
 
@@ -360,10 +508,18 @@ class DEMS:
         return xyz_filled
 
     def crop_to_bbox(self, array, transform):
-        """
-        Crop a raster array from a buffered array to the original bbox and return
-        the correctly sliced array and new aligned transform.
-        """
+        '''
+        Crop a buffered raster array to the original bounding box.
+
+        Parameters:
+            array (np.ndarray): Raster data array with buffer.
+            transform (Affine): Affine transform matrix of input array.
+
+        Returns:
+            cropped_array (np.ndarray):     Cropped raster array.
+            new_transform (Affine):         New Affine transform matrix for cropped raster.
+        '''
+
         # Compute the window from the full buffered transform, for the smaller (target) bbox
         crop_pixels = int(self.buffer / self.resolution)
 
@@ -378,6 +534,19 @@ class DEMS:
         return cropped_array, new_transform
 
     def resample_raster(self, input_array, input_transform, input_crs, output_resolution):
+        '''
+        Resample a raster to a different resolution.
+
+        Parameters:
+            input_array (np.ndarray): Input raster data.
+            input_transform (Affine): Affine transform of input raster.
+            input_crs (CRS): Coordinate Reference System of input raster.
+            output_resolution (float): Desired output resolution in meters.
+
+        Returns:
+            resampled_array (np.ndarray):     Resampled raster array.
+            new_transform (Affine):           New Affine transform matrix for resampled raster.
+        '''
         height, width = input_array.shape
         new_width = int((width * input_transform.a) / output_resolution)
         new_height = int((height * -input_transform.e) / output_resolution)
@@ -401,27 +570,22 @@ class DEMS:
         return resampled_array, new_transform
 
     def fill_raster(self, geo_array, nodata_value, transform):
-        """
-        Fill the no data values of a given raster using Laplace interpolation.
-        ----
-        Input:
-        - geo_array (2d numpy array): cropped raster data.
-        - nodata_value (int): nodata value to replace NAN after interplation with.
-        - transform (rasterio transform): affine transform matrix.
+        '''
+        Fill no-data values in a raster using Laplace interpolation.
 
-        Output:
-        - new_data[0, 1:-1, 1:-1] (2d numpy array): filled raster data with first and last rows and columns remove to ensure
-                                                    there are no nodata values.
-        - new_transform (rasterio transform): affine transform matrix reflecting the one column one row removal shift.
-        """
+        Parameters:
+            geo_array (np.ndarray):     Cropped raster data array.
+            nodata_value (int):         No-data value to replace NaNs after interpolation.
+            transform (Affine):         Affine transform matrix of the raster.
+
+        Returns:
+            new_data(np.ndarray):       Filled raster array with no-data values replaced.
+        '''
 
         # creating delaunay
         points = self.extract_center_cells(geo_array, no_data=nodata_value)
         dt = startinpy.DT()
         dt.insert(points, "BBox")
-
-        # now interpolation
-        new_data = np.copy(geo_array)
 
         # for interpolation, grid of all column and row positions, excluding the first and last rows/cols
         cols, rows = np.meshgrid(
@@ -443,20 +607,19 @@ class DEMS:
         return new_data
 
     def replace_buildings(self, filled_dtm, dsm_buildings, buildings_geometries, transform, bridge):
-        """
-        Replace the values of the filled dtm with the values of the filled dsm, if there is a building.
-        ----
-        Input:
-        - filled_dtm (2d np array):         filled array of the cropped AHN dtm.
-        - dsm_buildings (2d np array):      Filled array of the cropped AHN dsm.
-        - building_geometries (list):       A list of the building geometries
-        - transform (rasterio transform):   affine transform matrix.
+        '''
+        Replace filled DTM values with DSM building heights where buildings exist.
 
-        Output:
-        - final_dsm (2d numpy array):   a np array representing the final dsm, containing only ground and building
-                                        heights.
+        Parameters:
+            filled_dtm (np.ndarray):        Filled, cropped DTM array.
+            dsm_buildings (np.ndarray):     Filled, cropped DSM array with buildings.
+            buildings_geometries (list):    List of building geometries (dict or GeoJSON features).
+            transform (Affine):             Affine transform matrix of the rasters.
+            bridge (bool):                  Whether to include 'overbrugginsdeel' geometries.
 
-        """
+        Returns:
+            final_dsm (np.ndarray):         Final DSM array combining ground and building heights.
+        '''
         geometries = [shape(building['geometry']) for building in buildings_geometries if 'geometry' in building]
         bridging_geometries = []
         if bridge is True:
@@ -495,11 +658,21 @@ class DEMS:
 
         # Apply the mask
         final_dsm = np.where(building_mask, filled_dtm, dsm_buildings)
-
-
         return final_dsm
 
     def create_dem(self, bbox):
+        '''
+        Create Digital Elevation Model (DEM) from AHN data with optional building and overbrugginsdeel data.
+
+        Parameters:
+            bbox (tuple):       Bounding box coordinates (xmin, ymin, xmax, ymax).
+
+        Returns:
+            cropped_dtm (np.ndarray):   Filled, cropped DTM array.
+            cropped_dsm (np.ndarray):   Cropped DSM array with buildings and building heights, optional output.
+            transform (Affine):   Affine transform matrix of the rasters.
+         '''
+
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
 
@@ -548,47 +721,19 @@ class DEMS:
 
         return cropped_dtm, cropped_dsm if final_dsm is not None else cropped_dtm, transform
 
-    def remove_buildings(self, remove_list, remove_user_list, building_data, user_building_data, user_buildings_higher=None):
-        remove_set = set(remove_list)
-        remove_user_set = set(remove_user_list)
-        # Find buildings to remove from both datasets
-        to_remove = [building for building in building_data if building['parcel_id'] in remove_set]
-        print("Parcel IDs being checked (to_remove):",
-              [building['parcel_id'] for building in building_data])
-
-        to_remove_user = [building for building in user_building_data if building['parcel_id'] in remove_user_set]
-        print("Parcel IDs being checked (to_remove_user):",
-              [building['parcel_id'] for building in user_building_data])
-
-        remove_all = to_remove + to_remove_user
-        print(remove_all)
-
-        # Extract geometries for mask creation
-        geometries = [shape(building['geometry']) for building in remove_all if 'geometry' in building]
-
-        # Create the removal mask if there are geometries
-        if geometries:
-            remove_building_mask = geometry_mask(geometries, transform=self.transform, invert=False,
-                                                 out_shape=self.dtm.shape)
-            if not self.is3D:
-                self.dsm[...] = np.where(remove_building_mask, self.dsm, self.dtm)
-            else:
-                self.dsm[0][...] = np.where(remove_building_mask, self.dsm[0], self.dtm)
-
-                if user_buildings_higher:
-                    remove_other_layers = [building for building in user_buildings_higher if
-                                           building['parcel_id'] in remove_user_set]
-                    other_geometries = [shape(building['geometry']) for building in remove_other_layers if
-                                        'geometry' in building]
-
-                    if other_geometries:
-                        remove_others_mask = geometry_mask(other_geometries, transform=self.transform, invert=False,
-                                                           out_shape=self.dtm.shape)
-
-                        for i in range(1, len(self.dsm)):
-                            self.dsm[i][...] = np.where(remove_others_mask, self.dsm[i], np.nan)
-
     def update_dsm(self, user_buildings, user_array=None, user_arrays=None, higher_buildings=None):
+        '''
+        Update the DSM with new user building heights, supporting both 2D and 3D DSM arrays.
+
+        Parameters:
+            user_buildings (list):                          List of user building data dictionaries with geometries.
+            user_array (np.ndarray, optional):              Single 2D array with building height data.
+            user_arrays (list of np.ndarray, optional):     List of arrays representing multiple DSM layers.
+            higher_buildings (list, optional):              List of user buildings with additional height layers.
+
+        Returns:
+            None
+        '''
         self.is3D = user_arrays is not None
 
         if isinstance(self.dsm, np.ndarray):
@@ -624,6 +769,20 @@ class DEMS:
                                 self.dsm[i][new_mask] = user_arrays[i][new_mask] + min_value
 
     def remove_buildings(self, remove_list, remove_user_list, building_data, user_building_data, user_buildings_higher=None):
+        '''
+        Remove specified buildings from DSM by replacing their areas with DTM values.
+
+        Parameters:
+            remove_list (list):                         List of parcel IDs to remove from the main building dataset.
+            remove_user_list (list):                    List of parcel IDs to remove from the user building dataset.
+            building_data (list):                       List of main building data dictionaries.
+            user_building_data (list):                  List of user building data dictionaries.
+            user_buildings_higher (list, optional):     List of user buildings with higher layers to be removed as well.
+
+        Returns:
+            None
+        '''
+
         remove_set = set(remove_list)
         remove_user_set = set(remove_user_list)
         # Find buildings to remove from both datasets
@@ -636,7 +795,6 @@ class DEMS:
               [building['parcel_id'] for building in user_building_data])
 
         remove_all = to_remove + to_remove_user
-        print(remove_all)
 
         # Extract geometries for mask creation
         geometries = [shape(building['geometry']) for building in remove_all if 'geometry' in building]
@@ -663,7 +821,21 @@ class DEMS:
                         for i in range(1, len(self.dsm)):
                             self.dsm[i][...] = np.where(remove_others_mask, self.dsm[i], np.nan)
 
-    def update_building_height(self, raise_height, user_buildings, building_id=None, raise_all=None, user_array=None, user_arrays=None, higher_buildings=None):
+    def update_building_height(self, raise_height, user_buildings, building_id=None, user_array=None, user_arrays=None, higher_buildings=None):
+        '''
+        Raise the height of specified user building(s) in the DSM by a given amount.
+
+        Parameters:
+            raise_height (float):                           Amount to raise the building height.
+            user_buildings (list):                          List of user building data dictionaries.
+            building_id (str, optional):                    ID of the building to raise. If None, raise_all should be used.
+            user_array (np.ndarray, optional):              Single 2D array with building height data.
+            user_arrays (list of np.ndarray, optional):     List of arrays representing multiple DSM layers.
+            higher_buildings (list, optional):              List of buildings with additional height layers for 3D DSM.
+
+        Returns:
+            None
+        '''
         if building_id is not None:
             matching_buildings = [building for building in user_buildings if building['id'] == building_id]
             for building in matching_buildings:
@@ -690,9 +862,16 @@ class DEMS:
                                 self.dsm[i][new_mask] += raise_height
 
     def export_context(self, file_name, export_format="dxf"):
-        """
-        Export the buildings and DSM bounding box in a format that can be used in CAD software.
-        """
+        '''
+        Export buildings and DSM bounding box to a CAD-compatible file format.
+
+        Parameters:
+            file_name (str):                        Path and name of the file to export.
+            export_format (str, optional):          Export format. Options: 'json', 'csv', or 'dxf'. Defaults to 'dxf'.
+
+        Returns:
+            None
+        '''
 
         bbox = np.array(self.bbox) + np.array([self.resolution, self.resolution, -self.resolution, -self.resolution])
         xmin, ymin, xmax, ymax = bbox
@@ -760,7 +939,43 @@ class DEMS:
 
 
 class CHM:
+    '''
+    Class for creating and managing Canopy Height Models (CHMs) from LiDAR data.
+    This class handles downloading and merging LAS/LAZ tiles, filtering vegetation points
+    based on classification and NDVI, rasterizing vegetation using interpolation, applying
+    smoothing filters, and generating final CHM raster outputs.
+
+    Attributes:
+        bbox (tuple):               Bounding box coordinates (min_x, min_y, max_x, max_y) defining the area of interest.
+        bufferedbbox (tuple):       Buffered bounding box extended by a fixed margin.
+        crs (rasterio.crs.CRS):                         Coordinate reference system used (default EPSG:28992).
+        dtm (numpy.ndarray or rasterio object):         Digital Terrain Model raster data.
+        dsm (numpy.ndarray or rasterio object):         Digital Surface Model raster data.
+        output_folder_chm (str):                        Folder path where CHM outputs are saved.
+        gdf (geopandas.GeoDataFrame):                   GeoDataFrame containing tile lookup information.
+        chm (numpy.ndarray):                            Initial Canopy Height Model raster array.
+        tree_polygons (geopandas.GeoDataFrame):         Polygons representing tree footprints.
+        transform (affine.Affine):                      Affine transform for raster coordinates.
+        trunk_array (numpy.ndarray):                    Array representing estimated trunk heights.
+        original_chm (numpy.ndarray):                   Copy of the original CHM before processing.
+        og_polygons (geopandas.GeoDataFrame):           Copy of original tree polygons.
+        original_trunk (numpy.ndarray):                 Copy of original trunk array.
+    '''
     def __init__(self, bbox, dtm, dsm, trunk_height, output_folder, input_folder, output_folder_chm, resolution=0.5, merged_output='pointcloud.las'):
+        '''
+        Initialize the CHM class with bounding box, DTM, DSM, trunk height and folder paths.
+
+        Parameters:
+            bbox (tuple):                                     Bounding box as (min_x, min_y, max_x, max_y).
+            dtm (numpy.ndarray or rasterio dataset):          Digital Terrain Model raster.
+            dsm (numpy.ndarray or rasterio dataset):          Digital Surface Model raster.
+            trunk_height (float):                             Factor or scalar to multiply the CHM for trunk height approximation.
+            output_folder (str):                              Folder path for output files.
+            input_folder (str):                               Folder path for input files.
+            output_folder_chm (str):                          Folder path for CHM-specific output.
+            resolution (float, optional):                     Resolution for raster grid cells. Defaults to 0.5.
+            merged_output (str, optional):                    Filename for merged LAS output. Defaults to 'pointcloud.las'.
+        '''
         self.bbox = bbox
         self.bufferedbbox = edit_bounds(bbox, 2)
         self.crs = (CRS.from_epsg(28992))
@@ -773,6 +988,16 @@ class CHM:
         self.original_chm, self.og_polygons, self.original_trunk = self.chm, self.tree_polygons, self.trunk_array
 
     def save_las(self, merged_las, veg_points, output_name="veg_points.las"):
+        '''
+        Save filtered vegetation points as a LAS file.
+
+        Parameters:
+            merged_las (laspy.LasData):     Original merged LAS data with header info.
+            veg_points (laspy.LasData):     Filtered LAS points representing vegetation.
+            output_name (str, optional):    Output filename. Defaults to "veg_points.las".
+
+        Creates the output folder if it does not exist and writes the LAS file.
+        '''
         # Create a new LasData object with the same header and filtered points
         vegetation_las = laspy.LasData(merged_las.header)
         vegetation_las.points = veg_points.points.copy()
@@ -783,8 +1008,16 @@ class CHM:
         vegetation_las.write(output_path)
         print(f"Saved vegetation points to {output_path}")
 
-
     def find_tiles(self, x_min, y_min, x_max, y_max):
+        '''
+        Find geotile names overlapping the specified bounding box.
+
+        Parameters:
+            x_min, y_min, x_max, y_max (float):       Coordinates defining the bounding box.
+
+        Returns:
+            List[str]:                           List of geotile names that intersect with the bounding box.
+        '''
         query_geom = box(x_min, y_min, x_max, y_max)
         matches = self.gdf.sindex.query(
             query_geom)  # predicate="overlaps": tricky i want to still get something if it is all contained in one
@@ -792,7 +1025,16 @@ class CHM:
 
     @staticmethod
     def filter_points_within_bounds(las_data, bounds):
-        """Filter points within the given bounding box."""
+        '''
+        Filter LAS points that lie within the given bounding box.
+
+        Parameters:
+            las_data (laspy.LasData):   Input LAS point cloud.
+            bounds (tuple):             Bounding box as (x_min, y_min, x_max, y_max).
+
+        Returns:
+            laspy.LasData:              Filtered LAS data containing only points within bounds.
+        '''
         x_min, y_min, x_max, y_max = bounds
         mask = (
                 (las_data.x >= x_min) & (las_data.x <= x_max) &
@@ -802,18 +1044,17 @@ class CHM:
 
     # @staticmethod
     def extract_vegetation_points(self, LasData, ndvi_threshold=0.1, pre_filter=False):
-        """
+        '''
         Extract vegetation points based on classification and NDVI threshold.
-        ------
-        Input:
-        - LasData (laspy.LasData): Input point cloud data in LAS format.
-        - ndvi_threshold (float): The NDVI threshold for identifying vegetation points.
-                                  NDVI values greater than this threshold are considered vegetation.
-        - pre_filter (bool): If True, applies an additional filter to remove vegetation points below a certain height
-                             threshold (1.5 meters above the lowest vegetation point).
-        Output:
-        - laspy.LasData: A new LasData object containing only the filtered vegetation points based on the specified criteria.
-        """
+
+        Parameters:
+        - LasData (laspy.LasData):          Input LAS point cloud data.
+        - ndvi_threshold (float, optional): NDVI cutoff for vegetation points. Defaults to 0.1.
+        - pre_filter (bool, optional):      If True, filter out vegetation points below 1.5m above lowest vegetation point. Defaults to False.
+
+        Returns:
+        - veg_points (laspy.LasData):       LAS data filtered to vegetation points based on NDVI and optional height filtering.
+        '''
 
         # Filter points based on classification (vegetation-related classes), note: vegetation classes are empty in AHN4
         possible_vegetation_points = LasData[(LasData.classification == 1) |  # Unclassified
@@ -845,17 +1086,17 @@ class CHM:
 
     @staticmethod
     def raster_center_coords(min_x, max_x, min_y, max_y, resolution):
-        """
-        Compute the center xy coordinates of a grid.
-        ----
-        Input:
-        - min_x, max_x, min_y, max_y(float): Minimum and maximum x and y coordinates of the grid.
-        - resolution (float): The length of each cell, function can only be used for square cells.
+        '''
+        Compute center coordinates of each cell in a raster grid.
 
-        Output:
-        - grid_center_x: a grid where each cell contains the value of its center point's x coordinates.
-        - grid_center_y: a grid where each cell contains the value of its center point's y coordinates.
-        """
+        Parameters:
+            min_x, max_x, min_y, max_y (float):  Bounding box coordinates.
+            resolution (float):                 Cell size; assumed square cells.
+
+        Returns:
+            grid_center_x (np.ndarray)      X cell center coordinates.
+            grid_center_y (np.ndarray):     Y cell center coordinates.
+        '''
         # create coordinates for the x and y border of every cell.
         x_coords = np.arange(min_x, max_x, resolution)  # x coordinates expand from left to right.
         y_coords = np.arange(max_y, min_y, -resolution)  # y coordinates reduce from top to bottom.
@@ -868,17 +1109,17 @@ class CHM:
 
     @staticmethod
     def median_filter_chm(chm_array, nodata_value=-9999, size=3):
-        """
-        Apply a median filter to a CHM, handling NoData values.
-        -----
+        '''
+        Apply a median filter to smooth the CHM, preserving NoData areas.
+
         Parameters:
-        - chm_array (np.ndarray): The array representing the height values of the CHM.
-        - nodata_value (float): Value representing NoData in the input raster.
-        - size (int): Size of the median filter. It defines the footprint of the filter.
+            chm_array (np.ndarray):         CHM raster array.
+            nodata_value (float, optional): NoData value in the array. Defaults to -9999.
+            size (int, optional):           Median filter size (window). Defaults to 3.
 
         Returns:
-        - smoothed_chm (np.ndarray): The smoothed CHM array.
-        """
+            smoothed_chm (np.ndarray):      Smoothed CHM array with NoData preserved.
+        '''
         # Create a mask for valid data
         valid_mask = chm_array != nodata_value
 
@@ -898,18 +1139,18 @@ class CHM:
         return smoothed_chm
 
     def interpolation_vegetation(self, veg_points, resolution, no_data_value=-9999):
-        """
-        Create a vegetation raster using Laplace interpolation.
+        '''
+        Create a vegetation raster by interpolating vegetation points using Laplace interpolation.
 
-        InpurL
-        - veg_points (laspy.LasData):       Vegetation points to be interpolated.
-        - resolution (float):               Resolution of the raster.
-        - no_data_value (int, optional):    Value for no data
+        Parameters:
+            veg_points (laspy.LasData):       Vegetation points to interpolate.
+            resolution (float):               Desired raster resolution.
+            no_data_value (int, optional):    Value to assign NoData cells. Defaults to -9999.
 
         Returns:
-        - interpolated_grid (np.ndarray): Generated raster for vegetation.
-        - grid_center_xy (tuple): Grid of x, y center coordinates for each raster cell.
-        """
+            interpolated_grid (np.ndarray):           Raster grid with interpolated vegetation heights.
+            grid_center_xy (tuple of np.ndarray):  Grid center coordinates (x, y).
+        '''
         # bounding box extents minus 0.5 resolution of AHN dataset
         min_x, min_y, max_x, max_y = self.bbox
 
@@ -961,6 +1202,16 @@ class CHM:
         return interpolated_grid, grid_center_xy
 
     def download_las_tiles(self, matching_tiles, output_folder):
+        '''
+        Download AHN5 or AHN4 LAZ tiles based on a list of matching tile names.
+
+        Parameters:
+            matching_tiles (list of str):       List of tile identifiers (e.g., '31FN2_01') to be downloaded.
+            output_folder (str):                Directory where downloaded LAZ files will be saved.
+
+        Returns:
+            None
+        '''
         base_url_ahn5 = "https://geotiles.citg.tudelft.nl/AHN5_T"
         base_url_ahn4 = "https://geotiles.citg.tudelft.nl/AHN4_T"
         os.makedirs(output_folder, exist_ok=True)
@@ -1006,6 +1257,18 @@ class CHM:
                 print(f"AHN4 download also failed for {filename}: {e}")
 
     def merge_las_files(self, laz_files, bounds, merged_output):
+        '''
+        Merge and crop multiple LAZ files into a single LAS file within the specified bounds.
+
+        Parameters:
+            laz_files (list of str):        Paths to the input LAZ files.
+            bounds (tuple):                 Bounding box (xmin, ymin, xmax, ymax) to crop point clouds.
+            merged_output (str or Path):    File path to write the merged output LAS file.
+
+        Returns:
+            laspy.LasData:                  Merged and cropped point cloud data.
+        '''
+
         merged_output = Path(merged_output)
 
         las_merged = None
@@ -1063,20 +1326,19 @@ class CHM:
     @staticmethod
     def chm_finish(chm_array, dtm_array,
                    dsm_array, min_height=2, max_height=40):
-        """
-        Finish the CHM file by first removing the ground height. Then remove vegetation height
-        below and above a certain range to ensure effective shade and remove noise.
-        ----
-        Input:
-        - chm_array (2d numpy array):       cropped raster array of the CHM.
-        - dtm_array (2d numpy array):       cropped raster array of the filled DSM.
-        - transform (rasterio transform):   affine transform matrix.
-        - min_height (float, optional):     minimal height for vegetation to be included.
-        - max_height (float, optional):     maximum height for vegetation to be included.
+        '''
+        Finalize CHM by removing terrain and filtering by vegetation height.
 
-        Output:
-        - result_array (2d numpy array):    Array of the CHM with normalized height and min and max heights removed.
-        """
+        Parameters:
+            chm_array (np.ndarray):     Initial canopy height model array.
+            dtm_array (np.ndarray):     Digital terrain model array.
+            dsm_array (np.ndarray):     Digital surface model array.
+            min_height (float):         Minimum height threshold to keep vegetation (default = 2).
+            max_height (float):         Maximum height threshold to keep vegetation (default = 40).
+
+        Returns:
+            np.ndarray: Processed CHM with invalid or noisy values removed.
+        '''
 
         result_array = chm_array - dtm_array
         result_array[(chm_array - dsm_array) < 0.0] = 0
@@ -1087,25 +1349,22 @@ class CHM:
 
     def chm_creation(self, LasData, vegetation_data, output_filename, resolution=0.5, smooth=False, nodata_value=-9999,
                      filter_size=3):
-        """
-        Create a CHM from LiDAR vegetation data and save it as a raster.
-        -------
-        Input:
-        - LasData (laspy.LasData):      Input LiDAR point cloud data used for metadata and output CRS.
-        - vegetation_data (tuple):      A tuple containing:
-                            - veg_raster (numpy.ndarray): The array representing the height values of vegetation.
-                            - grid_centers (tuple of numpy.ndarrays): Contains two arrays (x, y) with the coordinates
-                              of the center points of each grid cell.
-        - output_filename (str): The name of the output .tif file for saving the CHM.
-        - resolution (float, optional): The spatial resolution of the output raster in the same units as the input data
-                                        (default: 0.5).
-        - smooth (bool, optional): If True, applies a median filter to smooth the CHM.
-        - nodata_value (float, optional): The value for NoData pixels (default: -9999).
-        - filter_size (int, optional): Size of the median filter (default: 3).
+        '''
+        Create and optionally smooth a CHM from vegetation data, then save it as a GeoTIFF and extract tree polygons.
 
-        Output:
-        - None: The function saves the CHM as a raster file (.tif) to the specified output path.
-        """
+        Parameters:
+            LasData (laspy.LasData):    LAS metadata for writing the output raster.
+            vegetation_data (tuple):    Tuple of (veg_raster, grid_centers) for CHM generation.
+            output_filename (str):      Path to save the output CHM raster.
+            resolution (float):         Spatial resolution of the raster (default = 0.5).
+            smooth (bool):              Whether to apply a median filter to the CHM (default = False).
+            nodata_value (float):       Value to assign to NoData cells in the raster (default = -9999).
+            filter_size (int):          Size of median filter kernel (default = 3).
+
+        Returns:
+            tuple: (chm_array, polygons, transform) where polygons are tree regions as GeoJSON-like dicts.
+        '''
+
         veg_raster = vegetation_data[0]
         grid_centers = vegetation_data[1]
         top_left_x = grid_centers[0][0, 0] - resolution / 2
@@ -1119,7 +1378,6 @@ class CHM:
 
         veg_raster = self.chm_finish(veg_raster, self.dtm, self.dsm)
 
-
         write_output(LasData, self.crs, veg_raster, transform, output_filename, True)
 
         # create the polygons
@@ -1130,13 +1388,25 @@ class CHM:
             for geom, value in shapes_gen if value > 0
         ]
 
-        # gdf = gpd.GeoDataFrame(geometry=polygons, crs=CRS.from_epsg(28992))
-        # gdf.to_file("output/tree_clusters.geojson", driver="GeoJSON")
-
         return veg_raster, polygons, transform
 
     def init_chm(self, bbox, output_folder="output", input_folder="temp",  merged_output="output/pointcloud.las",  smooth_chm=True, resolution=0.5, ndvi_threshold=0.05, filter_size=3):
+        '''
+        Initialize and generate a CHM by downloading, merging, filtering, and interpolating LiDAR data.
 
+        Parameters:
+            bbox (tuple):           Bounding box (xmin, ymin, xmax, ymax) for the area of interest.
+            output_folder (str):    Directory for saving output files (default = 'output').
+            input_folder (str):     Directory where LAZ files are stored or downloaded (default = 'temp').
+            merged_output (str):    Path to save the merged LAS point cloud (default = 'output/pointcloud.las').
+            smooth_chm (bool):      Whether to smooth the CHM using a median filter (default = True).
+            resolution (float):     Output raster resolution (default = 0.5).
+            ndvi_threshold (float): NDVI threshold for filtering vegetation points (default = 0.05).
+            filter_size (int):      Size of median filter kernel (default = 3).
+
+        Returns:
+            tuple: (chm_array, polygons, transform) or (None, None, None) if process fails.
+        '''
 
         matching_tiles = self.find_tiles(*self.bufferedbbox)
         print("Tiles covering the area:", matching_tiles)
@@ -1182,6 +1452,15 @@ class CHM:
         return chm, polygons, transform
 
     def remove_trees(self, tree_id):
+        '''
+        Remove a tree (or cluster of trees) from the CHM and trunk arrays by polygon ID.
+
+        Parameters:
+            tree_id (int): Identifier of the tree polygon to remove.
+
+        Returns:
+            None
+        '''
         target_polygons = [tree["geometry"] for tree in self.tree_polygons if tree["polygon_id"] == tree_id]
 
         if not target_polygons:
@@ -1201,23 +1480,20 @@ class CHM:
 
     def insert_tree(self, position, height, crown_radius, resolution=0.5, trunk_height=0.0, type='parabolic', randomness=0.8, canopy_base_height=0.0):
         '''
-        Function
+        Insert a parametric tree model into the CHM and trunk height array at the specified location.
 
-        Inputs:
-        array (2d-numpy array):         Canopy Height Model Array (CHM)
-        trunk_array (2d-numpy array):   Array of trunk heights
-        position (tuple):               (row, col) coordinates for tree center.
-        height (float):                 Total height of the tree.
-        crown_radius (float):           Radius of the crown in real-world units.
-        trunk_height (float):           Height of the trunk.
-        type (str):                     Canopy shape type ('gaussian', 'cone', etc.).
-        randomness (float):             Randomness/noise factor.
-        resolution (float)              Real-world units per pixel (default = 1.0).
-        canopy_base_height (float):    Height of the bottom of the canopy, relative to trunk_height. Default is None.
+        Parameters:
+            position (tuple): (row, col)    indices for tree center insertion.
+            height (float):                 Total height of the tree.
+            crown_radius (float):           Radius of the crown in real-world units.
+            resolution (float):             Real-world size of each pixel (default = 0.5).
+            trunk_height (float):           Height of the trunk (default = 0.0).
+            type (str):                     Canopy shape type ('gaussian', 'cone', 'parabolic', 'hemisphere').
+            randomness (float):             Standard deviation for random noise applied to canopy (default = 0.8).
+            canopy_base_height (float):     Height at which the canopy starts above the trunk (default = 0.0).
 
-        Output:
-        new_array (2d-numpy array):         Modified CHM array.
-        new_trunk_array (2d-numpy array):   Modified Trunk height array
+        Returns:
+            None: Updates CHM and trunk arrays in-place.
         '''
         new_array = np.copy(self.chm)
         new_trunk_array = np.copy(self.trunk_array)
@@ -1304,20 +1580,25 @@ class CHM:
                            min_canopy_height = 3.0,
                            type='parabolic',
                            randomness=0.8):
-        """
-        Wrapper around insert_tree to insert a tree with randomized parameters.
+        '''
+        Insert a tree with randomized dimensions and properties at a specified position. Random values are drawn from
+        The specified ranges for height, crown radius, trunk height, and canopy base height. Ensures that the canopy height meets
+        a minimum value.
 
-        Inputs:
-        - position (tuple):               (row, col)
-        - height_range (tuple):          Min and max tree height
-        - crown_radius_range (tuple):    Min and max crown radius
-        - trunk_height_range (tuple):    Min and max trunk height
-        - canopy_base_range (tuple):     Min and max canopy base height
-        - resolution (float):            Map resolution
-        - min_canopy_height (float):     Minimal height of the tree canopy (tree height - tree trunk height)
-        - type (str):                    Canopy type
-        - randomness (float):            Noise level
-        """
+        Parameters:
+        - position (tuple):             (row, col) position where the tree will be placed.
+        - height_range (tuple):         Range of tree height in meters.
+        - crown_radius_range (tuple):   Range of crown radius in meters.
+        - trunk_height_range (tuple):   Range of trunk height in meters.
+        - canopy_base_range (tuple):    Range of canopy base height in meters.
+        - resolution (float):           Spatial resolution of the map.
+        - min_canopy_height (float):    Minimum allowable canopy height (tree - trunk).
+        - type (str):                   Shape type of the canopy (e.g., 'parabolic').
+        - randomness (float):           Amount of shape noise to apply.
+
+        Returns:
+        - None
+        '''
 
         tree_height =  random.uniform(*height_range)
         crown_radius = random.uniform(*crown_radius_range)
@@ -1339,16 +1620,25 @@ class CHM:
         )
 
     def insert_type_tree(self, age, position, type="fraxinus", resolution=0.5, canopy_base=0.0):
-        """
-        Insert a tree based on a specified age.
+        '''
+        Insert a tree of a specific type and age using pre-defined growth parameters.
 
-        Inputs:
-        - age (int): Age of the tree
-        - position (tuple): (row, col) position of the tree
-        - type (str): Type of tree (default is "fraxinus")
-        - resolution (float): Map resolution (default is 0.5)
-        - canopy_base (float): Height of the base of the canopy (default is 0.0)
-        """
+        Parameters are loaded from a JSON database and used to compute the
+        trunk height and crown radius. The canopy type is fixed as parabolic.
+
+        Parameters:
+        - age (int):                   Age of the tree in years.
+        - position (tuple):            (row, col) position where the tree will be placed.
+        - type (str):                  Tree species (default is 'fraxinus').
+        - resolution (float):          Spatial resolution of the map.
+        - canopy_base (float):         Height of the base of the canopy in meters.
+
+        Returns:
+        - None
+
+        Raises:
+        - ValueError: If no data exists for the specified tree age.
+        '''
         # Find the tree data for the specified age
         with open("fraxinus_growth.json") as f:
             tree_db = json.load(f)
@@ -1383,26 +1673,25 @@ class CHM:
             randomness=randomness
         )
 
-
-def load_buildings(buildings_path, layer):
-    """
-    Load in the building shapes from a geopackage file.
-    ----
-    Input:
-    - buildings_path (string):   path to the geopackage file.
-    - layer (string):            (Tile) name of the layer of buildings to be used
-
-    Output:
-    - List of dictionaries: A list of dictionaries containing:
-      - "geometry": building geometry in GeoJSON-like format.
-      - "parcel_id": corresponding parcel ID.
-    """
-    buildings_gdf = gpd.read_file(buildings_path, layer=layer)
-
-    if 'identificatie' not in buildings_gdf.columns:
-        raise ValueError("Column 'identificatie' not found in the dataset")
-
-    return [{"geometry": mapping(geom), "parcel_id": identificatie} for geom, identificatie in zip(buildings_gdf.geometry, buildings_gdf["identificatie"])]
+# def load_buildings(buildings_path, layer):
+#     """
+#     Load in the building shapes from a geopackage file.
+#     ----
+#     Input:
+#     - buildings_path (string):   path to the geopackage file.
+#     - layer (string):            (Tile) name of the layer of buildings to be used
+#
+#     Output:
+#     - List of dictionaries: A list of dictionaries containing:
+#       - "geometry": building geometry in GeoJSON-like format.
+#       - "parcel_id": corresponding parcel ID.
+#     """
+#     buildings_gdf = gpd.read_file(buildings_path, layer=layer)
+#
+#     if 'identificatie' not in buildings_gdf.columns:
+#         raise ValueError("Column 'identificatie' not found in the dataset")
+#
+#     return [{"geometry": mapping(geom), "parcel_id": identificatie} for geom, identificatie in zip(buildings_gdf.geometry, buildings_gdf["identificatie"])]
 
 
 if __name__ == "__main__":

@@ -4,11 +4,6 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import numpy as np
 import cupy as cp
-import rasterio
-from rasterio import CRS
-from affine import Affine
-import math
-from osgeo import gdal
 
 def shadowingfunctionglobalradiation_cupy(a, amaxvalue, azimuth, altitude, scale):
     '''

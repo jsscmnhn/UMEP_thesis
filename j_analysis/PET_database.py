@@ -2,8 +2,21 @@ import numpy as np
 import h5py
 from pet_calc import calculate_PET_index_vec
 
-
 class Pet:
+    '''
+    Represents the physiological parameters of a person for PET  calculation.
+
+    Attributes:
+    	mbody    (float):	Body mass in kilograms.
+    	age      (int):		Age in years.
+    	height   (float):	Height in centimeters.
+    	activity (float):	Metabolic rate in W/m².
+    	sex      (int):		Sex of the individual (1 for male, 0 for female).
+    	clo      (float):	Clothing insulation in clo units.
+
+    Methods:
+    	to_dict		Returns a dictionary of all physiological attributes.
+    '''
     def __init__(self, mbody=70, age=35, height=175, activity=80.0, sex=1, clo=0.9):
         self.mbody = mbody
         self.age = age

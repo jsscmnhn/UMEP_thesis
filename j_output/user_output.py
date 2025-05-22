@@ -1,14 +1,25 @@
-# import h5py
+import h5py
 import numpy as np
 from osgeo import gdal
-from rasterio import features
-import geopandas as gpd
-from shapely.geometry import mapping, shape
-from affine import Affine
 import os
 import re
 
 class TmrtOutput:
+    '''
+    Handles processing of Tmrt (Mean Radiant Temperature) rasters and computes PET (Physiological Equivalent Temperature) using precomputed lookup tables.
+
+    Attributes:
+    	output_folder      (str)		    Path to the folder containing Tmrt raster files.
+    	gdal_dataset       (gdal.Dataset)	Internal reference for GDAL dataset (if needed later).
+    	valid_mask         (np.ndarray)	    Boolean mask marking valid (non-building, non-water) pixels.
+    	tmrt_arrays_by_time (dict)		    Map of time string → Tmrt raster array.
+    	time_groups        (dict)		    Tmrt arrays grouped by time of day ('morning', 'afternoon', 'evening').
+    	averaged_tmrt      (dict)		    Mean Tmrt array for each time group.
+    	pet_arrays_by_time (dict)		    PET arrays computed per Tmrt time.
+    	classified_pet_by_time (dict)	    Classified PET categories per time step.
+    	averaged_pet       (dict)		    Averaged PET arrays by time group.
+    	averaged_class_pet (dict)		    Classified PET categories based on averaged PET arrays.
+    	'''
     def __init__(self, output_folder, building_mask=None, water_mask=None):
         self.output_folder = output_folder
         self.gdal_dataset = None
@@ -26,10 +37,14 @@ class TmrtOutput:
         self.averaged_class_pet = {}
 
     def init_mask(self, building_mask, water_mask):
-        """
-        Update the valid mask by combining the building and water masks.
-        Pixels marked as buildings or water are invalid (set to False).
-        """
+        '''
+        Initializes the valid mask by excluding building and water areas.
+
+        Parameters:
+            building_mask (np.ndarray): Binary mask where non-zero indicates valid (non-building) pixels.
+            water_mask    (np.ndarray): Binary mask where non-zero indicates valid (non-water) pixels.
+        '''
+
         # Start with an all-True mask (valid everywhere)
         self.valid_mask = np.ones_like(building_mask, dtype=bool)
 
@@ -44,32 +59,32 @@ class TmrtOutput:
 
     def get_pet_raster_from_lookup(self, tmrt_raster, wind_speed, air_temp, rh, body_type, lookup_file="pet_lookup.h5",
                                tmrt_min=0, tmrt_max=65, tmrt_step=0.5, wind_speeds=None, rhs=None, temps=None):
-        """
-        Get the PET raster for a given Tmrt raster and environmental conditions.
+        '''
+        Returns the PET raster for the given TMRT raster and atmospheric conditions using a lookup table.
 
         Parameters:
-            tmrt_raster (np.ndarray): TMRT raster array.
-            wind_speed (float): Wind speed in m/s.
-            air_temp (float): Air temperature in °C.
-            rh (float): Relative humidity in %.
-            body_type (str): Body type for PET lookup ('standard_man', 'elderly_woman', 'young_child').
-            lookup_file (str): Path to the HDF5 lookup file.
-            tmrt_min (float): Minimum TMRT value (default 0°C).
-            tmrt_max (float): Maximum TMRT value (default 65°C).
-            tmrt_step (float): Step size for TMRT values (default 0.5°C).
-            wind_speeds (list): List of wind speed values (default [0.1, 2.0, 6.0]).
-            rhs (list): List of relative humidity values (default [100, 80, 60, 40, 20, 0]).
-            temps (list): List of air temperature values (default [40, 39.5, 39.0, 38.5, .... 0.5, 0.0]).
+            tmrt_raster (np.ndarray): Input TMRT raster.
+            wind_speed  (float)     : Wind speed in m/s.
+            air_temp    (float)     : Air temperature in °C.
+            rh          (float)     : Relative humidity in %.
+            body_type   (str)       : Type of body for lookup ('standard_man', 'elderly_woman', 'standard_woman', 'young_child').
+            lookup_file (str)       : Path to HDF5 lookup file.
+            tmrt_min    (float)     : Minimum TMRT value in the lookup table.
+            tmrt_max    (float)     : Maximum TMRT value in the lookup table.
+            tmrt_step   (float)     : Step size for TMRT values in lookup.
+            wind_speeds (list)      : Wind speed values in lookup (optional).
+            rhs         (list)      : Relative humidity values in lookup (optional).
+            temps       (list)      : Air temperature values in lookup (optional).
 
         Returns:
-            np.ndarray: PET raster corresponding to the given parameters.
-        """
+            np.ndarray: PET raster aligned with the input TMRT raster.
+        '''
         if wind_speeds is None:
-            wind_speeds = np.array([0.1, 2.0, 6.0])  # Default wind speed values if not provided
+            wind_speeds = np.array([0.1, 2.0, 6.0])
         if rhs is None:
-            rhs = np.arange(100, -1, -10)  # Default relative humidity values if not provided
+            rhs = np.arange(100, -1, -10)
         if temps is None:
-            temps = np.arange(40.0, -0.1, -0.5)  # Default air temperature values if not provided
+            temps = np.arange(40.0, -0.1, -0.5)
 
         with h5py.File(lookup_file, "r") as f:
                 pet_dataset = f[body_type]
@@ -110,6 +125,15 @@ class TmrtOutput:
                 return pet_raster
 
     def calc_arrays(self, output_folder):
+        '''
+        Reads Tmrt raster files from the given folder and loads them into a dictionary keyed by time.
+
+        Parameters:
+            output_folder (str): Path to folder containing Tmrt_YYYY_DDD_HHMM.tif files.
+
+        Returns:
+            dict: Dictionary mapping time keys to Tmrt raster arrays.
+        '''
         tmrt_arrays_by_time = {}
 
         pattern = re.compile(r'^Tmrt_\d{4}_\d{3}_(\d{4})D\.tif$')
@@ -136,6 +160,15 @@ class TmrtOutput:
         return tmrt_arrays_by_time
 
     def get_time_group(self, time_str):
+        '''
+        Assigns a time string to a part of the day: morning, afternoon, or evening.
+
+        Parameters:
+            time_str (str): Time string in HHMM format (e.g., "1300").
+
+        Returns:
+            str or None: Time group name or None if outside expected ranges.
+        '''
         time_val = int(time_str)
         if 600 <= time_val < 1200:
             return 'morning'
@@ -146,6 +179,12 @@ class TmrtOutput:
         return None
 
     def group_by_time_of_day(self):
+        '''
+        Groups Tmrt arrays by time of day into 'morning', 'afternoon', and 'evening'.
+
+        Returns:
+            dict: Dictionary mapping time groups to lists of Tmrt arrays.
+        '''
         grouped = {'morning': [], 'afternoon': [], 'evening': []}
 
         for time_str, array in self.tmrt_arrays_by_time.items():
@@ -156,6 +195,12 @@ class TmrtOutput:
         return grouped
 
     def average_time_groups(self):
+        '''
+        Computes the average Tmrt for each time of day group.
+
+        Returns:
+            dict: Dictionary mapping time groups to mean Tmrt raster arrays.
+        '''
         avg_by_group = {}
         for group, arrays in self.time_groups.items():
             if arrays:
@@ -167,6 +212,17 @@ class TmrtOutput:
         return avg_by_group
 
     def calculate_stats_and_bins(self, array, pixel_size=0.5, isTmrt=True):
+        '''
+        Computes statistics and area coverage by thermal stress bin.
+
+        Parameters:
+            array       (np.ndarray): Input Tmrt or PET raster array.
+            pixel_size  (float)     : Pixel size in meters (default is 0.5).
+            isTmrt      (bool)      : If True, use Tmrt bins; otherwise use PET bins.
+
+        Returns:
+            dict: Statistics including mean, median, min, max, and bin area/percentage breakdown.
+        '''
         if isTmrt:
             bins = [-np.inf, 15, 20, 25, 30, 35, 40, 45, 50, np.inf]
         else:
@@ -197,11 +253,15 @@ class TmrtOutput:
         return stats
 
     def classify_pet(self, pet_array):
-        """
-        Classify PET array into bins.
-        Returns an integer array where each pixel has the class index (0 to len(bins)-2).
-        Pixels with NaN PET will remain NaN.
-        """
+        '''
+        Classifies PET values into 9 thermal stress bins.
+
+        Parameters:
+            pet_array (np.ndarray): PET raster array.
+
+        Returns:
+            np.ndarray: Raster with integer bin class values (NaN where PET is invalid).
+        '''
         bins = [-np.inf, 4, 8, 13, 18, 23, 29, 35, 41, np.inf]
         classified = np.digitize(pet_array, bins) - 1
         classified = classified.astype(float)
@@ -210,15 +270,16 @@ class TmrtOutput:
         return classified
 
     def calc_pet(self, Ta, RH, va, body_type="standard_man", lookup_file="pet_lookup.h5"):
-        """
-        Compute PET array for the 1300 TMRT time step using precomputed PET lookup.
-        Inputs:
-            Ta: Air temperature in °C (scalar)
-            RH: Relative humidity in % (scalar)
-            va: Wind speed in m/s (scalar)
-            body_type: One of "standard_man", "elderly_woman", "young_child"
-            lookup_file: Path to PET HDF5 lookup file
-        """
+        '''
+        Computes PET and classified PET for each timestep and averaged Tmrt using the lookup table.
+
+        Parameters:
+            Ta         (float): Air temperature in °C.
+            RH         (float): Relative humidity in %.
+            va         (float): Wind speed in m/s.
+            body_type  (str)  : Body type ('standard_man', 'elderly_woman', 'standard_woman', 'young_child').
+            lookup_file (str) : Path to PET HDF5 lookup file.
+        '''
         for time_key, Tmrt in self.tmrt_arrays_by_time.items():
             if Tmrt is None:
                 print(f"Skipping {time_key}: Tmrt data is None")

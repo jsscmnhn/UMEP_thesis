@@ -5,6 +5,19 @@ cimport numpy as np
 
 def calculate_PET_grid(np.ndarray[np.float64_t, ndim=2] Ta, np.ndarray[np.float64_t, ndim=2] RH,
                        np.ndarray[np.float64_t, ndim=2] Tmrt, np.ndarray[np.float64_t, ndim=2] va, pet):
+    '''
+    Cython enabled code to calculate the Physiological Equivalent Temperature (PET) for a 2D grid.
+
+    Parameters:
+        Ta      (np.ndarray):	Air temperature in degrees Celsius.
+        RH      (np.ndarray):	Relative humidity in percent.
+        Tmrt    (np.ndarray):	Mean radiant temperature in degrees Celsius.
+        va      (np.ndarray):	Wind speed at 1.1 m in m/s.
+        pet     (PETParams):	Object containing physiological parameters like body mass, age, height, activity, clothing, and sex.
+
+    Returns:
+        (np.ndarray):       	PET values for each grid cell. Grid cells with invalid input are set to -9999.
+    '''
     cdef np.ndarray[np.float64_t, ndim=2] pet_index = np.zeros_like(Tmrt)
     cdef double mbody = pet.mbody
     cdef double age = pet.age
@@ -30,6 +43,21 @@ def calculate_PET_grid(np.ndarray[np.float64_t, ndim=2] Ta, np.ndarray[np.float6
     return pet_index
 
 def calculate_PET_index_vec(double Ta, double RH, double Tmrt, double va,pet):
+    '''
+    	Ta      (float):	Air temperature in degrees Celsius.
+    	RH      (float):	Relative humidity in percent.
+    	Tmrt    (float):	Mean radiant temperature in degrees Celsius.
+    	va      (float):    Wind speed at 1.1 m in m/s.
+    	pet     (PETParams):	Object containing physiological parameters:
+    	                            - mbody (float):    body mass in kg
+                                    - age (float):      age in years
+                                    - height (float):   height in meters
+                                    - activity (float): activity level in W/m²
+                                    - sex (int):    1 for male, 2 for female
+                                    - clo (float): clothing insulation in clo units
+    Returns:
+    	(float)	PET index for the specified conditions.
+    '''
     mbody=pet.mbody
     age=pet.age
     height=pet.height
@@ -41,6 +69,20 @@ def calculate_PET_index_vec(double Ta, double RH, double Tmrt, double va,pet):
     return pet_index
 
 def _PET(double ta, double RH, double tmrt, double v, double mbody, double age, double ht, double work, double icl, int sex):
+    '''
+   Cython enabled function to compute the Physiological Equivalent Temperature (PET) at a single point.
+
+    Parameters:
+    	Ta      (float):		Air temperature in degrees Celsius.
+    	RH      (float):	    Relative humidity in percent.
+    	Tmrt    (float):	    Mean radiant temperature in degrees Celsius.
+    	va      (float):	    Wind speed at 1.1 m in m/s.
+    	pet     (PETParams):	Object containing physiological parameters like body mass, age, height, activity, clothing, and sex.
+
+
+    Returns:
+    	(float):                PET value at the specified point.
+    '''
     cdef double vps, vpa, po, p, rob, cb, food, emsk, emcl, evap, sigma, cair
     cdef double eta, c_1, c_2, c_3, c_4, c_5, c_6, c_7, c_8, c_9, c_10, c_11
     cdef double metbf, metbm, met, h, rtv, tex, eres, vpex, erel, ere, feff, adu, facl, rcl, y
