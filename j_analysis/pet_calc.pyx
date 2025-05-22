@@ -44,6 +44,9 @@ def calculate_PET_grid(np.ndarray[np.float64_t, ndim=2] Ta, np.ndarray[np.float6
 
 def calculate_PET_index_vec(double Ta, double RH, double Tmrt, double va,pet):
     '''
+    Calculate the Physiological Equivalent Temperature (PET) index using vectorized-compatible inputs.
+
+    Parameters:
     	Ta      (float):	Air temperature in degrees Celsius.
     	RH      (float):	Relative humidity in percent.
     	Tmrt    (float):	Mean radiant temperature in degrees Celsius.
