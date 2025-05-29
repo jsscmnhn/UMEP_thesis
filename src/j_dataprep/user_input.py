@@ -15,14 +15,14 @@ class Surface_input:
           resolution (float):   Resolution of the raster grid cells.
 
     Attributes:
-          dictionary (dict):    Loaded landcover category dictionary from 'landcover.json'.
+          dictionary (dict):    Loaded landcover category dictionary from 'landcover_bgt.json'.
           res (float):          Resolution of the raster grid cells.
           ncols (int):           Number of columns in the raster grid.
           nrows (int):           Number of rows in the raster grid.
     '''
 
     def __init__(self, ncols, nrows, resolution):
-        self.dictionary = json.load(open("src/j_dataprep/landcover.json", "r", encoding="utf-8"))
+        self.dictionary = json.load(open("src/j_dataprep/landcover_bgt.json", "r", encoding="utf-8"))
         self.res = resolution
         self.ncols = ncols
         self.nrows = nrows

@@ -1,0 +1,22 @@
+{
+    "terrain": {
+        "begroeid terreindeel": 5,
+        "duin": 6,
+        "zand": 6,
+        "gesloten verharding": 1,
+        "open verharding": 0,
+        "half verhard": 0,
+        "onverhard": 6,
+        "erf": 0
+    },
+    "road": {
+        "gesloten verharding": 1,
+        "open verharding": 0,
+        "half verhard": 0,
+        "onverhard": 6,
+        "groenvoorziening": 5
+    },
+    "water": {
+        "water": 7
+    }
+}
