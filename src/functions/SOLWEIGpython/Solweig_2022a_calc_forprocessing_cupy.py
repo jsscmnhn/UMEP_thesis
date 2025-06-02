@@ -3,7 +3,7 @@ import numpy as np
 import cupy as cp
 from .daylen import daylen
 from src.functions.SOLWEIGpython.UTIL.clearnessindex_2013b import clearnessindex_2013b
-from functions.SOLWEIGpython.UTIL.diffusefraction import diffusefraction
+from src.functions.SOLWEIGpython.UTIL.diffusefraction import diffusefraction
 from src.functions.SOLWEIGpython.UTIL.shadowingfunction_wallheight_13_cupy import shadowingfunction_wallheight_13,  shadowingfunction_wallheight_13_3d
 from src.functions.SOLWEIGpython.UTIL.shadowingfunction_wallheight_23_cupy import shadowingfunction_wallheight_23,  shadowingfunction_23_3d
 from .gvf_2018a_cupy import gvf_2018a_cupy as gvf_2018a

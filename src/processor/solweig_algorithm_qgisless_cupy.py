@@ -604,7 +604,7 @@ class SOLWEIGAlgorithm():
         Tgmap1N = cp.zeros((rows, cols))
         
         # building grid and land cover preparation
-        sitein = "landcoverclasses_2016a.txt"
+        sitein = "src/processor/landcoverclasses_2016a.txt"
         f = open(sitein)
         lin = f.readlines()
         lc_class = cp.zeros((lin.__len__() - 1, 6))

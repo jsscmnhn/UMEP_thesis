@@ -28,9 +28,10 @@ class LandCover:
         bbox (tuple):                           Bounding box (xmin, ymin, xmax, ymax) in EPSG:28992.
         crs (str):                              CRS for requests and raster alignment, default is EPSG:28992.
         resolution (float):                     Output raster resolution in meters.
-        main_road (int):                        Default landcover code for hardened roads.
+        main_road (int):                        Default landcover code for hardened roads if TOP10NL is chosen as source.
         dtm_dataset (rasterio.open):            DTM as rasterio dataset for alignment and dimensions.
-        base_url (str):                         Base URL for the PDOK Top10NL API.
+        base_url_top (str):                     Base URL for the PDOK Top10NL API.
+        base_url_bgt (str):                     Base URL for the PDOK Top10NL API.
         water_mask, building_mask (ndarray):    Optional binary masks.
         buildings_path (str):                   Optional path to building vector data.
         layer (str):                            Layer name if using GPKG for building data.
@@ -43,34 +44,54 @@ class LandCover:
         landcover_withoutbuild (ndarray):       Landcover array before building insertion.
         transform:                              Raster transform from DTM dataset.
     """
-    def __init__(self, bbox, crs="http://www.opengis.net/def/crs/EPSG/0/28992", main_roadtype=0, resolution=0.5, building_data=None, dataset=None,
-                 dataset_path=None, buildings_path=None, layer=None, landcover_path="src/j_dataprep/landcover.json"):
+    def __init__(self, bbox, crs="http://www.opengis.net/def/crs/EPSG/0/28992", use_bgt=True, main_roadtype=0, resolution=0.5, building_data=None, dataset=None,
+                 dataset_path=None, buildings_path=None, layer=None, nodata_fill=0, roads_on_top=True, landcover_path_bgt="src/j_dataprep/landcover_bgt.json",  landcover_top="src/j_dataprep/landcover_top.json"):
         self.bbox = bbox
         self.transform = None
         self.crs = crs
         self.resolution = resolution
         self.main_road = main_roadtype
         self.dtm_dataset = self.dtm_dataset_prep(dataset_path, dataset)
-        self.base_url = "https://api.pdok.nl/brt/top10nl/ogc/v1"
-
+        self.base_url_top = "https://api.pdok.nl/brt/top10nl/ogc/v1"
+        self.base_url_bgt = "https://api.pdok.nl/lv/bgt/ogc/v1"
         self.water_mask = None
         self.building_mask = None
         self.buildings_path = buildings_path
         self.layer = layer
         self.building_data = building_data
 
-        self.landcover_path = landcover_path
+        self.use_bgt = use_bgt
+        self.roads_on_top = roads_on_top
+        self.nodata_fill = nodata_fill
+        self.landcover_path = landcover_path_bgt if use_bgt else landcover_top
         self.landcover_mapping = self.load_landcover_mapping()
 
         self.buildings = None
         self.water = None
         self.roads = None
         self.terrains = None
+        self.brug = None
         self.get_features()
 
-        self.array = self.convert_to_raster()
+        self.array = self.convert_to_raster_bgt() if use_bgt else self.convert_to_raster_top()
         self.og_landcover = self.array
         self.landcover_withoutbuild = None
+
+    @staticmethod
+    def filter_active_bgt_features(features):
+        '''
+        Filters BGT features where property "eind_registratie" is None (null).
+
+        Parameters:
+            features (list): List of GeoJSON feature dicts.
+
+        Returns:
+            list: Filtered features with "eind_registratie" == None.
+        '''
+        return [
+            feat for feat in features
+            if feat.get("properties", {}).get("eind_registratie") is None
+        ]
 
 
     def dtm_dataset_prep(self, dataset_path, dataset):
@@ -150,7 +171,38 @@ class LandCover:
 
         return {"features": features}
 
-    def process_water_features(self):
+    def get_bgt_features(self, item_type):
+        """
+        Retrieve features from the BGT API for the specified item type within the bounding box.
+
+        Parameters:
+            item_type (str): The name of the BGT collection to query (e.g., "waterdeel_vlak", "wegdeel_vlak", "terrein_vlak").
+
+        Returns:
+            dict:   A GeoJSON-like dictionary with key "features" containing a list of feature dictionaries as returned by the API.
+        """
+        features = []
+        url = f"{self.base_url}/collections/{item_type}/items?bbox={self.bbox[0]},{self.bbox[1]},{self.bbox[2]},{self.bbox[3]}&bbox-crs={self.crs}&crs={self.crs}&limit=1000&f=json"
+
+        while url:
+            response = requests.get(url)
+            if response.status_code != 200:
+                print(f"Error: {response.status_code}, {response.text}")
+                break
+
+            data = response.json()
+            features.extend(data.get("features", []))
+
+            # Look for the "next" link
+            next_link = next(
+                (link["href"] for link in data.get("links", []) if link.get("rel") == "next"),
+                None
+            )
+            url = next_link
+
+        return {"features": features}
+
+    def process_water_features_top(self):
         """
         Process and filter water features from TOP10NL data.
         Filters out features with 'hoogteniveau' == -1 and keeps only Polygon or MultiPolygon geometries (line geometries are buffered).
@@ -176,7 +228,42 @@ class LandCover:
 
         return water_features
 
-    def process_terrain_features(self):
+    def process_water_features_bgt(self):
+        '''
+        Process water features from BGT. Keeps all original properties.
+        '''
+        waterdata_vlak = self.get_bgt_features("waterdeel")
+        water_features = []
+        filtered_features = self.filter_active_bgt_features(waterdata_vlak.get("features", []))
+        for wat in filtered_features:
+            geom = shape(wat['geometry'])
+            props = wat.get("properties", {}).copy()
+            if props.get("hoogteniveau") != -1 and isinstance(geom, (Polygon, MultiPolygon)):
+                water_features.append({
+                    "type": "Feature",
+                    "geometry": mapping(geom),
+                    "properties": props
+                })
+
+        return water_features
+
+    def process_overbrugging_bgt(self):
+            overbrugging_features = []
+            filtered_overbrugging = self.filter_active_bgt_features(self.get_bgt_features("overbruggingsdeel").get("features", []))
+
+            for feature in filtered_overbrugging:
+                geom = shape(feature['geometry'])
+                props = feature.get("properties", {}).copy()
+                if isinstance(geom, (Polygon, MultiPolygon)):
+                    props["landuse"] = 0
+                    overbrugging_features.append({
+                        "type": "Feature",
+                        "geometry": mapping(geom),
+                        "properties": props
+                    })
+            return overbrugging_features
+
+    def process_terrain_features_top(self):
         """
         Process terrain features from TOP10NL data and map land use types to codes.
 
@@ -204,7 +291,79 @@ class LandCover:
                 })
         return terrain_features
 
-    def process_road_features(self):
+    def process_terrain_features_bgt(self):
+        '''
+        Process terrain features from BGT and assign land use codes from the terrain mapping.
+        Keeps full original properties and adds "landuse".
+        '''
+        terreindata1 = self.get_bgt_features("begroeidterreindeel")
+        terreindata2 = self.get_bgt_features("onbegroeidterreindeel")
+        scheidingdata = self.get_bgt_features("scheiding_vlak")
+        oeverdata = self.get_bgt_features("ondersteunendwaterdeel")
+
+        filtered_terreindata1 = self.filter_active_bgt_features(terreindata1.get("features", []))
+        filtered_terreindata2 = self.filter_active_bgt_features(terreindata2.get("features", []))
+        filtered_oeverdata = self.filter_active_bgt_features(oeverdata.get("features", []))
+        filtered_scheidingdata = self.filter_active_bgt_features(scheidingdata.get("features", []))
+        terrain_features = []
+
+        terrain_mapping = self.landcover_mapping.get("terrain", {})
+
+        # Mark source for mapping logic
+        for feature in filtered_terreindata1:
+            feature["_source"] = "begroeid"
+        for feature in filtered_terreindata2:
+            feature["_source"] = "onbegroeid"
+
+        combined_features = filtered_terreindata1 + filtered_terreindata2
+
+        for feature in combined_features:
+            geom = shape(feature['geometry'])
+            props = feature.get("properties", {}).copy()  # copy full properties
+            source = feature.get("_source", "")
+            fysiek = (props.get("fysiek_voorkomen") or "").lower()
+            type_ = (props.get("type") or "").lower()
+
+            if source == "begroeid":
+                landuse = 6 if fysiek == "zand" else 5
+            else:
+                landuse = terrain_mapping.get(fysiek, None)
+                if landuse is None:
+                    landuse = terrain_mapping.get(type_)
+
+            if landuse is not None and isinstance(geom, (Polygon, MultiPolygon)):
+                props["landuse"] = landuse
+                terrain_features.append({
+                    "type": "Feature",
+                    "geometry": mapping(geom),
+                    "properties": props
+                })
+
+        # ondersteunendwaterdeel → grass (landuse = 5)
+        for feature in filtered_oeverdata:
+            geom = shape(feature['geometry'])
+            props = feature.get("properties", {}).copy()
+            if isinstance(geom, (Polygon, MultiPolygon)):
+                props["landuse"] = 5
+                terrain_features.append({
+                    "type": "Feature",
+                    "geometry": mapping(geom),
+                    "properties": props
+                })
+        for feature in filtered_scheidingdata:
+            geom = shape(feature['geometry'])
+            props = feature.get("properties", {}).copy()
+            if isinstance(geom, (Polygon, MultiPolygon)):
+                props["landuse"] = 0
+                terrain_features.append({
+                    "type": "Feature",
+                    "geometry": mapping(geom),
+                    "properties": props
+                })
+
+        return terrain_features
+
+    def process_road_features_top(self):
         """
         Process road features from TOP10NL data and map road surface types to codes.
 
@@ -239,10 +398,52 @@ class LandCover:
 
         return road_features
 
+
+    def process_road_features_bgt(self):
+        '''
+        Loads and classifies BGT road features with landuse.
+        Returns:
+            list: A list of GeoJSON-like feature dictionaries representing roads. Each feature contains "geometry" and "properties" with a "landuse" code.
+        '''
+        wegdata = self.get_bgt_features("wegdeel")
+        o_wegdata = self.get_bgt_features("ondersteunendwegdeel")
+        filtered_features = self.filter_active_bgt_features(wegdata.get("features", []) + o_wegdata.get("features", []))
+
+        road_features = []
+        road_mapping = self.landcover_mapping.get("road", {})
+
+        for road in filtered_features:
+            geom = shape(road['geometry'])
+            props = road.get("properties", {}).copy()
+            fysiek = props.get("fysiek_voorkomen", "").lower()
+            landuse = road_mapping.get(fysiek)
+            hoogte = props.get("relatieve_hoogteligging", "")
+            try:
+                props["rel_height"] = int(hoogte) if hoogte is not None else 0
+            except ValueError:
+                props["rel_height"] = 0
+
+            if landuse is not None and isinstance(geom, (Polygon, MultiPolygon)):
+                props["landuse"] = landuse
+                road_features.append({
+                    "type": "Feature",
+                    "geometry": mapping(geom),
+                    "properties": props
+                })
+        return road_features
+
     def get_features(self):
-        self.terrains = self.process_terrain_features()
-        self.roads = self.process_road_features()
-        self.water = self.process_water_features()
+        if self.use_bgt:
+            self.terrains = self.process_terrain_features_bgt()
+            self.roads = self.process_road_features_bgt()
+            self.water = self.process_water_features_bgt()
+            self.brug = self.process_overbrugging_bgt()
+
+        else:
+            self.terrains = self.process_terrain_features_top()
+            self.roads = self.process_road_features_top()
+            self.water = self.process_water_features_top()
+
         self.buildings = self.load_buildings()
 
 
@@ -283,9 +484,9 @@ class LandCover:
         plt.title("Land Cover")
         plt.show()
 
-    def convert_to_raster(self):
+    def convert_to_raster_top(self):
         """
-        Rasterize terrain, road, water, and building features onto the DTM grid. Applies land cover codes to a numpy
+        Rasterize the TOP10NL terrain, road, water, and building features onto the DTM-sized grid. Applies land cover codes to a numpy
         array according to feature geometries.
 
         Returns:
@@ -328,6 +529,99 @@ class LandCover:
         if not building_geometries:
             print("No valid building geometries found. Skipping building rasterization.")
         else:
+            building_mask = geometry_mask(building_geometries, transform=transform, invert=False, out_shape=array.shape)
+            self.building_mask = building_mask
+            array = np.where(building_mask, array, 2)
+
+        self.visualize_raster(array)
+        return array
+
+    def convert_to_raster_bgt(self):
+        """
+        Rasterize terrain, road, water, building, and overbrugging features from BGT onto the DTM sized grid.
+
+        Returns:
+            np.ndarray: 2D array with land cover codes assigned per grid cell.
+        """
+        array = self.dtm_dataset.read(1)
+        transform = self.dtm_dataset.transform
+        self.transform = transform
+
+        array.fill(self.nodata_fill)
+
+        # Water
+        water_geometries = [shape(wat['geometry']) for wat in self.water]
+        if water_geometries:
+            water_mask = geometry_mask(water_geometries, transform=transform, invert=False, out_shape=array.shape)
+            self.water_mask = water_mask
+            array = np.where(water_mask, array, 7)
+
+        # Terrain first
+        for ter in self.terrains:
+            geom = shape(ter['geometry'])
+            landuse = ter['properties'].get('landuse', None)
+            if landuse is not None:
+                landuse_mask = geometry_mask([geom], transform=transform, invert=False, out_shape=array.shape)
+                array = np.where(landuse_mask, array, landuse)
+
+        max_brug_height = 0
+        if self.brug:
+            # Optional: estimate effective level of overbrugging (if you use relative heights there)
+            max_brug_height = max(
+                (f['properties'].get("rel_height", 0) for f in self.brug), default=0
+            )
+
+        if self.roads:
+            # Sort roads by rel_height descending
+            self.roads.sort(key=lambda r: r["properties"].get("rel_height", 0), reverse=True)
+
+            # Split roads based on overbrugging height
+            high_roads = [r for r in self.roads if r["properties"].get("rel_height", 0) > max_brug_height]
+            low_roads = [r for r in self.roads if r["properties"].get("rel_height", 0) <= max_brug_height]
+
+            if self.roads_on_top:
+                # Raster low roads first
+                for road in low_roads:
+                    geom = shape(road['geometry'])
+                    landuse_road = road['properties'].get('landuse', None)
+                    if landuse_road is not None:
+                        mask = geometry_mask([geom], transform=transform, invert=False, out_shape=array.shape)
+                        array = np.where(mask, array, landuse_road)
+
+                # Insert overbrugging in between
+                if self.brug:
+                    for feature in self.brug:
+                        geom = shape(feature['geometry'])
+                        landuse = feature['properties'].get('landuse', 0)
+                        mask = geometry_mask([geom], transform=transform, invert=False, out_shape=array.shape)
+                        array = np.where(mask, array, landuse)
+
+                # Then raster high roads
+                for road in high_roads:
+                    geom = shape(road['geometry'])
+                    landuse_road = road['properties'].get('landuse', None)
+                    if landuse_road is not None:
+                        mask = geometry_mask([geom], transform=transform, invert=False, out_shape=array.shape)
+                        array = np.where(mask, array, landuse_road)
+
+            else:
+                if self.brug:
+                    for feature in self.brug:
+                        geom = shape(feature['geometry'])
+                        landuse = feature['properties'].get('landuse', 0)
+                        mask = geometry_mask([geom], transform=transform, invert=False, out_shape=array.shape)
+                        array = np.where(mask, array, landuse)
+
+                for road in self.roads:
+                    geom = shape(road['geometry'])
+                    landuse_road = road['properties'].get('landuse', None)
+                    if landuse_road is not None:
+                        mask = geometry_mask([geom], transform=transform, invert=False, out_shape=array.shape)
+                        array = np.where(mask, array, landuse_road)
+
+        # Buildings
+        building_geometries = [shape(building['geometry']) for building in self.buildings]
+        if building_geometries:
             building_mask = geometry_mask(building_geometries, transform=transform, invert=False, out_shape=array.shape)
             self.building_mask = building_mask
             array = np.where(building_mask, array, 2)
@@ -395,6 +689,12 @@ class LandCover:
                                           out_shape=self.array.shape)
             self.array = np.where(building_mask, self.array, 2)
 
+            # Update self.building_mask
+            if hasattr(self, 'building_mask') and self.building_mask is not None:
+                self.building_mask &= building_mask
+            else:
+                self.building_mask = building_mask
+
     def update_landcover(self, land_type, input_array):
         """
         Update the raster array for cells where input_array > -1 with the given land type code.
@@ -409,18 +709,32 @@ class LandCover:
         to_update = input_array > -1
         self.array[to_update] = land_type
 
+        if land_type == 7:
+            if not hasattr(self, 'water_mask') or self.water_mask is None:
+                self.water_mask = np.ones_like(self.array, dtype=bool)
+
+            self.water_mask[to_update] = False
 
     def export_context(self, file_name, export_format="dxf"):
         """
         Export the current land cover and building context.dxf to a file in specified format.
 
         Parameters:
-            file_name (str): The output file path.
-            export_format (str, optional): Format of the export. Options are "json", "csv", or "dxf". Defaults to "dxf".
+            file_name (str):                The output file path.
+            export_format (str, optional):  Format of the export. Options are "json", "csv", or "dxf". Defaults to "dxf".
 
         Returns:
             None
         """
+
+        landuse_color_map = {
+            0: 8,  # grey    DXF color index 8 (dark grey)
+            1: 7,  # black   DXF color index 7 (black/white depending on background)
+            2: 1,  # red     DXF color index 1 (red)
+            5: 3,  # green   DXF color index 3 (green)
+            6: 33,  # brown   DXF color index 33 (brown)
+            7: 5  # blue    DXF color index 5 (blue)
+        }
 
         bbox = np.array(self.bbox) + np.array([self.resolution, self.resolution, -self.resolution, -self.resolution])
         xmin, ymin, xmax, ymax = bbox
@@ -439,12 +753,10 @@ class LandCover:
             if "geometry" in building:
                 geom = shape(building["geometry"])
                 shifted_geom = translate(geom, xoff=-xmin, yoff=-ymin)
-
                 transformed_buildings.append({
                     "geometry": mapping(shifted_geom),
-                    "parcel_id": building["parcel_id"]
+                    "properties": {"parcel_id": building["parcel_id"], "landuse": 2}
                 })
-
         transformed_water = []
         transformed_roads = []
         transformed_terrain = []
@@ -497,19 +809,29 @@ class LandCover:
                                 (normalized_bbox["xmax"], normalized_bbox["ymax"]), (0, normalized_bbox["ymax"])],
                                close=True, dxfattribs={"color": 7})
 
-
-            # Add water, roads, and terrain as polylines
-            def add_features_to_dxf(features, color):
+            # Add water, roads, terrain and buildings as polylines
+            def add_features_to_dxf(features, default_color, default_layer):
                 for feature in features:
                     poly = shape(feature["geometry"])
-                    if poly.geom_type == "Polygon":
-                        coords = list(poly.exterior.coords)
-                        msp.add_lwpolyline(coords, close=True, dxfattribs={"color": color})
+                    if poly.geom_type != "Polygon":
+                        continue
 
-            add_features_to_dxf(transformed_buildings, 1)
-            add_features_to_dxf(transformed_water, 5)
-            add_features_to_dxf(transformed_roads, 0)
-            add_features_to_dxf(transformed_terrain, 3)
+                    coords = list(poly.exterior.coords)
+
+                    # Get landuse and determine color/layer
+                    landuse = feature.get("properties", {}).get("landuse", None)
+                    layer_name = f"{default_layer}_{landuse}" if landuse is not None else default_layer
+                    color = landuse_color_map.get(landuse, default_color)
+
+                    msp.add_lwpolyline(coords, close=True, dxfattribs={
+                        "layer": layer_name,
+                        "color": color
+                    })
+
+            add_features_to_dxf(transformed_buildings, 1, "building")
+            add_features_to_dxf(transformed_water, 5, "water")
+            add_features_to_dxf(transformed_roads, 0, "road")
+            add_features_to_dxf(transformed_terrain, 3, "terrain")
 
             doc.saveas(file_name)
             print(f"Exported data to {file_name}")
