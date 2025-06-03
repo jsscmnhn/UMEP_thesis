@@ -87,7 +87,7 @@ class SOLWEIGAlgorithm():
                  USE_LC_BUILD=True, SAVE_BUILD=False, ALBEDO_WALLS=0.2, ALBEDO_GROUND=0.15,
                  EMIS_WALLS=0.9, EMIS_GROUND=0.95, ABS_S=0.7, ABS_L=0.95, POSTURE=0,  ONLYGLOBAL=True,
                  OUTPUT_TMRT=True, OUTPUT_LUP=True, OUTPUT_KUP=True, OUTPUT_KDOWN=True, OUTPUT_LDOWN=True, OUTPUT_SH=True, OUTPUT_TREEPLANTER=False,
-                 CYL=True):
+                 CYL=True, version='dsms'):
         # Initialize the class with all the provided inputs
         self.INPUT_DSM = INPUT_DSM
         self.INPUT_SVF = INPUT_SVF
@@ -136,6 +136,8 @@ class SOLWEIGAlgorithm():
         self.OUTPUT_TREEPLANTER = OUTPUT_TREEPLANTER
 
         self.CYL = CYL
+
+        self.version = version
 
         # TO DO: THIS IS NOW AN ABSOLUTE PATH
         temp_dir_name = 'temp-' + ''.join(random.choice(string.ascii_uppercase) for _ in range(8))
@@ -615,13 +617,7 @@ class SOLWEIGAlgorithm():
         f.close()
         
         if demforbuild == 0:
-            buildings = cp.copy(lcgrid)
-            buildings[buildings == 7] = 1
-            buildings[buildings == 6] = 1
-            buildings[buildings == 5] = 1
-            buildings[buildings == 4] = 1
-            buildings[buildings == 3] = 1
-            buildings[buildings == 2] = 0
+            buildings = (lcgrid == 2).astype(cp.float32)
         else:
             buildings = dsm - dem
             buildings[buildings < 2.] = 1.
@@ -1302,8 +1298,7 @@ class SOLWEIGAlgorithm():
             # amaxvalue
             vegmax = vegdsm.max()
 
-            # TO DO: maybe change this to max value of all dsms layers
-            amaxvalue_dsm = dsms[0].max() - dsms[0].min()
+            amaxvalue_dsm = max(dsm.max() for dsm in dsms) - dsms[0].min()
             amaxvalue = np.maximum(amaxvalue_dsm, vegmax)
 
             # Elevation vegdsms if buildingDEM includes ground heights
@@ -1354,7 +1349,7 @@ class SOLWEIGAlgorithm():
 
         if demforbuild == 0:
             buildings = cp.copy(lcgrid)
-            buildings = cp.where(buildings == 2, 1.0, 0.0)
+            buildings = (lcgrid == 2).astype(cp.float32)
         else:
             buildings = dsms[0] - dem
             buildings[buildings < 2.] = 1.
@@ -1509,7 +1504,7 @@ class SOLWEIGAlgorithm():
                 bush, Twater, TgK, Tstart, alb_grid, emis_grid, TgK_wall, Tstart_wall, TmaxLST,
                 TmaxLST_wall, first, second, svfalfa, svfbuveg, firstdaytime, timeadd, timestepdec,
                 Tgmap1, Tgmap1E, Tgmap1S, Tgmap1W, Tgmap1N, CI, TgOut1, diffsh, shmat, vegshmat, vbshvegshmat,
-                anisotropic_sky, asvf, patch_option)
+                anisotropic_sky, asvf, patch_option, version=self.version)
 
             # Save I0 for I0 vs. Kdown output plot to check if UTC is off
             if i < first_unique_day.shape[0]:

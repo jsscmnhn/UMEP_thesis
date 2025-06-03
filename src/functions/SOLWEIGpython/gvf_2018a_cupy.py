@@ -12,7 +12,7 @@ def gvf_2018a_cupy(wallsun, walls, buildings, scale, shadow, first, second, dirw
     Parameters:
           wallsun (cp.ndarray):        Array representing sunlit portions of walls.
           walls (cp.ndarray):          Array of wall heights.
-          buildings (cp.ndarray):      2D array representing building heights.
+          buildings (cp.ndarray):      2D boolean grid indicating building pixels.
           scale (float):               Scale factor converting units to pixels.
           shadow (cp.ndarray):         2D binary shadow mask (1 = shadowed, 0 = sunlit).
           first (float):               First sensor height for radiative surface influence.

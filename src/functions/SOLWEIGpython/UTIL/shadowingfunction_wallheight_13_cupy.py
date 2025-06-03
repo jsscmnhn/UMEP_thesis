@@ -260,12 +260,11 @@ def shadowingfunction_wallheight_13_3d(amaxvalue, a, azimuth, altitude, scale, w
         index += 1.
 
     # Combine all shadow layers
-    sh_combined = sh_stack[0]
-
-    for i in range(1, num_combinations):
-        sh_combined = cp.fmax(sh_combined, sh_stack[i])
-
-    sh = (cp.fmax(sh, sh_combined))
+    if num_combinations > 0:
+        sh_combined = sh_stack[0]
+        for i in range(1, num_combinations):
+            sh_combined = cp.fmax(sh_combined, sh_stack[i])
+        sh = cp.fmax(sh, sh_combined)
 
     # Removing walls in shadow due to selfshadowing
     azilow = azimuth - np.pi / 2

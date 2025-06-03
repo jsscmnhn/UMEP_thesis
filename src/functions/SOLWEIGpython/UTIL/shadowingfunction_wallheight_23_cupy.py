@@ -346,12 +346,13 @@ def shadowingfunction_23_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxva
         index += 1.0
 
     # Combine all shadow layers
-    sh_combined = sh_stack[0]
-    for i in range(1, num_combinations):
-        sh_combined = cp.fmax(sh_combined, sh_stack[i])
-    sh = (cp.fmax(sh, sh_combined))
+    if num_combinations > 0:
+        sh_combined = sh_stack[0]
+        for i in range(1, num_combinations):
+            sh_combined = cp.fmax(sh_combined, sh_stack[i])
+        sh = cp.fmax(sh, sh_combined)
 
-    # Removing walls in shadow due to selfshadowing
+        # Removing walls in shadow due to selfshadowing
     azilow = azimuth - np.pi / 2
     azihigh = azimuth + np.pi / 2
 

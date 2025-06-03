@@ -11,7 +11,7 @@ def sunonsurface_2018a_cupy(azimuthA, scale, buildings, shadow, sunwall, first, 
     Parameters:
         azimuthA (float):            Search directions for Ground View Factors (clockwise from north).
         scale (float):               Scale factor converting units to pixels.
-        buildings (cp.ndarray):      2D array representing building heights.
+        buildings (cp.ndarray):      2D boolean grid indicating building pixels.
         shadow (cp.ndarray):         2D binary shadow mask (1 = shadowed, 0 = sunlit).
         sunwall (cp.ndarray):        2D array marking sunlit building walls.
         first (float):               First height (sensor height) for Radiative surface influence
