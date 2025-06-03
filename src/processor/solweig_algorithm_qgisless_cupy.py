@@ -617,7 +617,7 @@ class SOLWEIGAlgorithm():
         f.close()
         
         if demforbuild == 0:
-            buildings = (lcgrid == 2).astype(cp.float32)
+            buildings = (lcgrid != 2).astype(cp.float32)
         else:
             buildings = dsm - dem
             buildings[buildings < 2.] = 1.
@@ -1349,7 +1349,7 @@ class SOLWEIGAlgorithm():
 
         if demforbuild == 0:
             buildings = cp.copy(lcgrid)
-            buildings = (lcgrid == 2).astype(cp.float32)
+            buildings = (lcgrid != 2).astype(cp.float32)
         else:
             buildings = dsms[0] - dem
             buildings[buildings < 2.] = 1.

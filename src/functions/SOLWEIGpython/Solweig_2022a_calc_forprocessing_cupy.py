@@ -20,9 +20,9 @@ from .Lside_veg_v2022a_cupy import Lside_veg_v2022a_cupy as Lside_veg_v2022a
 from copy import deepcopy
 
 # temp
-from osgeo import gdal
-from src.util.misc import saveraster
-gdal_dtm = gdal.Open("D:/Geomatics/thesis/_amsterdamset/location_2/original/final_dsm.tif")# gdal.Open("D:/Geomatics/thesis/_amsterdamset/3dtest/dsm.tif")
+# from osgeo import gdal
+# from src.util.misc import saveraster
+# gdal_dtm = gdal.Open("D:/Geomatics/thesis/_amsterdamset/location_2/original/final_dsm.tif")# gdal.Open("D:/Geomatics/thesis/_amsterdamset/3dtest/dsm.tif")
 
 def Solweig_2022a_calc(i, dsm, scale, rows, cols, svf, svfN, svfW, svfE, svfS, svfveg, svfNveg, svfEveg, svfSveg,
                        svfWveg, svfaveg, svfEaveg, svfSaveg, svfWaveg, svfNaveg, vegdem, vegdem2, albedo_b, absK, absL,
@@ -167,7 +167,7 @@ def Solweig_2022a_calc(i, dsm, scale, rows, cols, svf, svfN, svfW, svfE, svfS, s
             vegsh, sh, wallsh, wallsun, wallshve, _, facesun = shadowingfunction_wallheight_23(dsm, vegdem, vegdem2,
                                         azimuth, altitude, scale, amaxvalue, bush, walls, dirwalls * np.pi / 180.)
             shadow = sh - (1 - vegsh) * (1 - psi)
-            # saveraster(gdal_dtm, f"D:/Geomatics/thesis/_amsterdamset/3dtest/shade/shade_{altitude}.tif", shadow.get())
+
         else:
             sh, wallsh, wallsun, facesh, facesun = shadowingfunction_wallheight_13(amaxvalue_dsm, dsm, azimuth, altitude, scale,
                                                                                    walls, dirwalls * np.pi / 180.)
@@ -501,7 +501,6 @@ def Solweig_2022a_calc_3d(i, dsms, scale, rows, cols, svf, svfN, svfW, svfE, svf
         Tgwall = Tgwall * CI_TgG
         if landcover == 1:
             Tg[Tg < 0] = 0  # temporary for removing low Tg during morning 20130205
-        # saveraster(gdal_dtm, f"D:/Geomatics/thesis/_amsterdamset/3dtest/misc/tg_{version}_{dectime_str}.tif", Tg.get())
 
         # # # # Ground View Factors # # # #
         gvfLup, gvfalb, gvfalbnosh, gvfLupE, gvfalbE, gvfalbnoshE, gvfLupS, gvfalbS, gvfalbnoshS, gvfLupW, gvfalbW, \
@@ -511,7 +510,6 @@ def Solweig_2022a_calc_3d(i, dsms, scale, rows, cols, svf, svfN, svfW, svfE, svf
                                                                                     emis_grid, ewall, alb_grid, SBC,
                                                                                     albedo_b, rows, cols,
                                                                                     Twater, lc_grid, landcover)
-        # saveraster(gdal_dtm, f"D:/Geomatics/thesis/_amsterdamset/3dtest/misc/gvfsum_{version}_{dectime_str}.tif", gvfSum.get())
         # # # # Lup, daytime # # # #
         # Surface temperature wave delay - new as from 2014a
         Lup, timeaddnotused, Tgmap1 = TsWaveDelay_2015a(gvfLup, firstdaytime, timeadd, timestepdec, Tgmap1)
