@@ -44,8 +44,9 @@ class LandCover:
         landcover_withoutbuild (ndarray):       Landcover array before building insertion.
         transform:                              Raster transform from DTM dataset.
     """
+    #src/j_dataprep/
     def __init__(self, bbox, crs="http://www.opengis.net/def/crs/EPSG/0/28992", use_bgt=True, main_roadtype=0, resolution=0.5, building_data=None, dataset=None,
-                 dataset_path=None, buildings_path=None, layer=None, nodata_fill=0, roads_on_top=True, landcover_path_bgt="src/j_dataprep/landcover_bgt.json",  landcover_top="src/j_dataprep/landcover_top.json"):
+                 dataset_path=None, buildings_path=None, layer=None, nodata_fill=0, roads_on_top=True, landcover_path_bgt="landcover_bgt.json",  landcover_top="src/j_dataprep/landcover_top.json"):
         self.bbox = bbox
         self.transform = None
         self.crs = crs
@@ -151,7 +152,7 @@ class LandCover:
             dict:   A GeoJSON-like dictionary with key "features" containing a list of feature dictionaries as returned by the API.
         """
         features = []
-        url = f"{self.base_url}/collections/{item_type}/items?bbox={self.bbox[0]},{self.bbox[1]},{self.bbox[2]},{self.bbox[3]}&bbox-crs={self.crs}&crs={self.crs}&limit=1000&f=json"
+        url = f"{self.base_url_top10nl}/collections/{item_type}/items?bbox={self.bbox[0]},{self.bbox[1]},{self.bbox[2]},{self.bbox[3]}&bbox-crs={self.crs}&crs={self.crs}&limit=1000&f=json"
 
         while url:
             response = requests.get(url)
@@ -182,7 +183,7 @@ class LandCover:
             dict:   A GeoJSON-like dictionary with key "features" containing a list of feature dictionaries as returned by the API.
         """
         features = []
-        url = f"{self.base_url}/collections/{item_type}/items?bbox={self.bbox[0]},{self.bbox[1]},{self.bbox[2]},{self.bbox[3]}&bbox-crs={self.crs}&crs={self.crs}&limit=1000&f=json"
+        url = f"{self.base_url_bgt}/collections/{item_type}/items?bbox={self.bbox[0]},{self.bbox[1]},{self.bbox[2]},{self.bbox[3]}&bbox-crs={self.crs}&crs={self.crs}&limit=1000&f=json"
 
         while url:
             response = requests.get(url)
@@ -415,13 +416,21 @@ class LandCover:
         for road in filtered_features:
             geom = shape(road['geometry'])
             props = road.get("properties", {}).copy()
-            fysiek = props.get("fysiek_voorkomen", "").lower()
-            landuse = road_mapping.get(fysiek)
+
+            functie = props.get("functie", "").lower()
             hoogte = props.get("relatieve_hoogteligging", "")
             try:
-                props["rel_height"] = int(hoogte) if hoogte is not None else 0
+                rel_height = int(hoogte) if hoogte is not None else 0
             except ValueError:
-                props["rel_height"] = 0
+                rel_height = 0
+
+            # remove underground public transport
+            if functie in {"spoorbaan", "tram"} and rel_height < 0:
+                continue
+
+            props["rel_height"] = rel_height
+            fysiek = props.get("fysiek_voorkomen", "").lower()
+            landuse = road_mapping.get(fysiek)
 
             if landuse is not None and isinstance(geom, (Polygon, MultiPolygon)):
                 props["landuse"] = landuse
@@ -438,7 +447,6 @@ class LandCover:
             self.roads = self.process_road_features_bgt()
             self.water = self.process_water_features_bgt()
             self.brug = self.process_overbrugging_bgt()
-
         else:
             self.terrains = self.process_terrain_features_top()
             self.roads = self.process_road_features_top()
@@ -670,6 +678,24 @@ class LandCover:
                            transform=self.transform) as dst:
             dst.write(output, 1)
         print("File written to '%s'" % output_file)
+
+    def export_features_to_gpkg(self, features, output_path, layer_name="features"):
+        '''
+        Export a list of GeoJSON-like features to a GeoPackage.
+
+        Parameters:
+            features (list): List of features with "geometry" and "properties".
+            output_path (str): File path to save the .gpkg.
+            layer_name (str): Name of the layer inside the GeoPackage.
+        '''
+        records = []
+        for feature in features:
+            geom = shape(feature["geometry"])
+            props = feature.get("properties", {})
+            records.append({**props, "geometry": geom})
+
+        gdf = gpd.GeoDataFrame(records, crs="EPSG:28992")
+        gdf.to_file(output_path, layer=layer_name, driver="GPKG")
 
     def update_build_landcover(self, new_building_data):
         """
@@ -976,8 +1002,6 @@ class Buildings:
 
 
 if __name__ == "__main__":
-
-
     # bbox_dict = {
     #     'historisch': [(175905, 317210, 176505, 317810), (84050, 447180, 84650, 447780), (80780, 454550, 81380, 455150),
     #                    (233400, 581500, 234000, 582100), (136600, 455850, 137200, 456450),
@@ -1008,39 +1032,46 @@ if __name__ == "__main__":
     #     ]
     # }
 
+    bbox = (121500, 487000, 122100, 487600)
+
     # bbox_list = [(120000, 485700, 120126, 485826), (120000, 485700, 120251, 485951), (120000, 485700, 120501, 486201), (120000, 485700, 120751, 486451), (120000, 485700, 121001, 486701), (120000, 485700, 121501, 487201) ]
     # folder_list = ['250', '500', '1000', '1500', '2000', '3000']
-
-    bbox_list = [ (120000, 485700, 121501, 487201)]
-    folder_list = ['3000']
+    #
+    # bbox_list = [ (120000, 485700, 121501, 487201)]
     crs = "http://www.opengis.net/def/crs/EPSG/0/28992"
-
+    start = 'd:/Geomatics/thesis/_analysisfinalfurther'
     D = 'D'
     i = 0
-    for folder in folder_list:
-        dataset_path = f"{D}:/Geomatics/optimization_tests/{folder}/final_dsm_over.tif"
-        buildings_path = f"{D}:/Geomatics/optimization_tests/{folder}/buildings.gpkg"
-        output = f"{D}:/Geomatics/optimization_tests/{folder}/landcover.tif"
-        landcover = LandCover(bbox_list[i], crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
-        landcover.save_raster(output, False)
-        i += 1
+
+    output =  f"{start}/landcover_debug.tif"
+    dataset_path = f"{start}/historisch/loc_5/final_dsm_over.tif"
+    buildings_path = (f"{start}/historisch/loc_5/buildings.gpkg")
+    landcover = LandCover(bbox, crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
+    landcover.save_raster(output, False)
+    # for folder in folder_list:
+    #     dataset_path = f"{D}:/Geomatics/optimization_tests/{folder}/final_dsm_over.tif"
+    #     buildings_path = f"{D}:/Geomatics/optimization_tests/{folder}/buildings.gpkg"
+    #     output = f"{D}:/Geomatics/optimization_tests/{folder}/landcover.tif"
+    #     landcover = LandCover(bbox_list[i], crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
+    #     landcover.save_raster(output, False)
+    #     i += 1
 
     # crs = "http://www.opengis.net/def/crs/EPSG/0/28992"
     # for nbh_type in ['historisch', 'tuindorp', 'vinex', 'volkswijk', 'bloemkool']:
     #     for i in [0, 1, 2, 3, 4, 5]:
-    #         output =  f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/landcover_stone.tif"
+    #         output =  f"{start}/{nbh_type}/loc_{i}/landcover_stone.tif"
     #         bbox = bbox_dict[nbh_type][i]
-    #         dataset_path = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dsm_over.tif"
-    #         buildings_path = (f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/buildings.gpkg")
+    #         dataset_path = f"{start}/{nbh_type}/loc_{i}/final_dsm_over.tif"
+    #         buildings_path = (f"{start}/{nbh_type}/loc_{i}/buildings.gpkg")
     #         landcover = LandCover(bbox, crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
     #         landcover.save_raster(output, False)
     #
     # for nbh_type in ['stedelijk']:
     #     for i in [0, 1, 2, 3]:
-    #         output =  f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/landcover_stone.tif"
+    #         output =  f"{start}/{nbh_type}/loc_{i}/landcover_stone.tif"
     #         bbox = bbox_dict[nbh_type][i]
-    #         dataset_path = f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/final_dsm_over.tif"
-    #         buildings_path = (f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/buildings.gpkg")
+    #         dataset_path = f"{start}/{nbh_type}/loc_{i}/final_dsm_over.tif"
+    #         buildings_path = (f"{start}/{nbh_type}/loc_{i}/buildings.gpkg")
     #         landcover = LandCover(bbox, crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
     #         landcover.save_raster(output, False)
 
@@ -1054,4 +1085,4 @@ if __name__ == "__main__":
     #         buildings_path = (f"E:/Geomatics/thesis/_analysisfinal/{nbh_type}/loc_{i}/buildings.gpkg")
     #         landcover = LandCover(bbox, crs, dataset_path=dataset_path, buildings_path=buildings_path, layer="buildings")
     #         landcover.save_raster(output, False)
-    #
+
