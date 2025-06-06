@@ -4,77 +4,25 @@ from .create_patches import create_patches
 
 def Perez_v3(zen, azimuth, radD, radI, jday, patchchoice, patch_option):
     """
-    This function calculates distribution of luminance on the skyvault based on
+    This unchanged function calculates distribution of luminance on the skyvault based on
     Perez luminince distribution model.
-    
+
     Created by:
     Fredrik Lindberg 20120527, fredrikl@gvc.gu.se
     Gothenburg University, Sweden
     Urban Climte Group
-    
-    Input parameters:
-     - zen:     Zenith angle of the Sun (in degrees)
-     - azimuth: Azimuth angle of the Sun (in degrees)
-     - radD:    Horizontal diffuse radiation (W m-2)
-     - radI:    Direct radiation perpendicular to the Sun beam (W m-2)
-     - jday:    Day of year
-    
-    Output parameters:
-     - lv:   Relative luminance map (same dimensions as theta. gamma)
-    
 
-    acoeff=[1.353 -0.258 -0.269 -1.437
-           -1.222 -0.773 1.415 1.102
-           -1.100 -0.252 0.895 0.016
-           -0.585 -0.665 -0.267 0.712
-           -0.600 -0.347 -2.500 2.323
-           -1.016 -0.367 1.008 1.405
-           -1.000 0.021 0.503 -0.512
-           -1.050 0.029 0.426 0.359];
-    
-    bcoeff=[-0.767 0.001 1.273 -0.123
-            -0.205 0.037 -3.913 0.916
-             0.278 -0.181 -4.500 1.177
-             0.723 -0.622 -5.681 2.630
-             0.294 0.049 -5.681 1.842
-             0.288 -0.533 -3.850 3.375
-            -0.300 0.192 0.702 -1.632
-            -0.325 0.116 0.778 0.003];
-    
-    ccoeff=[2.800 0.600 1.238 1.000
-            6.975 0.177 6.448 -0.124
-            24.22 -13.08 -37.70 34.84
-            33.34 -18.30 -62.25 52.08
-            21.00 -4.766 -21.59 7.249
-            14.00 -0.999 -7.14 7.547
-            19.00 -5.000 1.243 -1.91
-            31.06 -14.50 -46.11 55.37];
-    
-    dcoeff=[1.874 0.630 0.974 0.281
-           -1.580 -0.508 -1.781 0.108
-           -5.00 1.522 3.923 -2.62
-           -3.50 0.002 1.148 0.106
-           -3.50 -0.155 1.406 0.399
-           -3.40 -0.108 -1.075 1.57
-           -4.00 0.025 0.384 0.266
-           -7.23 0.405 13.35 0.623];
-    
-    ecoeff=[0.035 -0.125 -0.572 0.994
-            0.262 0.067 -0.219 -0.428
-           -0.016 0.160 0.420 -0.556
-            0.466 -0.33 -0.088 -0.033
-            0.003 0.077 -0.066 -0.129
-           -0.067 0.402 0.302 -0.484
-            1.047 -0.379 -2.452 1.466
-            1.500 -0.643 1.856 0.564];
+    Inputs:
+         zen:     Zenith angle of the Sun (in degrees)
+         azimuth: Azimuth angle of the Sun (in degrees)
+         radD:    Horizontal diffuse radiation (W m-2)
+         radI:    Direct radiation perpendicular to the Sun beam (W m-2)
+         jday:    Day of year
 
-    :param zen:
-    :param azimuth:
-    :param radD:
-    :param radI:
-    :param jday:
-    :param patchchoice:
-    :return:
+    Returns
+    -------
+    lv: np.array
+        Relative luminance map (same dimensions as theta. gamma)
     """
 
     m_a1 = np.array([1.3525, -1.2219, -1.1000, -0.5484, -0.6000, -1.0156, -1.0000, -1.0500])

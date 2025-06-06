@@ -13,7 +13,6 @@ def Solweig_2015a_metdata_noload(inputdata, location, UTC):
     :param inputdata:
     :param location:
     :param UTC:
-    :return:
     """
 
     met = inputdata

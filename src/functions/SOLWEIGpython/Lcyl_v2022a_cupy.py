@@ -23,8 +23,15 @@ def Lcyl_v2022a_cupy(esky, sky_patches, Ta, Tgwall, ewall, Lup, shmat, vegshmat,
         cols (int):                                 Number of columns in the grid.
         asvf (ndarray):                             Anisotropic Sky View Factor.
 
-    Returns:
-        Ldown, Lside, Least etc. (cp.ndarray):      Longwave radiation from six directions.
+    Returns
+    -------
+    Ldown : cp.ndarray
+        Longwave radiation from downward direction.
+    Lside : cp.ndarray
+        Longwave radiation from side directions.
+    Lx : cp.ndarray
+        Longwave radiation from (x = east, west, north, south) direction.
+
     '''
     # Stefan-Boltzmann's Constant
     SBC = 5.67051e-8

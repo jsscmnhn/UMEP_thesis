@@ -1,6 +1,6 @@
 
 def Kvikt_veg(svf,svfveg,vikttot):
-
+    ''' Helper function got Kside_veg_v2022a'''
     # Least
     viktwall=(vikttot-(63.227*svf**6-161.51*svf**5+156.91*svf**4-70.424*svf**3+16.773*svf**2-0.4863*svf))/vikttot
     

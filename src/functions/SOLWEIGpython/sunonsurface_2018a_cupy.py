@@ -3,7 +3,7 @@ import cupy as cp
 
 def sunonsurface_2018a_cupy(azimuthA, scale, buildings, shadow, sunwall, first, second, aspect, walls, Tg, Tgwall, Ta,
                        emis_grid, ewall, alb_grid, SBC, albedo_b, Twater, lc_grid, landcover):
-    '''
+    """
     Calculates surface and wall sun/shadow and radiation interactions based on building geometry and sun position.
     This CuPy-accelerated implementation simulates sunlit and shadowed surfaces on buildings and ground,
     including longwave upwelling radiation (Lup) and albedo effects modulated by landcover and shadow patterns.
@@ -30,13 +30,20 @@ def sunonsurface_2018a_cupy(azimuthA, scale, buildings, shadow, sunwall, first, 
         lc_grid (cp.ndarray):        Landcover classification grid.
         landcover (int):             Landcover type indicator.
 
-    Returns:
-        gvf (cp.ndarray):            Grid of combined sun/shadow view factors on surfaces.
-        gvfLup (cp.ndarray):         Grid of longwave upwelling radiation view factors.
-        gvfalb (cp.ndarray):         Grid of albedo-weighted view factors including shadows.
-        gvfalbnosh (cp.ndarray):     Grid of albedo-weighted view factors excluding shadows.
-        gvf2 (cp.ndarray):           Grid of secondary view factors combining wall and surface shadows.
-    '''
+    Returns
+    -------
+    gvf : cp.ndarray
+        Grid of combined sun/shadow view factors on surfaces.
+    gvfLup : cp.ndarray
+        Grid of longwave upwelling radiation view factors.
+    gvfalb : cp.ndarray
+        Grid of albedo-weighted view factors including shadows.
+    gvfalbnosh : cp.ndarray
+        Grid of albedo-weighted view factors excluding shadows.
+    gvf2 : cp.ndarray
+        Grid of secondary view factors combining wall and surface shadows.
+    """
+
     sizex = walls.shape[0]
     sizey = walls.shape[1]
 

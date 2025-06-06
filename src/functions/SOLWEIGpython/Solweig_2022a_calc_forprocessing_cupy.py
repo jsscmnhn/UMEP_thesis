@@ -38,7 +38,6 @@ def Solweig_2022a_calc(i, dsm, scale, rows, cols, svf, svfN, svfW, svfE, svfS, s
     Originally developed by Fredrik Lindberg (2016-08-28), Gothenburg Urban Climate Group, University of Gothenburg.
     This version (2025, Jessica Monahan) includes support for 3D geometry and GPU acceleration using CuPy.
 
-    ---------------------------------------------------------------
     Parameters:
         i (int):            Index of current timestep or iteration.
         dsm (cp.ndarray):   DSM containing building and ground elevations.
@@ -105,7 +104,7 @@ def Solweig_2022a_calc(i, dsm, scale, rows, cols, svf, svfN, svfW, svfE, svfS, s
         anisotropic_sky (bool):                             Enable anisotropic sky model (Wallenberg et al. 2019/2022).
         asvf (cp.ndarray):                                  Anisotropic Sky View Factor.
         patch_option (int):                                 Option for amount of patches.
-    ---------------------------------------------------------------
+
     Returns:
          Updated radiation and thermal comfort model outputs.
     '''
@@ -389,12 +388,10 @@ def Solweig_2022a_calc_3d(i, dsms, scale, rows, cols, svf, svfN, svfW, svfE, svf
     Originally developed by Fredrik Lindberg (2016-08-28), Gothenburg Urban Climate Group, University of Gothenburg.
     This version (2025, Jessica Monahan) includes support for 3D geometry and GPU acceleration using CuPy.
 
-    ---------------------------------------------------------------
     Parameters:
         dsms (cp.ndarray):  3D-layered DSM containing building and ground elevations, and gap layers.
+        other_parameters:   see Solweig_2022a_calc for the others
 
-        see Solweig_2022a_calc  for the other parameters.
-    ---------------------------------------------------------------
     Returns:
          Updated radiation and thermal comfort model outputs.
     '''

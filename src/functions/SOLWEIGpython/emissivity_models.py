@@ -1,8 +1,8 @@
 import numpy as np
 
-''' Model 1 is based on Unsworth & Monteith, 1975 '''
-def model1(sky_patches, esky, Ta):
 
+def model1(sky_patches, esky, Ta):
+    ''' Model 1 is based on Unsworth & Monteith, 1975 '''
     # Stefan-Boltzmann's Constant
     SBC = 5.67051e-8
 
@@ -55,10 +55,10 @@ def model1(sky_patches, esky, Ta):
 
     return patch_emissivity_normalized, esky_band
 
-''' Model 2 is based on Martin & Berdhal, 1984
-    Ez = 1 - (1 - Es)*e**(b2*(1.7 - (1/np.cos(z)))) '''
-def model2(sky_patches, esky, Ta):
 
+def model2(sky_patches, esky, Ta):
+    ''' Model 2 is based on Martin & Berdhal, 1984
+        Ez = 1 - (1 - Es)*e**(b2*(1.7 - (1/np.cos(z)))) '''
     # Degrees to radians
     deg2rad = np.pi / 180               
 
@@ -91,10 +91,10 @@ def model2(sky_patches, esky, Ta):
 
     return patch_emissivity_normalized, esky_band
 
-''' Model 3 is based on Bliss, 1961.
-    Ez = 1 - (1 - Es)**(1/(b1*np.cos(z))) '''
-def model3(sky_patches, esky, Ta):
 
+def model3(sky_patches, esky, Ta):
+    ''' Model 3 is based on Bliss, 1961.
+        Ez = 1 - (1 - Es)**(1/(b1*np.cos(z))) '''
     # Degrees to radians
     deg2rad = np.pi / 180               
 

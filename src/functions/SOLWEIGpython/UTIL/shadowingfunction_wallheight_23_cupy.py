@@ -24,14 +24,22 @@ def shadowingfunction_wallheight_23(a, vegdem, vegdem2, azimuth, altitude, scale
         walls (cp.ndarray):     DSM layer representing wall heights [m].
         aspect (cp.ndarray):    Aspect (orientation) of building walls [radians].
 
-    Returns:
-        vegsh (cp.ndarray):      Vegetation shadow mask (1 = sunlit, 0 = shadow).
-        sh (cp.ndarray):         Shadow map of ground and roof (1 = shadow, 0 = sunlit).
-        wallsh (cp.ndarray):     Shadow height on walls [m].
-        wallshve (cp.ndarray):   Additional wall shadowing caused by vegetation [m].
-        wallsun (cp.ndarray):    Sunlit height of walls [m].
-        facesh (cp.ndarray):     Shadow mask from wall self-shadowing (1 = shadow, 0 = sunlit).
-        facesun (cp.ndarray):    Sunlit mask of walls (1 = sunlit, 0 = shadow).
+    Returns
+    -------
+    vegsh (cp.ndarray):
+        Vegetation shadow mask (1 = sunlit, 0 = shadow).
+    sh (cp.ndarray):
+        Shadow map of ground and roof (1 = shadow, 0 = sunlit).
+    wallsh (cp.ndarray):
+        Shadow height on walls [m].
+    wallshve (cp.ndarray):
+        Additional wall shadowing caused by vegetation [m].
+    wallsun (cp.ndarray):
+        Sunlit height of walls [m].
+    facesh (cp.ndarray):
+        Shadow mask from wall self-shadowing (1 = shadow, 0 = sunlit).
+    facesun (cp.ndarray):
+        Sunlit mask of walls (1 = sunlit, 0 = shadow).
     '''
 
     # Conversion
@@ -203,14 +211,22 @@ def shadowingfunction_23_3d(a, vegdem, vegdem2, azimuth, altitude, scale, amaxva
         walls (cp.ndarray):     DSM layer representing wall heights [m].
         aspect (cp.ndarray):    Aspect (orientation) of building walls [radians].
 
-    Returns:
-        vegsh (cp.ndarray):      Vegetation shadow mask (1 = sunlit, 0 = shadow).
-        sh (cp.ndarray):         Shadow map of ground and roof (1 = shadow, 0 = sunlit).
-        wallsh (cp.ndarray):     Shadow height on walls [m].
-        wallshve (cp.ndarray):   Additional wall shadowing caused by vegetation [m].
-        wallsun (cp.ndarray):    Sunlit height of walls [m].
-        facesh (cp.ndarray):     Shadow mask from wall self-shadowing (1 = shadow, 0 = sunlit).
-        facesun (cp.ndarray):    Sunlit mask of walls (1 = sunlit, 0 = shadow).
+    Returns
+    -------
+    vegsh (cp.ndarray):
+        Vegetation shadow mask (1 = sunlit, 0 = shadow).
+    sh (cp.ndarray):
+        Shadow map of ground and roof (1 = shadow, 0 = sunlit).
+    wallsh (cp.ndarray):
+        Shadow height on walls [m].
+    wallshve (cp.ndarray):
+        Additional wall shadowing caused by vegetation [m].
+    wallsun (cp.ndarray):
+        Sunlit height of walls [m].
+    facesh (cp.ndarray):
+        Shadow mask from wall self-shadowing (1 = shadow, 0 = sunlit).
+    facesun (cp.ndarray):
+        Sunlit mask of walls (1 = sunlit, 0 = shadow).
     '''
 
     # Conversion

@@ -12,9 +12,12 @@ def diffusefraction(radG,altitude,Kt,Ta,RH):
         Ta (float):       Air temperature [°C].
         RH (float):       Relative humidity [%].
 
-    Returns:
-        radI (float):     Direct beam radiation [W/m²].
-        radD (float):     Diffuse radiation [W/m²].
+    Returns
+    -------
+    radI : float
+        Direct beam radiation [W/m²].
+    radD : float
+        Diffuse radiation [W/m²].
     """
     alfa = altitude*(np.pi/180)
 

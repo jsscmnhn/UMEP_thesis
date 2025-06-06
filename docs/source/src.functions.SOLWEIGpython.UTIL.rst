@@ -1,10 +1,6 @@
-src.functions.SOLWEIGpython.UTIL package
+src.functions.SOLWEIGpython.UTIL
 ========================================
-
-Submodules
-----------
-
-src.functions.SOLWEIGpython.UTIL.Perez\_v3 module
+functions.SOLWEIGpython.UTIL.Perez\_v3
 -------------------------------------------------
 
 .. automodule:: src.functions.SOLWEIGpython.UTIL.Perez_v3
@@ -12,7 +8,7 @@ src.functions.SOLWEIGpython.UTIL.Perez\_v3 module
    :show-inheritance:
    :undoc-members:
 
-src.functions.SOLWEIGpython.UTIL.Solweig\_v2015\_metdata\_noload module
+functions.SOLWEIGpython.UTIL.Solweig\_v2015\_metdata\_noload
 -----------------------------------------------------------------------
 
 .. automodule:: src.functions.SOLWEIGpython.UTIL.Solweig_v2015_metdata_noload
@@ -20,7 +16,7 @@ src.functions.SOLWEIGpython.UTIL.Solweig\_v2015\_metdata\_noload module
    :show-inheritance:
    :undoc-members:
 
-src.functions.SOLWEIGpython.UTIL.clearnessindex\_2013b module
+functions.SOLWEIGpython.UTIL.clearnessindex\_2013b
 -------------------------------------------------------------
 
 .. automodule:: src.functions.SOLWEIGpython.UTIL.clearnessindex_2013b
@@ -28,7 +24,7 @@ src.functions.SOLWEIGpython.UTIL.clearnessindex\_2013b module
    :show-inheritance:
    :undoc-members:
 
-src.functions.SOLWEIGpython.UTIL.create\_patches module
+functions.SOLWEIGpython.UTIL.create\_patches
 -------------------------------------------------------
 
 .. automodule:: src.functions.SOLWEIGpython.UTIL.create_patches
@@ -36,7 +32,7 @@ src.functions.SOLWEIGpython.UTIL.create\_patches module
    :show-inheritance:
    :undoc-members:
 
-src.functions.SOLWEIGpython.UTIL.diffusefraction module
+functions.SOLWEIGpython.UTIL.diffusefraction
 -------------------------------------------------------
 
 .. automodule:: src.functions.SOLWEIGpython.UTIL.diffusefraction
@@ -44,15 +40,7 @@ src.functions.SOLWEIGpython.UTIL.diffusefraction module
    :show-inheritance:
    :undoc-members:
 
-src.functions.SOLWEIGpython.UTIL.shadowingfunction\_wallheight\_13 module
--------------------------------------------------------------------------
-
-.. automodule:: src.functions.SOLWEIGpython.UTIL.shadowingfunction_wallheight_13
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-src.functions.SOLWEIGpython.UTIL.shadowingfunction\_wallheight\_13\_cupy module
+functions.SOLWEIGpython.UTIL.shadowingfunction\_wallheight\_13\_cupy
 -------------------------------------------------------------------------------
 
 .. automodule:: src.functions.SOLWEIGpython.UTIL.shadowingfunction_wallheight_13_cupy
@@ -60,15 +48,7 @@ src.functions.SOLWEIGpython.UTIL.shadowingfunction\_wallheight\_13\_cupy module
    :show-inheritance:
    :undoc-members:
 
-src.functions.SOLWEIGpython.UTIL.shadowingfunction\_wallheight\_23 module
--------------------------------------------------------------------------
-
-.. automodule:: src.functions.SOLWEIGpython.UTIL.shadowingfunction_wallheight_23
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-src.functions.SOLWEIGpython.UTIL.shadowingfunction\_wallheight\_23\_cupy module
+functions.SOLWEIGpython.UTIL.shadowingfunction\_wallheight\_23\_cupy
 -------------------------------------------------------------------------------
 
 .. automodule:: src.functions.SOLWEIGpython.UTIL.shadowingfunction_wallheight_23_cupy
@@ -76,7 +56,7 @@ src.functions.SOLWEIGpython.UTIL.shadowingfunction\_wallheight\_23\_cupy module
    :show-inheritance:
    :undoc-members:
 
-src.functions.SOLWEIGpython.UTIL.sun\_distance module
+functions.SOLWEIGpython.UTIL.sun\_distance
 -----------------------------------------------------
 
 .. automodule:: src.functions.SOLWEIGpython.UTIL.sun_distance
@@ -84,15 +64,7 @@ src.functions.SOLWEIGpython.UTIL.sun\_distance module
    :show-inheritance:
    :undoc-members:
 
-src.functions.SOLWEIGpython.UTIL.sun\_position module
------------------------------------------------------
-
-.. automodule:: src.functions.SOLWEIGpython.UTIL.sun_position
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-Module contents
+ contents
 ---------------
 
 .. automodule:: src.functions.SOLWEIGpython.UTIL

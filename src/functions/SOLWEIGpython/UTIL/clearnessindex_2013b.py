@@ -15,7 +15,6 @@ def clearnessindex_2013b(zen, jday, Ta, RH, radG, location, P):
     :param radG: global shortwave radiation
     :param location: distionary including lat, lon and alt
     :param P: pressure
-    :return:
     """
 
     if P == -999.0:

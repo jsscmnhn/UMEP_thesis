@@ -32,24 +32,43 @@ def gvf_2018a_cupy(wallsun, walls, buildings, scale, shadow, first, second, dirw
           lc_grid (cp.ndarray):        Landcover classification grid.
           landcover (int):             Landcover type indicator.
 
-    Returns:
-          gvfLup (cp.ndarray):         Grid of longwave upwelling radiation view factors (averaged over azimuths).
-          gvfalb (cp.ndarray):         Grid of albedo-weighted view factors including shadows (averaged over azimuths).
-          gvfalbnosh (cp.ndarray):     Grid of albedo-weighted view factors excluding shadows (averaged over azimuths).
-          gvfLupE (cp.ndarray):        East-facing longwave upwelling radiation view factors.
-          gvfalbE (cp.ndarray):        East-facing albedo-weighted view factors including shadows.
-          gvfalbnoshE (cp.ndarray):    East-facing albedo-weighted view factors excluding shadows.
-          gvfLupS (cp.ndarray):        South-facing longwave upwelling radiation view factors.
-          gvfalbS (cp.ndarray):        South-facing albedo-weighted view factors including shadows.
-          gvfalbnoshS (cp.ndarray):    South-facing albedo-weighted view factors excluding shadows.
-          gvfLupW (cp.ndarray):        West-facing longwave upwelling radiation view factors.
-          gvfalbW (cp.ndarray):        West-facing albedo-weighted view factors including shadows.
-          gvfalbnoshW (cp.ndarray):    West-facing albedo-weighted view factors excluding shadows.
-          gvfLupN (cp.ndarray):        North-facing longwave upwelling radiation view factors.
-          gvfalbN (cp.ndarray):        North-facing albedo-weighted view factors including shadows.
-          gvfalbnoshN (cp.ndarray):    North-facing albedo-weighted view factors excluding shadows.
-          gvfSum (cp.ndarray):         Sum of combined sun/shadow view factors across all azimuth directions.
-          gvfNorm (cp.ndarray):        Normalized view factor grid where non-building areas are set to 1.
+    Returns
+    -------
+    gvfLup : cp.ndarray
+        Grid of longwave upwelling radiation view factors (averaged over azimuths).
+    gvfalb : cp.ndarray
+        Grid of albedo-weighted view factors including shadows (averaged over azimuths).
+    gvfalbnosh : cp.ndarray
+        Grid of albedo-weighted view factors excluding shadows (averaged over azimuths).
+    gvfLupE : cp.ndarray
+        East-facing longwave upwelling radiation view factors.
+    gvfalbE : cp.ndarray
+        East-facing albedo-weighted view factors including shadows.
+    gvfalbnoshE : cp.ndarray
+        East-facing albedo-weighted view factors excluding shadows.
+    gvfLupS : cp.ndarray
+        South-facing longwave upwelling radiation view factors.
+    gvfalbS : cp.ndarray
+        South-facing albedo-weighted view factors including shadows.
+    gvfalbnoshS : cp.ndarray
+        South-facing albedo-weighted view factors excluding shadows.
+    gvfLupW : cp.ndarray
+        West-facing longwave upwelling radiation view factors.
+    gvfalbW : cp.ndarray
+        West-facing albedo-weighted view factors including shadows.
+    gvfalbnoshW : cp.ndarray
+        West-facing albedo-weighted view factors excluding shadows.
+    gvfLupN : cp.ndarray
+        North-facing longwave upwelling radiation view factors.
+    gvfalbN : cp.ndarray
+        North-facing albedo-weighted view factors including shadows.
+    gvfalbnoshN : cp.ndarray
+        North-facing albedo-weighted view factors excluding shadows.
+    gvfSum : cp.ndarray
+        Sum of combined sun/shadow view factors across all azimuth directions.
+    gvfNorm : cp.ndarray
+        Normalized view factor grid where non-building areas are set to 1.
+
     '''
     azimuthA = np.arange(5, 359, 20)
     #### Ground View Factors ####

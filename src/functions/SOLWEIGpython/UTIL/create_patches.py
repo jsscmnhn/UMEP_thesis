@@ -6,7 +6,7 @@ def create_patches(patch_option):
     specific patch configuration.  Patch configurations divide the hemisphere into discrete sky segments (patches)
     according to different established or experimental schemes.
 
-    Parameters:
+    Input:
         patch_option (int):
             Patch discretization scheme:
               - 1: 145 patches (Robinson & Stone, 2004 based on Tregenza, 1987)
@@ -14,14 +14,24 @@ def create_patches(patch_option):
               - 3: 306 patches (experimental: doubling patch count of option 2)
               - 4: 612 patches (experimental: finer resolution using 15 annuli)
 
-    Returns:
-        skyvaultalt (np.ndarray):       1D array of patch center altitudes (in degrees).
-        skyvaultazi (np.ndarray):       1D array of patch center azimuths (in degrees).
-        annulino (np.ndarray):          Altitude angles (in degrees) marking the annular boundaries from zenith to horizon.
-        skyvaultaltint (np.ndarray):    Altitude angles (in degrees) for patch center positions in each annulus.
-        patches_in_band (np.ndarray):   Number of azimuthal patches per annular band.
-        skyvaultaziint (np.ndarray):    Angular width of each patch in azimuth (degrees).
-        azistart (np.ndarray):          Azimuth offset for each band, used to rotate starting position to avoid patch alignment across bands.
+    Returns
+    -------
+    skyvaultalt : np.ndarray
+        1D array of patch center altitudes (in degrees).
+    skyvaultazi : np.ndarray
+        1D array of patch center azimuths (in degrees).
+    annulino : np.ndarray
+        Altitude angles (in degrees) marking the annular boundaries from zenith to horizon.
+    skyvaultaltint : np.ndarray
+        Altitude angles (in degrees) for patch center positions in each annulus.
+    patches_in_band : np.ndarray
+        Number of azimuthal patches per annular band.
+    skyvaultaziint : np.ndarray
+        Angular width of each patch in azimuth (degrees).
+    azistart : np.ndarray
+        Azimuth offset for each band, used to rotate starting position to avoid patch alignment across bands.
+
+
     '''
 
     skyvaultalt = np.atleast_2d([])

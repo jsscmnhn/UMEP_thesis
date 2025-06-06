@@ -5,104 +5,55 @@ import datetime
 import numpy as np
 import sys
 import os
-
-
 def sun_position(time, location):
     """
-    % sun = sun_position(time, location)
-    %
-    % This function compute the sun position (zenith and azimuth angle at the observer
-    % location) as a function of the observer local time and position.
-    %
-    % It is an implementation of the algorithm presented by Reda et Andreas in:
-    %   Reda, I., Andreas, A. (2003) Solar position algorithm for solar
-    %   radiation application. National Renewable Energy Laboratory (NREL)
-    %   Technical report NREL/TP-560-34302.
-    % This document is avalaible at www.osti.gov/bridge
-    %
-    % This algorithm is based on numerical approximation of the exact equations.
-    % The authors of the original paper state that this algorithm should be
-    % precise at +/- 0.0003 degrees. I have compared it to NOAA solar table
-    % (http://www.srrb.noaa.gov/highlights/sunrise/azel.html) and to USNO solar
-    % table (http://aa.usno.navy.mil/data/docs/AltAz.html) and found very good
-    % correspondance (up to the precision of those tables), except for large
-    % zenith angle, where the refraction by the atmosphere is significant
-    % (difference of about 1 degree). Note that in this code the correction
-    % for refraction in the atmosphere as been implemented for a temperature
-    % of 10C (283 kelvins) and a pressure of 1010 mbar. See the subfunction
-    % �sun_topocentric_zenith_angle_calculation� for a possible modification
-    % to explicitely model the effect of temperature and pressure as describe
-    % in Reda & Andreas (2003).
-    %
-    % Input parameters:
-    %   time: a structure that specify the time when the sun position is
-    %   calculated.
-    %       time.year: year. Valid for [-2000, 6000]
-    %       time.month: month [1-12]
-    %       time.day: calendar day [1-31]
-    %       time.hour: local hour [0-23]
-    %       time.min: minute [0-59]
-    %       time.sec: second [0-59]
-    %       time.UTC: offset hour from UTC. Local time = Greenwich time + time.UTC
-    %   This input can also be passed using the Matlab time format ('dd-mmm-yyyy HH:MM:SS').
-    %   In that case, the time has to be specified as UTC time (time.UTC = 0)
-    %
-    %   location: a structure that specify the location of the observer
-    %       location.latitude: latitude (in degrees, north of equator is
-    %       positive)
-    %       location.longitude: longitude (in degrees, positive for east of
-    %       Greenwich)
-    %       location.altitude: altitude above mean sea level (in meters)
-    %
-    % Output parameters
-    %   sun: a structure with the calculated sun position
-    %       sun.zenith = zenith angle in degrees (angle from the vertical)
-    %       sun.azimuth = azimuth angle in degrees, eastward from the north.
-    % Only the sun zenith and azimuth angles are returned as output, but a lot
-    % of other parameters are calculated that could also extracted as output of
-    % this function.
-    %
-    % Exemple of use
-    %
-    % location.longitude = -105.1786;
-    % location.latitude = 39.742476;
-    % location.altitude = 1830.14;
-    % time.year = 2005;
-    % time.month = 10;
-    % time.day = 17;
-    % time.hour = 6;
-    % time.min = 30;
-    % time.sec = 30;
-    % time.UTC = -7;
-    % %
-    % location.longitude = 11.94;
-    % location.latitude = 57.70;
-    % location.altitude = 3.0;
-    % time.UTC = 1;
-    % sun = sun_position(time, location);
-    %
-    % sun =
-    %
-    %      zenith: 50.1080438859849
-    %      azimuth: 194.341174010338
-    %
-    % History
-    %   09/03/2004  Original creation by Vincent Roy (vincent.roy@drdc-rddc.gc.ca)
-    %   10/03/2004  Fixed a bug in julian_calculation subfunction (was
-    %               incorrect for year 1582 only), Vincent Roy
-    %   18/03/2004  Correction to the header (help display) only. No changes to
-    %               the code. (changed the �elevation� field in �location� structure
-    %               information to �altitude�), Vincent Roy
-    %   13/04/2004  Following a suggestion from Jody Klymak (jklymak@ucsd.edu),
-    %               allowed the 'time' input to be passed as a Matlab time string.
-    %   22/08/2005  Following a bug report from Bruce Bowler
-    %               (bbowler@bigelow.org), modified the julian_calculation function. Bug
-    %               was 'MATLAB has allowed structure assignment  to a non-empty non-structure
-    %               to overwrite the previous value.  This behavior will continue in this release,
-    %               but will be an error in a  future version of MATLAB.  For advice on how to
-    %               write code that  will both avoid this warning and work in future versions of
-    %               MATLAB,  see R14SP2 Release Notes'. Script should now be
-    %               compliant with futher release of Matlab...
+    Unchanged function to calculate sun position (zenith and azimuth angles) at observer location and time
+    This function computes the sun position as a function of the observer's local time and position.
+
+    It implements the algorithm presented by Reda and Andreas in:
+        Reda, I., Andreas, A. (2003) Solar position algorithm for solar radiation application.
+        National Renewable Energy Laboratory (NREL) Technical report NREL/TP-560-34302.
+        Available at www.osti.gov/bridge
+
+    The algorithm uses numerical approximations of exact equations.
+    The original authors state precision at +/- 0.0003 degrees.
+    Validation against NOAA and USNO solar tables shows very good correspondence,
+    except for large zenith angles where atmospheric refraction causes ~1 degree difference.
+    Refraction correction is implemented assuming 10°C (283K) and 1010 mbar pressure.
+    See the subfunction 'sun_topocentric_zenith_angle_calculation' for adjusting temperature and pressure effects as described in Reda & Andreas (2003).
+
+    Parameters
+    ----------
+    time : struct or str
+        Time specification for sun position calculation.
+        If struct, fields are:
+            year (int): Year, valid range [-2000, 6000]
+            month (int): Month [1-12]
+            day (int): Calendar day [1-31]
+            hour (int): Local hour [0-23]
+            min (int): Minute [0-59]
+            sec (int): Second [0-59]
+            UTC (float): Offset from UTC in hours. Local time = Greenwich time + UTC offset.
+        Alternatively, time can be a string in Matlab time format ('dd-mmm-yyyy HH:MM:SS'),
+        in which case it must be specified as UTC time (UTC = 0).
+
+    location : struct
+        Observer location parameters:
+            latitude (float): Latitude in degrees (north positive)
+            longitude (float): Longitude in degrees (east positive)
+            altitude (float): Altitude above mean sea level in meters
+
+    Returns
+    -------
+    sun : struct
+        Calculated sun position:
+            zenith (float): Zenith angle in degrees (angle from vertical)
+            azimuth (float): Azimuth angle in degrees, eastward from north
+
+    Notes
+    -----
+    Only sun zenith and azimuth angles are returned, but many other parameters are computed internally
+    and could be extracted if needed.
     """
 
     # 1. Calculate the Julian Day, and Century. Julian Ephemeris day, century

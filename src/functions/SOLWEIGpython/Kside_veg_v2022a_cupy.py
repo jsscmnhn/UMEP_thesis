@@ -10,6 +10,7 @@ def Kside_veg_v2022a(radI,radD,radG,
                     KupE,KupS,KupW,KupN,
                     cyl,lv,anisotropic_diffuse,diffsh,rows,cols,asvf,
                     shmat, vegshmat, vbshvegshmat):
+    ''' Unchanged function to calculate shortwave radiation from the cardinal directions for vegetation.'''
 
     # New reflection equation 2012-05-25
     vikttot=4.4897

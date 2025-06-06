@@ -48,25 +48,30 @@ class ProcessingSkyViewFactorAlgorithm():
     A class to process the SkyViewFactor (SVF) algorithm inputs.
 
     Parameters:
-    - INPUT_DSM:        Digital Surface Model (DSM) input file.
-    - INPUT_CDSM:       Canopy DSM input file.
-    - INPUT_TDSM:       Trunk zone DSM input file.
-    - OUTPUT_DIR:       Output directory.
-    - OUTPUT_FILE:      Output file.
-    - TRANS_VEG:        Vegetation transmissivity value or input file.
-    - INPUT_THEIGHT:    Trunk height (percentage, if no trunk zone DSM)
-    - use_veg:          Boolean: create SVF with trees.
-    - tdsm_exist:       Boolean: does the trunkdsm exist.
-    - ANISO:            Boolean: create output for anisotropic sky.
+        INPUT_DSM (str):          Digital Surface Model (DSM) input file.
+        INPUT_CDSM (str):         Canopy DSM input file.
+        INPUT_TDSM (str):         Trunk zone DSM input file.
+        OUTPUT_DIR (str):         Output directory.
+        OUTPUT_FILE (str):        Output file.
+        TRANS_VEG (float or str): Vegetation transmissivity value or input file.
+        INPUT_THEIGHT (float):    Trunk height (percentage, if no trunk zone DSM).
+        use_veg (bool):           Create SVF with trees.
+        tdsm_exist (bool):        Does the trunk DSM exist.
+        ANISO (bool):             Create output for anisotropic sky.
+        INPUT_EXTRAHEIGHT (float): Highest possible height of the z-component of the solar vector,
+                                  dependent on max solar height for location.
+        INPUT_DTM (str):          Digital Terrain Model (DTM) input file.
+        MULT_DSMS (str):          For 3D SOLWEIG: input of layered DSM file.
 
-    - INPUT_EXTRAHEIGHT:    Highest possible height of the z-component of the solar vector, dependent on max solar height for location.
-    - INPUT_DTM:            Digital Terrain Model (DTM) input file.
-    - MULT_DSMS:            For 3D SOLWEIG: input of layered DSM file.
+    Outputs:
+        The class produces and stores the following files:
+        1. SVF files stored as `.tif` for buildings, and, if chosen, vegetation separately.
+        2. Directional SVF files stored as `.tif` for north, east, south, and west, for buildings and optionally vegetation separately.
+        3. Shadow matrices saved as `.npz` files for all shadow computations involved.
     """
 
     def __init__(self, INPUT_DSM, INPUT_CDSM, OUTPUT_DIR, OUTPUT_FILE, INPUT_DTM=None, INPUT_EXTRAHEIGHT=6, INPUT_MULT_DSMS = None, INPUT_TDSM=None, USE_VEG=True, TRANS_VEG=15,
-                 TSDM_EXIST=False, INPUT_THEIGHT=25.0, ANISO=True,
-                 ):
+                 TSDM_EXIST=False, INPUT_THEIGHT=25.0, ANISO=True):
         self.INPUT_DSM = INPUT_DSM
         self.INPUT_CDSM = INPUT_CDSM
         self.INPUT_TDSM = INPUT_TDSM

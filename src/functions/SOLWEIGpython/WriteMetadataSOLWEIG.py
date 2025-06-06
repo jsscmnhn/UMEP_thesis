@@ -7,6 +7,7 @@ from osgeo import osr
 def writeRunInfo(folderPath, filepath_dsm, gdal_dsm, usevegdem, filePath_cdsm, trunkfile, filePath_tdsm, lat, lon, UTC,
                  landcover, filePath_lc, metfileexist, filePath_metfile, metdata, absK, absL, albedo_b,
                  albedo_g, ewall, eground, onlyglobal, trunkratio, trans, rows, cols, pos, elvis, cyl, demforbuild, ani):
+    '''Unchanged function to store the model run info for SOLWEIG'''
 
     # with open(folderPath + '/RunInfoSOLWEIG.txt', 'w') as file:           	#FO#
     #FO#

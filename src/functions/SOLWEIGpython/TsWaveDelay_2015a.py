@@ -2,6 +2,7 @@ import numpy as np
 
 
 def TsWaveDelay_2015a(gvfLup, firstdaytime, timeadd, timestepdec, Tgmap1):
+    "Unchanged function for Tgmap updates"
 
     Tgmap0 = gvfLup  # current timestep
     if firstdaytime == 1:  # "first in morning"

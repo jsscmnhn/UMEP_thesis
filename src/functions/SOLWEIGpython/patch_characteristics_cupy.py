@@ -2,10 +2,6 @@ import numpy as np
 from . import sunlit_shaded_patches
 import cupy as cp
 
-''' This function defines if a patch seen from a pixel is sky, building or vegetation. 
-    It also calculates if a building patch is sunlit or shaded. From this it estimates 
-    corresponding longwave radiation originating from each surface.'''
-
 def define_patch_characteristics(solar_altitude, solar_azimuth,
                              patch_altitude, patch_azimuth, steradian,
                              asvf,
@@ -13,6 +9,9 @@ def define_patch_characteristics(solar_altitude, solar_azimuth,
                              Lsky_down, Lsky_side, Lsky, Lup,
                              Ta, Tgwall, ewall,
                              rows, cols):
+    ''' This unchanged function defines if a patch seen from a pixel is sky, building or vegetation.
+        It also calculates if a building patch is sunlit or shaded. From this it estimates
+        corresponding longwave radiation originating from each surface.'''
     
     # Stefan-Boltzmann's Constant
     SBC = 5.67051e-8

@@ -9,10 +9,6 @@ def Lside_veg_v2022a_cupy(svfS,svfW,svfN,svfE,svfEveg,svfSveg,svfWveg,svfNveg,sv
     north walls, accounting for shadowing, vegetation, and anisotropic sky contributions using a modified
     cylindrical wedge model.
 
-    This function estimates the longwave radiation received from each cardinal wall direction,
-    considering vegetation cover, sky view factors, and diurnal sun position. The output is
-    directionally separated fluxes that can be summed to get total wall irradiance.
-
     Parameters:
           svfX (cp.ndarray):        Directional Sky View Factors (SVFs) (X = E, S, W, N).
           svfXveg (cp.ndarray):     Vegetation-blocked SVFs.
@@ -33,11 +29,18 @@ def Lside_veg_v2022a_cupy(svfS,svfW,svfN,svfE,svfEveg,svfSveg,svfWveg,svfNveg,sv
           anisotropic_longwave (bool):  If True, anisotropic scheme is used.
 
     Returns:
-          tuple of cp.ndarray:
-              - Least: Longwave radiation received from the east-facing wall.
-              - Lsouth: Longwave radiation received from the south-facing wall.
-              - Lwest: Longwave radiation received from the west-facing wall.
-              - Lnorth: Longwave radiation received from the north-facing wall.
+        Least (cp.ndarray):
+            Longwave radiation received from the east-facing wall.
+        Lsouth (cp.ndarray):
+            Longwave radiation received from the south-facing wall.
+        Lwest (cp.ndarray):
+            Longwave radiation received from the west-facing wall.
+        Lnorth (cp.ndarray):
+            Longwave radiation received from the north-facing wall.
+        Ldown (cp.ndarray):
+            Longwave radiation received from above (sky).
+        Lup (cp.ndarray):
+            Longwave radiation emitted upward from the surface.
     '''
     #Building height angle from svf
     svfalfaE=cp.arcsin(cp.exp((cp.log(1-svfE))/2))

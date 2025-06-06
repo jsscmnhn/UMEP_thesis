@@ -11,21 +11,9 @@ Subpackages
    src.j_analysis
    src.j_dataprep
    src.j_output
-   src.j_testing
    src.preprocessor
    src.processor
    src.util
-
-Submodules
-----------
-
-src.aa module
--------------
-
-.. automodule:: src.aa
-   :members:
-   :show-inheritance:
-   :undoc-members:
 
 Module contents
 ---------------

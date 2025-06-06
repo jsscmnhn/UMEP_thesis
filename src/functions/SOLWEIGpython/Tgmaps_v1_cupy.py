@@ -2,7 +2,7 @@ import numpy as np
 import cupy as cp
 
 def Tgmaps_v1(lc_grid, lc_class):
-
+    "Function transferred to CuPy for populating grids with coefficients for Tg"
     #Tgmaps_v1 Populates grids with cooeficients for Tg wave
     #   Detailed explanation goes here
 

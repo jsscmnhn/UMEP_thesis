@@ -1,7 +1,7 @@
 import numpy as np
 
 def Kup_veg_2015a(radI,radD,radG,altitude,svfbuveg,albedo_b,F_sh,gvfalb,gvfalbE,gvfalbS,gvfalbW,gvfalbN,gvfalbnosh,gvfalbnoshE,gvfalbnoshS,gvfalbnoshW,gvfalbnoshN):
-    # eq 16 in lindberg influence of ground surf temp (2016)
+    ''' Unchanged function to calculate upwards shortwave radiation for vegetation, eq 16 in lindberg influence of ground surf temp (2016)'''
 
     Kup=(gvfalb*radI*np.sin(altitude*(np.pi/180.)))+(radD*svfbuveg+albedo_b*(1-svfbuveg)*(radG*(1-F_sh)+radD*F_sh))*gvfalbnosh
 
