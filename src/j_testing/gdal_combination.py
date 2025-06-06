@@ -21,10 +21,11 @@ def combine_tiffs(folder, input_files, output_file):
 
     print(f"Output file {output_file} created successfully!")
 
+for numb in [500, 1000, 1500, 2000, 3000]:
+    start = "D:/Geomatics/optimization_tests"
+    folder = f"{start}/{numb}/"
 
-folder = "E:/Geomatics/thesis/_amsterdamset/location_6/3d/"
+    input_files = ['final_dsm_0.tif', 'final_dsm_1.tif', 'final_dsm_2.tif']
+    output_file = f"{start}/{numb}/dsms.tif"
 
-input_files = ['dsm_0.tif', 'dsm_1.tif', 'dsm_2.tif']
-output_file = "E:/Geomatics/thesis/_amsterdamset/location_6/3d/dsms.tif"
-
-combine_tiffs(folder, input_files, output_file)
+    combine_tiffs(folder, input_files, output_file)
