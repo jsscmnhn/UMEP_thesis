@@ -259,7 +259,6 @@ dependencies:
       - pyqt5-sip==12.17.0
       - pytest==8.3.5
       - retrying==1.3.4
-      - rusterizer-3d==0.1.1
       - snakeviz==2.2.2
       - sphinx-basic-ng==1.0.0b2
       - startinpy==0.12.1
