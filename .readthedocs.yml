@@ -3,4 +3,4 @@ version: 2
 build:
   os: ubuntu-22.04
   commands:
-    - cp -r docs/build/html/* $READTHEDOCS_OUTPUT/html/
+    - cp -r docs/documentation/html/* $READTHEDOCS_OUTPUT/html/
