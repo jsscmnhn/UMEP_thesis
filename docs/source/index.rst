@@ -16,6 +16,7 @@ Table of Content
 
    runningthecode
    howworks
+   datasets
 
 .. toctree::
    :maxdepth: 2
