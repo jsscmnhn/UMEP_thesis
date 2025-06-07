@@ -5,7 +5,7 @@
 
 SOLFD documentation
 ===================
-
+      - rusterizer-3d==0.1.1
 README TEXT HERE
 
 Table of Content
