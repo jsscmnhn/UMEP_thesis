@@ -6,7 +6,8 @@ sphinx:
 build:
   os: ubuntu-22.04
   tools:
-    python: "mambaforge-22.9"
+    python: "miniconda3-3.12-24.9"
 
 conda:
   environment: environment.yml
+  use_mamba: false
