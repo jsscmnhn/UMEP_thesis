@@ -89,9 +89,12 @@ class Building3d_input:
            arrays (list of np.ndarray):     List of input 2D arrays representing building heights and gap layers, output from Rusterizer.
            num_gaps (int):                  Number of gaps to include in the DSM layering.
 
-        Returns:
-             dsms (np.ndarray):           3D array with shape (layers, rows, cols) of DSM layers with gaps.
-             base_array (np.ndarray):     The base building height array from input for reference.
+        Returns
+        -------
+        dsms (np.ndarray):
+            3D array with shape (layers, rows, cols) of DSM layers with gaps.
+        base_array (np.ndarray):
+            The base building height array from input for reference.
         '''
         if num_gaps == 0:
             return arrays[0], arrays[0]
@@ -203,10 +206,14 @@ class Building3d_input:
            obj_path (str):  File path to the 3D building OBJ file.
            num_gaps (int):  Number of gaps to consider when layering DSMs.
 
-        Returns:
-             dsms (np.ndarray):                     3D array of DSM layers with gaps.
-             highest_array (np.ndarray):            The highest building height layer from input.
-             input_arrays (list of np.ndarray):     Raw input rasterized arrays from the OBJ.
+        Returns
+        -------
+        dsms (np.ndarray):
+            3D array of DSM layers with gaps.
+        highest_array (np.ndarray):
+            The highest building height layer from input.
+        input_arrays (list of np.ndarray):
+            Raw input rasterized arrays from the OBJ.
         '''
         input_arrays = rasterize_from_python(obj_path, self.cols, self.rows, self.res, [0, 0], -9999)
 
@@ -214,104 +221,6 @@ class Building3d_input:
 
         return dsms, highest_array, input_arrays
 
-#
-# def combine_tiffs(gdalinput, datasets, output_file):
-#     cols = gdalinput.RasterXSize
-#     rows = gdalinput.RasterYSize
-#
-#     driver = gdal.GetDriverByName('GTiff')
-#     out_dataset = driver.Create(output_file, cols, rows, len(datasets), gdal.GDT_Float32)
-#
-#     for i, dataset in enumerate(datasets):
-#         if i == 0:
-#             dataset[np.isnan(dataset)] = 0
-#         band_data = dataset
-#         out_band = out_dataset.GetRasterBand(i + 1)
-#         out_band.WriteArray(band_data)
-#
-#     out_dataset.SetProjection(gdalinput.GetProjection())
-#     out_dataset.SetGeoTransform(gdalinput.GetGeoTransform())
-#
-#     print(f"Output file {output_file} created successfully!")
-#
-# def insert_user_buildings(highest_array, transform, footprint_array=None):
-#     user_buildings_higher = []
-#
-#     labeled_array, num_clusters = label(highest_array > 0)
-#
-#     shapes_highest = shapes(labeled_array.astype(np.uint8), mask=(labeled_array > 0), transform=transform)
-#
-#     highest_buildings = [
-#         {"geometry": mapping(shape(geom)), "parcel_id": str(uuid.uuid4())[:8]}
-#         for geom, value in shapes_highest
-#     ]
-#
-#     if footprint_array is not None:
-#         rtree_index = index.Index()
-#         for idx, building in enumerate(highest_buildings):
-#             geom = shape(building['geometry'])
-#             rtree_index.insert(idx, geom.bounds)
-#
-#         labeled_footprint_array, num_clusters_fp = label(footprint_array > 0)
-#
-#         shapes_fp = shapes(labeled_footprint_array.astype(np.uint8), mask=(labeled_footprint_array > 0),
-#                                transform=transform)
-#
-#         footprint_buildings = [
-#             {"geometry": mapping(shape(geom)), "parcel_id": str(uuid.uuid4())[:8]}
-#             for geom, value in shapes_fp
-#         ]
-#
-#         for footprint_building in footprint_buildings:
-#             footprint_geom = shape(footprint_building['geometry'])
-#
-#             possible_matches = list(
-#                 rtree_index.intersection(footprint_geom.bounds))
-#
-#             for match_idx in possible_matches:
-#                 highest_building = highest_buildings[match_idx]
-#                 highest_geom = shape(highest_building['geometry'])
-#
-#                 if footprint_geom.intersects(highest_geom) or footprint_geom.within(highest_geom):
-#                     footprint_building['parcel_id'] = highest_building['parcel_id']
-#                     break
-#         user_buildings = footprint_buildings
-#         user_buildings_higher = highest_buildings
-#
-#         return user_buildings, user_buildings_higher
-#
-# def update_dsm(dsm, dtm, user_buildings, transform, user_array=None, user_arrays=None, higher_buildings=None):
-#     if isinstance(dsm, np.ndarray):
-#         dsm = [dsm]
-#
-#     template = dsm[0]
-#     dsm = dsm + [np.full_like(template, np.nan) for _ in range(len(dsm), len(user_arrays))]
-#
-#     for building in user_buildings:
-#         if 'geometry' in building:
-#             geom = shape(building['geometry'])
-#
-#             mask = geometry_mask([geom], transform=transform, invert=True, out_shape=dtm.shape)
-#             # Find the minimum value within the mask
-#             min_value = np.min(dtm[mask])
-#
-#             dsm[0][mask] = user_arrays[0][mask] + min_value
-#
-#             if higher_buildings:
-#                 new_build = next(
-#                     (b for b in higher_buildings if b['parcel_id'] == building['parcel_id']),
-#                     None
-#                 )
-#
-#                 if new_build and 'geometry' in new_build:
-#                     new_geom = shape(new_build["geometry"])
-#                     new_mask = geometry_mask([new_geom], transform=transform, invert=True,
-#                                              out_shape=dtm.shape)
-#
-#                     for i in range(1, len(user_arrays)):
-#                         dsm[i][new_mask] = user_arrays[i][new_mask] + min_value
-#
-#     return dsm
 
 if __name__ == "__main__":
     data = Building3d_input(200, 200, 1)

@@ -331,22 +331,22 @@ class DEMS:
     and integrating building footprints for urban terrain modeling.
 
     Attributes:
-    - buffer (float):                           Buffer size in meters for bbox expansion.
-    - bbox (tuple):                             Bounding box coordinates (xmin, ymin, xmax, ymax).
-    - bufferbbox (tuple):                       Buffered bounding box expanded by buffer.
-    - building_data (list):                     List of building geometries and attributes.
-    - resolution (float):                       Desired output raster resolution in meters.
-    - user_building_data (list):                User-provided building data.
-    - output_dir (str):                         Directory to save output files.
-    - bridge (bool):                            Whether to include 'overbruggingsdeel' data in the DSM.
-    - resampling (rasterio.enums.Resampling):   Resampling method for raster operations.
-    - crs (CRS):                                Coordinate reference system, default EPSG:28992.
-    - dtm (np.ndarray):                     Digital Terrain Model raster data.
-    - dsm (np.ndarray):                     Digital Surface Model raster data.
-    - transform (Affine):                       Affine transform for the rasters.
-    - og_dtm (np.ndarray):                  Original DTM before modifications.
-    - og_dsm (np.ndarray):                  Original DSM before modifications.
-    - is3D (bool):                              Flag indicating if DSM is 3D.
+        buffer (float):                           Buffer size in meters for bbox expansion.
+        bbox (tuple):                             Bounding box coordinates (xmin, ymin, xmax, ymax).
+        bufferbbox (tuple):                       Buffered bounding box expanded by buffer.
+        building_data (list):                     List of building geometries and attributes.
+        resolution (float):                       Desired output raster resolution in meters.
+        user_building_data (list):                User-provided building data.
+        output_dir (str):                         Directory to save output files.
+        bridge (bool):                            Whether to include 'overbruggingsdeel' data in the DSM.
+        resampling (rasterio.enums.Resampling):   Resampling method for raster operations.
+        crs (CRS):                                Coordinate reference system, default EPSG:28992.
+        dtm (np.ndarray):                     Digital Terrain Model raster data.
+        dsm (np.ndarray):                     Digital Surface Model raster data.
+        transform (Affine):                       Affine transform for the rasters.
+        og_dtm (np.ndarray):                  Original DTM before modifications.
+        og_dsm (np.ndarray):                  Original DSM before modifications.
+        is3D (bool):                              Flag indicating if DSM is 3D.
     '''
     def __init__(self, bbox, building_data, resolution=0.5, bridge=False, resampling=Resampling.cubic_spline, output_dir="output"):
         '''
@@ -515,9 +515,12 @@ class DEMS:
             array (np.ndarray): Raster data array with buffer.
             transform (Affine): Affine transform matrix of input array.
 
-        Returns:
-            cropped_array (np.ndarray):     Cropped raster array.
-            new_transform (Affine):         New Affine transform matrix for cropped raster.
+        Returns
+        -------
+        cropped_array (np.ndarray):
+            Cropped raster array.
+        new_transform (Affine):
+            New Affine transform matrix for cropped raster.
         '''
 
         # Compute the window from the full buffered transform, for the smaller (target) bbox
@@ -543,9 +546,12 @@ class DEMS:
             input_crs (CRS): Coordinate Reference System of input raster.
             output_resolution (float): Desired output resolution in meters.
 
-        Returns:
-            resampled_array (np.ndarray):     Resampled raster array.
-            new_transform (Affine):           New Affine transform matrix for resampled raster.
+        Returns
+        -------
+        resampled_array (np.ndarray):
+            Resampled raster array.
+        new_transform (Affine):
+            New Affine transform matrix for resampled raster.
         '''
         height, width = input_array.shape
         new_width = int((width * input_transform.a) / output_resolution)
@@ -667,10 +673,14 @@ class DEMS:
         Parameters:
             bbox (tuple):       Bounding box coordinates (xmin, ymin, xmax, ymax).
 
-        Returns:
-            cropped_dtm (np.ndarray):   Filled, cropped DTM array.
-            cropped_dsm (np.ndarray):   Cropped DSM array with buildings and building heights, optional output.
-            transform (Affine):   Affine transform matrix of the rasters.
+        Returns
+        -------
+        cropped_dtm (np.ndarray):
+            Filled, cropped DTM array.
+        cropped_dsm (np.ndarray):
+            Cropped DSM array with buildings and building heights, optional output.
+        transform (Affine):
+            Affine transform matrix of the rasters.
          '''
 
         if not os.path.exists(self.output_dir):
@@ -1094,9 +1104,12 @@ class CHM:
             min_x, max_x, min_y, max_y (float):  Bounding box coordinates.
             resolution (float):                 Cell size; assumed square cells.
 
-        Returns:
-            grid_center_x (np.ndarray)      X cell center coordinates.
-            grid_center_y (np.ndarray):     Y cell center coordinates.
+        Returns
+        -------
+        grid_center_x (np.ndarray)
+            X cell center coordinates.
+        grid_center_y (np.ndarray)
+            Y cell center coordinates.
         '''
         # create coordinates for the x and y border of every cell.
         x_coords = np.arange(min_x, max_x, resolution)  # x coordinates expand from left to right.
@@ -1148,9 +1161,12 @@ class CHM:
             resolution (float):               Desired raster resolution.
             no_data_value (int, optional):    Value to assign NoData cells. Defaults to -9999.
 
-        Returns:
-            interpolated_grid (np.ndarray):           Raster grid with interpolated vegetation heights.
-            grid_center_xy (tuple of np.ndarray):  Grid center coordinates (x, y).
+        Returns
+        -------
+        interpolated_grid (np.ndarray):
+            Raster grid with interpolated vegetation heights.
+        grid_center_xy (tuple of np.ndarray):
+            Grid center coordinates (x, y).
         '''
         # bounding box extents minus 0.5 resolution of AHN dataset
         min_x, min_y, max_x, max_y = self.bbox
@@ -1587,18 +1603,18 @@ class CHM:
         a minimum value.
 
         Parameters:
-        - position (tuple):             (row, col) position where the tree will be placed.
-        - height_range (tuple):         Range of tree height in meters.
-        - crown_radius_range (tuple):   Range of crown radius in meters.
-        - trunk_height_range (tuple):   Range of trunk height in meters.
-        - canopy_base_range (tuple):    Range of canopy base height in meters.
-        - resolution (float):           Spatial resolution of the map.
-        - min_canopy_height (float):    Minimum allowable canopy height (tree - trunk).
-        - type (str):                   Shape type of the canopy (e.g., 'parabolic').
-        - randomness (float):           Amount of shape noise to apply.
+            position (tuple):             (row, col) position where the tree will be placed.
+            height_range (tuple):         Range of tree height in meters.
+            crown_radius_range (tuple):   Range of crown radius in meters.
+            trunk_height_range (tuple):   Range of trunk height in meters.
+            canopy_base_range (tuple):    Range of canopy base height in meters.
+            resolution (float):           Spatial resolution of the map.
+            min_canopy_height (float):    Minimum allowable canopy height (tree - trunk).
+            type (str):                   Shape type of the canopy (e.g., 'parabolic').
+            randomness (float):           Amount of shape noise to apply.
 
         Returns:
-        - None
+            None
         '''
 
         tree_height =  random.uniform(*height_range)
@@ -1628,17 +1644,17 @@ class CHM:
         trunk height and crown radius. The canopy type is fixed as parabolic.
 
         Parameters:
-        - age (int):                   Age of the tree in years.
-        - position (tuple):            (row, col) position where the tree will be placed.
-        - type (str):                  Tree species (default is 'fraxinus').
-        - resolution (float):          Spatial resolution of the map.
-        - canopy_base (float):         Height of the base of the canopy in meters.
+            age (int):                   Age of the tree in years.
+            position (tuple):            (row, col) position where the tree will be placed.
+            type (str):                  Tree species (default is 'fraxinus').
+            resolution (float):          Spatial resolution of the map.
+            canopy_base (float):         Height of the base of the canopy in meters.
 
         Returns:
-        - None
+            None
 
         Raises:
-        - ValueError: If no data exists for the specified tree age.
+        -   ValueError: If no data exists for the specified tree age.
         '''
         # Find the tree data for the specified age
         with open("src/j_dataprep/fraxinus_excelsior_database.json") as f:

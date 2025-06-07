@@ -249,20 +249,21 @@ class LandCover:
         return water_features
 
     def process_overbrugging_bgt(self):
-            overbrugging_features = []
-            filtered_overbrugging = self.filter_active_bgt_features(self.get_bgt_features("overbruggingsdeel").get("features", []))
+        "Function to process the BGT overbrugging features"
+        overbrugging_features = []
+        filtered_overbrugging = self.filter_active_bgt_features(self.get_bgt_features("overbruggingsdeel").get("features", []))
 
-            for feature in filtered_overbrugging:
-                geom = shape(feature['geometry'])
-                props = feature.get("properties", {}).copy()
-                if isinstance(geom, (Polygon, MultiPolygon)):
-                    props["landuse"] = 0
-                    overbrugging_features.append({
-                        "type": "Feature",
-                        "geometry": mapping(geom),
-                        "properties": props
-                    })
-            return overbrugging_features
+        for feature in filtered_overbrugging:
+            geom = shape(feature['geometry'])
+            props = feature.get("properties", {}).copy()
+            if isinstance(geom, (Polygon, MultiPolygon)):
+                props["landuse"] = 0
+                overbrugging_features.append({
+                    "type": "Feature",
+                    "geometry": mapping(geom),
+                    "properties": props
+                })
+        return overbrugging_features
 
     def process_terrain_features_top(self):
         """
@@ -403,6 +404,7 @@ class LandCover:
     def process_road_features_bgt(self):
         '''
         Loads and classifies BGT road features with landuse.
+
         Returns:
             list: A list of GeoJSON-like feature dictionaries representing roads. Each feature contains "geometry" and "properties" with a "landuse" code.
         '''

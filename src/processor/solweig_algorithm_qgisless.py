@@ -54,23 +54,23 @@ class SOLWEIGAlgorithm():
     A class to process the SOLWEIG algorithm inputs.
 
     Parameters:
-    - INPUT_DSM:        Digital Surface Model (DSM) input file.
-    - INPUT_SVF:        ZIP Sky View Factor (SVF) input files.
-    - INPUT_CDSM:       Canopy DSM input file.
-    - INPUT_TDSM:       Trunk zone DSM input file.
-    - INPUT_HEIGHT:     Wall height input file.
-    - INPUT_ASPECT:     Wall aspect input file.
-    - TRANS_VEG:        Vegetation transmissivity value or input file.
-    - LEAF_START:       Start of the leaf-on period (date or DOY).
-    - LEAF_END:         End of the leaf-on period (date or DOY).
-    - CONIFER_TREES:    Boolean: if true trees are seen af coniferous
-    - INPUT_THEIGHT:    Trunk height (percentage, if no trunk zone DSM)
-    - INPUT_LC:         Land cover classification input file.
-    - USE_LC_BUILD:     Boolean indicating whether to use land cover for building footprints.
-    - INPUT_DEM:        Digital Elevation Model (DEM) input file.
-    - SAVE_BUILD:       Boolean indicating whether to save the processed building footprint.
-    - INPUT_ANISO:      Anisotropic input data or parameter.
-    - ALBEDO_WALLS:     ETC.
+        INPUT_DSM:        Digital Surface Model (DSM) input file.
+        INPUT_SVF:        ZIP Sky View Factor (SVF) input files.
+        INPUT_CDSM:       Canopy DSM input file.
+        INPUT_TDSM:       Trunk zone DSM input file.
+        INPUT_HEIGHT:     Wall height input file.
+        INPUT_ASPECT:     Wall aspect input file.
+        TRANS_VEG:        Vegetation transmissivity value or input file.
+        LEAF_START:       Start of the leaf-on period (date or DOY).
+        LEAF_END:         End of the leaf-on period (date or DOY).
+        CONIFER_TREES:    Boolean: if true trees are seen af coniferous
+        INPUT_THEIGHT:    Trunk height (percentage, if no trunk zone DSM)
+        INPUT_LC:         Land cover classification input file.
+        USE_LC_BUILD:     Boolean indicating whether to use land cover for building footprints.
+        INPUT_DEM:        Digital Elevation Model (DEM) input file.
+        SAVE_BUILD:       Boolean indicating whether to save the processed building footprint.
+        INPUT_ANISO:      Anisotropic input data or parameter.
+        ALBEDO_WALLS:     ETC.
     """
 
     def __init__(self, INPUT_DSM, INPUT_SVF, INPUT_CDSM,  INPUT_HEIGHT, INPUT_ASPECT,

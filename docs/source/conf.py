@@ -1,6 +1,6 @@
-# Configuration file for the Sphinx documentation builder.
+# Configuration file for the Sphinx document_rtd builder.
 #
-# For the full list of built-in configuration values, see the documentation:
+# For the full list of built-in configuration values, see the document_rtd:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 # -- Project information -----------------------------------------------------

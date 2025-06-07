@@ -4,4 +4,4 @@ build:
   os: ubuntu-22.04
   commands:
     - mkdir --parents _readthedocs/html/
-    - cp -r docs/documentation/html/* _readthedocs/html/
+    - cp -r docs/document_rtd/html/* _readthedocs/html/
