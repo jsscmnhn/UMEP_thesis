@@ -10,4 +10,3 @@ build:
 
 conda:
   environment: environment.yml
-  use_mamba: false
