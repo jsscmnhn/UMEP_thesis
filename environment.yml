@@ -62,7 +62,7 @@ dependencies:
   - hdf5=1.14.5
   - httpcore=1.0.2
   - httpx=0.27.0
-  - icc_rt=2022.1.0 # [win]
+
   - idna=3.7
   - imagesize=1.4.1
   - intel-openmp=2023.1.0
@@ -164,8 +164,6 @@ dependencies:
   - python-json-logger=3.2.1
   - python-tzdata=2023.3
   - pytz=2024.1
-  - pywin32=308 # [win]
-  - pywinpty=2.0.14 # [win]
   - pyyaml=6.0.2
   - pyzmq=26.2.0
   - qhull=2020.2
@@ -213,15 +211,10 @@ dependencies:
   - unicodedata2=15.1.0
   - uriparser=0.9.7
   - urllib3=2.3.0
-  - vc=14.42
-  - vc14_runtime>=14.42 # [win]
-  - vs2015_runtime>=14.42 # [win]
   - wcwidth=0.2.5
   - webencodings=0.5.1
   - websocket-client=1.8.0
   - wheel=0.45.1
-  - win_inet_pton=1.1.0 # [win]
-  - winpty=0.4.3 # [win]
   - xerces-c=3.2.4
   - xyzservices=2022.9.0
   - xz=5.6.4

@@ -1,10 +1,2 @@
-src.j\_dataprep.climate package
+src.j\_dataprep.climate
 ===============================
-
-Module contents
----------------
-
-.. automodule:: src.j_dataprep.climate
-   :members:
-   :show-inheritance:
-   :undoc-members:

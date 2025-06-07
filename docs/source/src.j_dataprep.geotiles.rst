@@ -1,10 +1,4 @@
-src.j\_dataprep.geotiles package
+src.j\_dataprep.geotiles
 ================================
 
-Module contents
----------------
 
-.. automodule:: src.j_dataprep.geotiles
-   :members:
-   :show-inheritance:
-   :undoc-members:

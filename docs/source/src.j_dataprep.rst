@@ -1,7 +1,7 @@
 src.j\_dataprep package
 =======================
 
-Subpackages
+Directories
 -----------
 
 .. toctree::
