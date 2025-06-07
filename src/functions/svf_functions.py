@@ -7,7 +7,7 @@ from src.functions.SOLWEIGpython.UTIL.create_patches import create_patches
 import cupy as cp
 
 def annulus_weight(altitude, aziinterval):
-    """Computes a weight for annuli at a given altitude, using sine functions based on azimuth intervals."""
+    """Unchanged function. Computes a weight for annuli at a given altitude, using sine functions based on azimuth intervals."""
     n = 90.
     steprad = (360./aziinterval) * (np.pi/180.)
     annulus = 91.-altitude
@@ -17,7 +17,7 @@ def annulus_weight(altitude, aziinterval):
     return weight
 
 def svf_angles_100121():
-    """Generates azimuth intervals and angles for calculating SVF."""
+    """Unchanged function. Generates azimuth intervals and angles for calculating SVF."""
     azi1 = np.arange(1., 360., 360./16.)  #%22.5
     azi2 = np.arange(12., 360., 360./16.)  #%22.5
     azi3 = np.arange(5., 360., 360./32.)  #%11.25
@@ -49,7 +49,8 @@ def svf_angles_100121():
 
 def svfForProcessing153(dsm, dtm, vegdem, vegdem2, scale, usevegdem):
     """
-    Calculates sky view factor (SVF) and directional SVFs using 153 sky patch divisions.
+    Calculates sky view factor (SVF) and directional SVFs using 153 sky patch divisions, an updated function.
+    This function is used for the Anisotropic sky model.
 
     Parameters:
         dsm (cp.ndarray):      Digital Surface Model containing building + ground elevations.
@@ -59,8 +60,10 @@ def svfForProcessing153(dsm, dtm, vegdem, vegdem2, scale, usevegdem):
         scale (float):         Pixel resolution in meters.
         usevegdem (int):       If 1, include vegetation in SVF calculation; if 0, ignore it.
 
-    Returns:
-        dict: Contains SVF arrays for total, directional (E/S/W/N), vegetation, and shadow matrices.
+    Returns
+    -------
+    dict :
+        Contains SVF arrays for total, directional (E/S/W/N), vegetation, and shadow matrices.
     """
     dsm = cp.array(dsm, dtype=cp.float32)
     vegdem = cp.array(vegdem, dtype=cp.float32)
@@ -235,6 +238,7 @@ def svfForProcessing153(dsm, dtm, vegdem, vegdem2, scale, usevegdem):
 def svfForProcessing153_3d(dsms, dtm, vegdem, vegdem2, scale, usevegdem):
     """
     Calculates sky view factor (SVF) and directional SVFs using 153 sky patch divisions for 3D input.
+    This function is used for the Anisotropic sky model.
 
     Parameters:
         dsms (cp.ndarray):     3D-layered Digital Surface Model containing building + ground elevations, and gap layers.
@@ -244,8 +248,10 @@ def svfForProcessing153_3d(dsms, dtm, vegdem, vegdem2, scale, usevegdem):
         scale (float):         Pixel resolution in meters.
         usevegdem (int):       If 1, include vegetation in SVF calculation; if 0, ignore it.
 
-    Returns:
-        dict: Contains SVF arrays for total, directional (E/S/W/N), vegetation, and shadow matrices at base layer.
+    Returns
+    -------
+    dict :
+        Contains SVF arrays for total, directional (E/S/W/N), vegetation, and shadow matrices, all at base layer.
     """
     rows = dsms[0].shape[0]
     cols = dsms[0].shape[1]
@@ -421,7 +427,8 @@ def svfForProcessing153_3d(dsms, dtm, vegdem, vegdem2, scale, usevegdem):
 
 def svfForProcessing655(dsm, dtm, vegdem, vegdem2, scale, usevegdem):
     """
-    Calculates sky view factor (SVF) and directional SVFs using 153 sky patch divisions.
+    Calculates sky view factor (SVF) and directional SVFs using 655 sky patch divisions, updated function.
+    This function is used for the isotropic sky model.
 
     Parameters:
         dsm (cp.ndarray):      Digital Surface Model containing building + ground elevations.
@@ -431,8 +438,10 @@ def svfForProcessing655(dsm, dtm, vegdem, vegdem2, scale, usevegdem):
         scale (float):         Pixel resolution in meters.
         usevegdem (int):       If 1, include vegetation in SVF calculation; if 0, ignore it.
 
-    Returns:
-        dict: Contains SVF arrays for total, directional (E/S/W/N), vegetation, and shadow matrices.
+    Returns
+    -------
+    dict :
+        Contains SVF arrays for total, directional (E/S/W/N), vegetation, and shadow matrices, all at base layer.
     """
     dsm = cp.array(dsm, dtype=cp.float32)
     vegdem = cp.array(vegdem, dtype=cp.float32)
@@ -594,6 +603,7 @@ def svfForProcessing655(dsm, dtm, vegdem, vegdem2, scale, usevegdem):
 def svfForProcessing655_3d(dsms, dtm, vegdem, vegdem2, scale, usevegdem):
     """
     Calculates sky view factor (SVF) and directional SVFs using 655 sky patch divisions for 3D input.
+    This function is used for the isotropic sky model.
 
     Parameters:
         dsms (cp.ndarray):     3D-layered Digital Surface Model containing building + ground elevations, and gap layers.
@@ -603,8 +613,10 @@ def svfForProcessing655_3d(dsms, dtm, vegdem, vegdem2, scale, usevegdem):
         scale (float):         Pixel resolution in meters.
         usevegdem (int):       If 1, include vegetation in SVF calculation; if 0, ignore it.
 
-    Returns:
-        dict: Contains SVF arrays for total, directional (E/S/W/N), vegetation, and shadow matrices at base layer.
+    Returns
+    -------
+    dict :
+        Contains SVF arrays for total, directional (E/S/W/N), vegetation, and shadow matrices, all at base layer.
     """
     rows = dsms[0].shape[0]
     cols = dsms[0].shape[1]

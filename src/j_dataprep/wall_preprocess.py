@@ -168,7 +168,9 @@ class WallData:
     @staticmethod
     def filter1Goodwin_as_aspect_v3(walls, scale, a):
         '''
-        Calculate wall aspect based on wall pixels grid, DSM, and scale using Goodwin et al (2010) method.
+        This function applies the filter processing presented in Goodwin et al (2010) but instead for removing
+        linear features it calculates wall aspect based on a wall pixels grid, a dsm (a) and a scale factor
+        Fredrik Lindberg, 2012-02-14, fredrikl@gvc.gu.se, Translated: 2015-09-15
 
         Parameters:
               walls (ndarray):   Binary wall pixels grid.

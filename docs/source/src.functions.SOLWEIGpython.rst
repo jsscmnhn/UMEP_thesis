@@ -1,5 +1,6 @@
 functions.SOLWEIGpython
 ===================================
+In this directory, all functions supporting SOLWEIG are found. Most of the functions are unchanged or only placed on the GPU.
 
 Subpackages
 -----------

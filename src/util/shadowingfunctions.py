@@ -225,9 +225,11 @@ def shadowingfunctionglobalradiation_3d(a, amaxvalue, azimuth, altitude, scale):
         index += 1.
 
     # Combine all shadow layers
-    sh_combined = sh_stack[0]
-    for i in range(1, num_combinations):
-        sh_combined = cp.fmax(sh_combined, sh_stack[i])
+    if num_combinations > 0:
+        sh_combined = sh_stack[0]
+        for i in range(1, num_combinations):
+            sh_combined = cp.fmax(sh_combined, sh_stack[i])
+        sh = cp.fmax(sh, sh_combined)
 
     sh = cp.fmax(sh, sh_combined)
     sh = 1.0 - sh

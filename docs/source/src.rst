@@ -1,5 +1,6 @@
 src package
 ===========
+All code for running **SOLFD** and **SOLWEIG** is stored in **SRC**. The code in the **j\_** directories is original work unless specified otherwise. The other directories are originally from https://github.com/UMEP-dev/UMEP-processing Modifications have been made, while some code remains unchanged.
 
 Subpackages
 -----------
@@ -15,10 +16,3 @@ Subpackages
    src.processor
    src.util
 
-Module contents
----------------
-
-.. automodule:: src
-   :members:
-   :show-inheritance:
-   :undoc-members:

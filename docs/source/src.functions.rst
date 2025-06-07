@@ -1,5 +1,6 @@
-src.functions package
+src.functions
 =====================
+In this directory the functions for processing **SVF** and **SOLWEIG** are found.
 
 Subpackages
 -----------
@@ -12,7 +13,7 @@ Subpackages
 Submodules
 ----------
 
-src.functions.svf\_functions module
+functions.svf\_functions
 -----------------------------------
 
 .. automodule:: src.functions.svf_functions
@@ -20,26 +21,6 @@ src.functions.svf\_functions module
    :show-inheritance:
    :undoc-members:
 
-src.functions.svf\_functions\_original module
----------------------------------------------
-
-.. automodule:: src.functions.svf_functions_original
-   :members:
-   :show-inheritance:
    :undoc-members:
 
-src.functions.wallalgorithms module
------------------------------------
 
-.. automodule:: src.functions.wallalgorithms
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-Module contents
----------------
-
-.. automodule:: src.functions
-   :members:
-   :show-inheritance:
-   :undoc-members:
