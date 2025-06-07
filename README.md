@@ -3,8 +3,9 @@
 
 
 # Documentation
-*insert read the docs link*
+https://solweig-solfd.readthedocs.io
 
+More details about the methodology and code can be found in [my thesis](https://repository.tudelft.nl/)
 
 # Running the code
 ## Code

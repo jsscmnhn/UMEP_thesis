@@ -8,6 +8,9 @@ build:
   tools:
     python: "3.12"
 
-python:
-  install:
-    - requirements: docs/requirements.txt
+#python:
+#  install:
+#    - requirements: docs/requirements.txt
+
+conda:
+  environment: environment.yml
