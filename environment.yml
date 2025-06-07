@@ -206,8 +206,7 @@ dependencies:
   - traitlets=5.14.3
   - typing-extensions=4.12.2
   - typing_extensions=4.12.2
-  - tzdata=2025a=h04d1e81_0
-  - ucrt=10.0.22621.0
+  - tzdata=2025a
   - unicodedata2=15.1.0
   - uriparser=0.9.7
   - urllib3=2.3.0
