@@ -1495,7 +1495,7 @@ class CHM:
         self.trunk_array = np.where(tree_mask, 0, self.trunk_array)
         write_output(None, self.crs, self.chm, self.transform, "output/updated_chm.tif")
 
-    def insert_tree(self, position, height, crown_radius, resolution=0.5, trunk_height=0.0, type='parabolic', randomness=0.8, canopy_base_height=0.0):
+    def insert_tree(self, position, height, crown_radius, resolution=0.5, trunk_height=5.0, type='parabolic', randomness=0.8, canopy_base_height=0.0):
         '''
         Insert a parametric tree model into the CHM and trunk height array at the specified location.
 
@@ -1636,7 +1636,7 @@ class CHM:
             randomness=randomness
         )
 
-    def insert_type_tree(self, age, position, type="fraxinus", resolution=0.5, canopy_base=0.0):
+    def insert_type_tree(self, age, position, tree_genus="fraxinus", resolution=0.5, canopy_base=0.0):
         '''
         Insert a tree of a specific type and age using pre-defined growth parameters.
 
@@ -1644,9 +1644,9 @@ class CHM:
         trunk height and crown radius. The canopy type is fixed as parabolic.
 
         Parameters:
-            age (int):                   Age of the tree in years.
+            age (int, str):               Age of the tree in years or life stage (young, early_mature, mature, late_mature, semi_mature).
             position (tuple):            (row, col) position where the tree will be placed.
-            type (str):                  Tree species (default is 'fraxinus').
+            tree_genus (str):                  Tree species (default is 'fraxinus').
             resolution (float):          Spatial resolution of the map.
             canopy_base (float):         Height of the base of the canopy in meters.
 
@@ -1656,26 +1656,56 @@ class CHM:
         Raises:
         -   ValueError: If no data exists for the specified tree age.
         '''
-        # Find the tree data for the specified age
-        with open("src/j_dataprep/fraxinus_excelsior_database.json") as f:
-            tree_db = json.load(f)
 
-        tree_data = next((item for item in tree_db if item["age"] == age), None)
+        tree_genus = type.lower()
+        if tree_genus =="fraxinus" and type(age) == int:
+            # Find the tree data for the specified age
+            with open("src/j_dataprep/fraxinus_excelsior_database.json") as f:
+                tree_db = json.load(f)
 
-        if not tree_data:
-            raise ValueError(f"No data available for age {age}")
+            tree_data = next((item for item in tree_db if item["age"] == age), None)
 
-        # Extract the relevant attributes from the tree data
-        tree_height = tree_data["tree ht"]
-        crown_height = tree_data["crown ht"]
-        crown_dia = tree_data["crown dia"]
+            if not tree_data:
+                raise ValueError(f"No data available for age {age}")
 
-        # Calculate derived values
-        trunk_height = max(0, tree_height - crown_height)
-        crown_radius = crown_dia / 2
+            # Extract the relevant attributes from the tree data
+            tree_height = tree_data["tree ht"]
+            crown_height = tree_data["crown ht"]
+            crown_dia = tree_data["crown dia"]
+
+            # Calculate derived values
+            trunk_height = max(0, tree_height - crown_height)
+            crown_radius = crown_dia / 2
+
+        else:
+            # Find the tree data for the specified age
+            with open("src/j_dataprep/obard_trees.json") as f:
+                tree_db = json.load(f)
+
+            tree_data = next(
+                (item for item in tree_db if item["age"] == age and item["genus"] == tree_genus),
+                None
+            )
+
+            if not tree_data:
+                raise ValueError(f"No data available for age {age}")
+
+            # Extract the relevant attributes from the tree data
+            tree_height = tree_data["tree ht"]
+            trunk_height = tree_data["trunk ht"]
+            crown_dia = tree_data["crown dia"]
+
+            # Calculate derived values
+            trunk_height = max(0, tree_height - crown_height)
+            crown_radius = crown_dia / 2
+
+            if type =="fraxinus" or type== "tilia" or type== "salix" or type =="platanus":
+                tree_type = 'parabolic'
+            if type == "quercus":
+                tree_type = 'hempisphere'
 
         # Set defaults for type and randomness
-        tree_type = 'parabolic'  # Canopy type is fixed as parabolic
+
         randomness = 0.8  # Fixed randomness
 
         # Insert the tree with the calculated values
