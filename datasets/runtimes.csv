@@ -1,0 +1,7 @@
+﻿cells,lap_svf_bud_new_2d,lap_svf_chm_new_2d,lap_sol_bud_new_2d,lap_sol_chm_new_2d,lap_svf_bud_old_2d,lap_svf_chm_old_2d,lap_sol_bud_old_2d,lap_sol_chm_old_2d,lap_svf_bud_new_3d,lap_svf_chm_new_3d,lap_sol_bud_new_3d,lap_sol_chm_new_3d,com_svf_bud_new_2d,com_svf_chm_new_2d,com_sol_bud_new_2d,com_sol_chm_new_2d,com_svf_bud_old_2d,com_svf_chm_old_2d,com_sol_bud_old_2d,com_sol_chm_old_2d,com_svf_bud_new_3d,com_svf_chm_new_3d,com_sol_bud_new_3d,com_sol_chm_new_3d
+250,5.8,32.7,46,57.5,5.3,30.6,108.9,116.4,30.5,76.5,58.3,72.3,3,11.5,17.7,18.4,1.8,11.8,27.5,29.7,11,19.7,18.4,18.8
+500,11.3,50.3,67.6,67.3,61.3,410.8,708.6,829.9,44.2,84.4,130.7,114,5.8,18.9,18.7,19.3,20.9,153.7,311.8,335.1,16.7,31.2,18.9,19.8
+1000,56,237.3,407.6,351.8,481.5,3025.2,2826,3444,283,452.5,503.2,362.4,17.9,45.3,26.1,26,170.5,1202.6,1269.1,1451.5,39.3,70.7,27.3,28.9
+1500,144.2,649.3,2717,NULL,1136.5,7550.6,8761.7,8294.8,651.5,1033.4,1037.7,NULL,34.6,67.9,53.1,50.5,420.9,3131.1,2975.6,3350.8,58.2,97.2,53.7,53.9
+2000,NULL,NULL,NULL,NULL,2135.2,20966.4,NULL,NULL,NULL,NULL,NULL,NULL,59,119.4,102.5,96.5,875.3,6431.7,5626.1,5843.9,100.7,159.1,105,103.9
+3000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,195.6,328.3,NULL,NULL,2086.3,14813.5,13910.5,13572.8,856.2,4026,NULL,NULL
